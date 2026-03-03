@@ -1,2 +1,8 @@
+# build files
+build/
+
+# editor
+.vscode/
+
 # extra
 tests/
