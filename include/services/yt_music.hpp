@@ -4,13 +4,15 @@
 #include <string_view>
 #include <string>
 
+#include "../ipc/search_response.hpp"
+
 namespace services {
 
 class YTMusic {
 public:
     YTMusic(const std::string_view& app_name);
 
-    void search(const std::string& query);
+    ipc::SearchResponse search(const std::string& query);
     void stop();
 
 private:
@@ -19,7 +21,7 @@ private:
     int pipe_stdin[2];
     int pipe_stdout[2];
 
-    char buffer[8192];
+    char buffer[16384];
 
     pid_t python_pid;
 };

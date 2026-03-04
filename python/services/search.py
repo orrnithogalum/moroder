@@ -1,24 +1,26 @@
 from ytmusicapi import YTMusic
 
-def search_song(ytm: YTMusic, query):
+def search(ytm: YTMusic, query):
+    result_limit = 20
     try:
         results = ytm.search(
             query,
-            filter="songs",
-            limit=10
+            limit=result_limit
         )
 
-        songs = [
-            {
-                "title": r["title"],
-                "artist": r["artists"][0]["name"] if r.get("artists") else "",
-                "videoId": r["videoId"],
-            }
-            for r in results
-            if "videoId" in r
-        ]
+        results = results[:result_limit]
 
-        return {"status": "ok", "results": songs}
+        # songs = [
+        #     {
+        #         "title": r["title"],
+        #         "artist": r["artists"][0]["name"] if r.get("artists") else "",
+        #         "videoId": r["videoId"],
+        #     }
+        #     for r in results
+        #     if "videoId" in r
+        # ]
+
+        return {"status": "ok", "results": results}
 
     except Exception as e:
         return {"status": "error", "message": str(e)}

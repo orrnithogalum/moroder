@@ -1,17 +1,17 @@
 #include "../../include/services/yt_music.hpp"
 
+#include "../../include/ipc/search_request.hpp"
+
 #include <spdlog/spdlog.h>
 #include <filesystem>
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include <iostream>
-
 namespace fs = std::filesystem;
 
 services::YTMusic::YTMusic(const std::string_view& app_name) {
 
-    spdlog::info("Starting python server...");
+    spdlog::info("Python server starting...");
 
     fs::path installed = "/usr/share/ytmusic/python/main.py";
     fs::path dev = YTM_DEV_PYTHON_PATH;
@@ -29,12 +29,12 @@ services::YTMusic::YTMusic(const std::string_view& app_name) {
     spdlog::info("Python path: " + this->python_server_path);
 
     if (pipe(this->pipe_stdin) == -1 || pipe(this->pipe_stdout) == -1) {
-        throw std::runtime_error("Could not create pipe for python server");
+        throw std::runtime_error("Python server could not create pipe");
     }
 
     this->python_pid = fork();
     if (this->python_pid < 0) {
-        throw std::runtime_error("Could not fork process for python server");
+        throw std::runtime_error("Python server could not fork process");
     }
 
     if (this->python_pid == 0) {
@@ -49,7 +49,7 @@ services::YTMusic::YTMusic(const std::string_view& app_name) {
         execl("/usr/bin/python", "/usr/bin/python", "-u", this->python_server_path.c_str(), (char*) nullptr);
 
         // If exec fails
-        throw std::runtime_error("Could not run python server");
+        throw std::runtime_error("Python server could not run");
     }
 
     close(pipe_stdin[0]);
@@ -61,20 +61,20 @@ void services::YTMusic::stop() {
         return;
     }
 
-    spdlog::info("Stopping python server...");
+    spdlog::info("Python server stopping...");
 
     close(pipe_stdin[1]);
     close(pipe_stdout[0]);
 
     if (kill(python_pid, SIGTERM) == -1) {
-        spdlog::warn("Failed to send SIGTERM to python process");
+        spdlog::warn("Python server failed to send SIGTERM to python process");
     }
 
     int status = 0;
     pid_t result = waitpid(python_pid, &status, 0);
 
     if (result == -1) {
-        spdlog::error("waitpid failed for python process");
+        spdlog::error("Python server failed on waitpid");
     } else {
         if (WIFEXITED(status)) {
             spdlog::info("Python server exited with code {}", WEXITSTATUS(status));
@@ -86,16 +86,22 @@ void services::YTMusic::stop() {
     python_pid = -1;
 }
 
-void services::YTMusic::search(const std::string& query) {
-    std::string request = "{\"action\":\"search\", \"query\":\"daft punk\"}\n";
-    write(pipe_stdin[1], request.c_str(), request.size()); // send JSON request
-    // optional: close(pipe_stdin[1]); // if you don't plan to send more requests
+ipc::SearchResponse services::YTMusic::search(const std::string& query) {
+    auto request = ipc::SearchRequest(query);
 
-    // Read response
+    spdlog::info("Python server searching for query: " + query);
+    
+    write(pipe_stdin[1], request.serialize().c_str(), request.serialize().size());
     ssize_t n = read(pipe_stdout[0], this->buffer, sizeof(this->buffer)-1);
-    if (n > 0) {
-        buffer[n] = '\0';
-        std::cout << "Response: " << buffer << std::endl;
+
+    ipc::SearchResponse response;
+    if (n <= 0) {
+        spdlog::warn("Python server returned empty on query: " + query);
+        return response;
     }
 
+    buffer[n] = '\0';
+    response = ipc::SearchResponse(buffer);
+    
+    return response;
 }

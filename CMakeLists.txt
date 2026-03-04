@@ -16,6 +16,17 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(spdlog)
 
+FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG v3.11.3
+)
+
+FetchContent_MakeAvailable(nlohmann_json)
+
+find_package(spdlog REQUIRED)
+find_package(nlohmann_json REQUIRED)
+
 set(SOURCES
     src/services/yt_music.cpp
 
@@ -27,6 +38,7 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
     spdlog::spdlog
+    nlohmann_json::nlohmann_json
 )
 
 target_compile_definitions(${PROJECT_NAME}

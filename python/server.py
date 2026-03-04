@@ -1,12 +1,13 @@
 from ytmusicapi import YTMusic
 
-from services.search import search_song
+from services.search import search
 
 class YTMusicServer:
     def __init__(self):
         self.ytm_default = YTMusic()
         self.ytm_user = None
         self.logged_in = False
+
 
     def login(self, credentials_path: str):
         try:
@@ -17,8 +18,10 @@ class YTMusicServer:
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
+
     def search(self, query: str):
-        return search_song(self.ytm_default, query)
+        return search(self.ytm_default, query)
+
 
     def handle_request(self, req: dict):
         action = req.get("action")
