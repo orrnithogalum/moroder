@@ -4,6 +4,7 @@ project(ytmusic)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(FetchContent)
 
@@ -16,19 +17,22 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(spdlog)
 
 set(SOURCES
+    src/services/yt_music.cpp
+
     src/main.cpp
 )
 
-add_custom_target(create_logs_dir ALL
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/logs
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/logs
-)
-
 add_executable(${PROJECT_NAME} ${SOURCES})
-
-add_dependencies(${PROJECT_NAME} create_logs_dir)
 
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
     spdlog::spdlog
 )
+
+target_compile_definitions(${PROJECT_NAME}
+    PRIVATE YTM_DEV_PYTHON_PATH="${CMAKE_SOURCE_DIR}/python/main.py"
+)
+
+install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)
+
+install(DIRECTORY python/ DESTINATION share/ytmusic/python)

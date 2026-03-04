@@ -6,10 +6,13 @@
 #define APP_NAME_SMALL "ytmusic"
 
 int main(int argc, char* argv[]) {
-    auto logger = spdlog::basic_logger_mt(APP_NAME_SMALL, std::string("logs/") + APP_NAME_SMALL + ".txt");
+    auto logger = spdlog::basic_logger_mt(APP_NAME_SMALL, std::string("logs/") + APP_NAME_SMALL + ".txt", true);
     spdlog::set_default_logger(logger);
 
     auto ytmusic_service = services::YTMusic(APP_NAME_SMALL);
+    
+    ytmusic_service.search("const std::string &query");
+    ytmusic_service.stop();
 
     return 0;
 }

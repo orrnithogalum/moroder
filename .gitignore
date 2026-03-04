@@ -1,4 +1,6 @@
 # build files
+__pycache__/
+.cache/
 build/
 
 # editor
@@ -9,3 +11,4 @@ logs/
 
 # extra
 tests/
+env/
