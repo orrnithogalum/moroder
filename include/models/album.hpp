@@ -7,22 +7,22 @@
 
 namespace music {
 
-struct Album {
+struct AlbumRef {
     std::string id;
     std::string title;
     std::string year;
     std::string thumbnail;
-    std::vector<Artist> artists;
+    std::vector<ArtistRef> artists;
 
-    static Album from_json(const nlohmann::json& j) {
-        Album a;
+    static AlbumRef from_json(const nlohmann::json& j) {
+        AlbumRef a;
         a.id = j.value("browseId", "");
         a.title = j.value("title", "");
         a.year = j.value("year", "");
 
         if (j.contains("artists") && j["artists"].is_array()) {
             for (const auto& artist : j["artists"]) {
-                Artist ref;
+                ArtistRef ref;
 
                 ref.name = artist.value("name", "");
 

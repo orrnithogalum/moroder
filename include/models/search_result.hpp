@@ -2,8 +2,10 @@
 
 #include "playlist.hpp"
 #include "episode.hpp"
+#include "podcast.hpp"
 #include "artist.hpp"
 #include "album.hpp"
+#include "video.hpp"
 #include "song.hpp"
 
 #include <nlohmann/json.hpp>
@@ -14,11 +16,13 @@ namespace ipc {
 
 using ResultData = std::variant<
     std::monostate,
-    music::Song,
-    music::Album,
-    music::Artist,
-    music::Playlist,
-    music::Episode
+    music::SongRef,
+    music::AlbumRef,
+    music::ArtistRef,
+    music::PlaylistRef,
+    music::EpisodeRef,
+    music::PodcastRef,
+    music::VideoRef
 >;
 
 struct SearchResult {
@@ -32,21 +36,27 @@ struct SearchResult {
         res.category = j.contains("category") && j["category"].is_string() ? j["category"].get<std::string>() : "";
         res.resultType = j.contains("resultType") && j["resultType"].is_string() ? j["resultType"].get<std::string>() : "";
 
-        if (res.resultType == "song" || res.resultType == "video") {
-            res.data = music::Song::from_json(j);
+        if (res.resultType == "song") {
+            res.data = music::SongRef::from_json(j);
+
+        } else if (res.resultType == "video") {
+            res.data = music::VideoRef::from_json(j);
 
         } else if (res.resultType == "album") {
-            res.data = music::Album::from_json(j);
+            res.data = music::AlbumRef::from_json(j);
 
-        } else if (res.resultType == "artist" || res.resultType == "podcast") {
-            res.data = music::Artist::from_json(j);
+        } else if (res.resultType == "artist") {
+            res.data = music::ArtistRef::from_json(j);
 
         } else if (res.resultType == "playlist") {
-            res.data = music::Playlist::from_json(j);
+            res.data = music::PlaylistRef::from_json(j);
 
         } else if (res.resultType == "episode") {
-            res.data = music::Episode::from_json(j);
-
+            res.data = music::EpisodeRef::from_json(j);
+        
+        } else if(res.resultType == "podcast") {
+            res.data = music::PodcastRef::from_json(j);
+        
         } else {
             res.data = std::monostate{};
         }

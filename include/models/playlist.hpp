@@ -5,14 +5,14 @@
 
 namespace music {
 
-struct Playlist {
+struct PlaylistRef {
     std::string id;
     std::string title;
     std::string author;
     std::string thumbnail;
 
-    static Playlist from_json(const nlohmann::json& j) {
-        Playlist p;
+    static PlaylistRef from_json(const nlohmann::json& j) {
+        PlaylistRef p;
 
         // id: can be browseId or playlistId
         if (j.contains("browseId") && j["browseId"].is_string()) {

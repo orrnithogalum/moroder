@@ -5,13 +5,13 @@
 
 namespace music {
 
-struct Episode {
+struct EpisodeRef {
     std::string id;
     std::string title;
     std::string podcastId;
 
-    static Episode from_json(const nlohmann::json& j) {
-        Episode e;
+    static EpisodeRef from_json(const nlohmann::json& j) {
+        EpisodeRef e;
 
         e.id = j.value("videoId", "");
         e.title = j.value("title", "");

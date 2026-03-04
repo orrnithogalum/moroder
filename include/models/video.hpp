@@ -8,15 +8,15 @@
 
 namespace music {
 
-struct SongRef {
+struct VideoRef {
     std::string id;
     std::string title;
     std::string views;
     std::string thumbnail;
     std::vector<ArtistRef> artists;
 
-    static SongRef from_json(const nlohmann::json& j) {
-        SongRef s;
+    static VideoRef from_json(const nlohmann::json& j) {
+        VideoRef s;
 
         s.id = j.value("videoId", "");
         s.title = j.value("title", "");

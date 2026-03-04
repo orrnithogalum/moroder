@@ -16,13 +16,13 @@ int main(int argc, char* argv[]) {
     ipc::SearchResponse response = ytmusic_service.search("behind blue eyes limp bizkit");
     std::cout << "Searched: " << response.results.size() << " results." << std::endl;
     
-    if (auto* song = std::get_if<music::Song>(&response.results[0].data)) {
+    if (auto* song = std::get_if<music::VideoRef>(&response.results[0].data)) {
         std::cout << "Song: " << song->title << "\n";
         std::cout << "Artist: " << song->artists[0].name << "\n";
         std::cout << "Views: " << song->views << "\n";
         std::cout << "Id: " << song->id << "\n";
     }
-    else if (auto* album = std::get_if<music::Album>(&response.results[0].data)) {
+    else if (auto* album = std::get_if<music::AlbumRef>(&response.results[0].data)) {
         std::cout << "Album: " << album->title << "\n";
     }
 
