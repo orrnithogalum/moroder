@@ -67,7 +67,7 @@ void services::YTMusic::stop() {
     close(pipe_stdout[0]);
 
     if (kill(python_pid, SIGTERM) == -1) {
-        spdlog::warn("Python server failed to send SIGTERM to python process");
+        spdlog::info("Python server failed to send SIGTERM to python process");
     }
 
     int status = 0;

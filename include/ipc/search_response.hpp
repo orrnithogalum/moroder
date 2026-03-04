@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../core/search_result.hpp"
+#include "../models/search_result.hpp"
 #include "response.hpp"
 
 namespace ipc {
