@@ -4,5 +4,8 @@ build/
 # editor
 .vscode/
 
+# logs
+logs/
+
 # extra
 tests/
