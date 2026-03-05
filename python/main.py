@@ -1,21 +1,26 @@
 from server import YTMusicServer
 
+import asyncio
 import json
 import sys
 
-def main():
+async def main():
     server = YTMusicServer()
 
-    for line in sys.stdin:
+    while True:
         try:
+            line = await asyncio.to_thread(sys.stdin.readline)
+
+            if not line:
+                break
+
             request = json.loads(line)
-            response = server.handle_request(request)
+            response = await server.handle_request(request)
 
         except Exception as e:
             response = {"status": "error", "message": str(e)}
 
         print(json.dumps(response), flush=True)
 
-
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

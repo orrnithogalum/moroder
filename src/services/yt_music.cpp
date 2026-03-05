@@ -1,5 +1,6 @@
 #include "../../include/services/yt_music.hpp"
 
+#include "../../include/ipc/stream_request.hpp"
 #include "../../include/ipc/search_request.hpp"
 
 #include <spdlog/spdlog.h>
@@ -91,7 +92,8 @@ ipc::SearchResponse services::YTMusic::search(const std::string& query) {
 
     spdlog::info("Python server searching for query: " + query);
     
-    write(pipe_stdin[1], request.serialize().c_str(), request.serialize().size());
+    std::string request_string = request.serialize();
+    write(pipe_stdin[1], request_string.c_str(), request_string.size());
     ssize_t n = read(pipe_stdout[0], this->buffer, sizeof(this->buffer)-1);
 
     ipc::SearchResponse response;
@@ -103,5 +105,47 @@ ipc::SearchResponse services::YTMusic::search(const std::string& query) {
     buffer[n] = '\0';
     response = ipc::SearchResponse(buffer);
     
+    return response;
+}
+
+ipc::StreamResponse services::YTMusic::stream(const music::SongRef& song) {
+    auto request = ipc::StreamRequest(song);
+
+    spdlog::info("Python server streaming for song: " + song.id);
+
+    std::string request_string = request.serialize();
+    write(pipe_stdin[1], request_string.c_str(), request_string.size());
+    ssize_t n = read(pipe_stdout[0], this->buffer, sizeof(this->buffer)-1);
+
+    ipc::StreamResponse response;
+    if (n <= 0) {
+        spdlog::warn("Python server returned empty on song: " + song.id);
+        return response;
+    }
+
+    buffer[n] = '\0';
+    response = ipc::StreamResponse(buffer);
+
+    return response;
+}
+
+ipc::StreamResponse services::YTMusic::stream(const music::VideoRef& video) {
+    auto request = ipc::StreamRequest(video);
+
+    spdlog::info("Python server streaming for video: " + video.id);
+
+    std::string request_string = request.serialize();
+    write(pipe_stdin[1], request_string.c_str(), request_string.size());
+    ssize_t n = read(pipe_stdout[0], this->buffer, sizeof(this->buffer)-1);
+
+    ipc::StreamResponse response;
+    if (n <= 0) {
+        spdlog::warn("Python server returned empty on video: " + video.id);
+        return response;
+    }
+
+    buffer[n] = '\0';
+    response = ipc::StreamResponse(buffer);
+
     return response;
 }

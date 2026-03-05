@@ -3,6 +3,8 @@
 #include <nlohmann/json.hpp>
 #include <string>
 
+#include "spdlog/spdlog.h"
+
 namespace ipc {
 
 class Response {
@@ -16,6 +18,8 @@ public:
         if (status_ == "error") {
             message_ = json_.value("message", "Unknown error");
         }
+
+        spdlog::info("Recieved reponse from python server: " + json_.dump(4));
     }
 
     bool ok() const {

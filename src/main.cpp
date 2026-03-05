@@ -13,18 +13,28 @@ int main(int argc, char* argv[]) {
 
     auto ytmusic_service = services::YTMusic(APP_NAME_SMALL);
 
-    ipc::SearchResponse response = ytmusic_service.search("behind blue eyes limp bizkit");
-    std::cout << "Searched: " << response.results.size() << " results." << std::endl;
-    
-    if (auto* song = std::get_if<music::VideoRef>(&response.results[0].data)) {
-        std::cout << "Song: " << song->title << "\n";
-        std::cout << "Artist: " << song->artists[0].name << "\n";
-        std::cout << "Views: " << song->views << "\n";
-        std::cout << "Id: " << song->id << "\n";
+    ipc::SearchResponse response = ytmusic_service.search("daft punk within drumless edition");
+
+    if (response.results.empty()) {
+        std::cout << "Exiting, no results" << std::endl;
+        return 0;
     }
-    else if (auto* album = std::get_if<music::AlbumRef>(&response.results[0].data)) {
-        std::cout << "Album: " << album->title << "\n";
+
+    auto* video = std::get_if<music::VideoRef>(&response.results[0].data);
+    if (!video) {
+        std::cout << "Exiting, results found but the first one wasn't a video." << std::endl;
+        return 0;
     }
+
+    std::cout << "Video: " << video->title << "\n";
+    if (!video->artists.empty()) {
+        std::cout << "Artist: " << video->artists[0].name << "\n";
+    }
+    std::cout << "Id: " << video->id << "\n";
+
+    ytmusic_service.stream(*video);
+
+    std::this_thread::sleep_for(std::chrono::seconds(10));
 
     ytmusic_service.stop();
 

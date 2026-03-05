@@ -1,9 +1,7 @@
-from ytmusicapi import YTMusic
-
-def search(ytm: YTMusic, query):
+def search(server, query):
     result_limit = 10
     try:
-        results = ytm.search(
+        results = server.ytm_default.search(
             query,
             limit=result_limit
         )

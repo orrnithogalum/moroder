@@ -1,10 +1,13 @@
 #pragma once
 
+#include "../ipc/search_response.hpp"
+#include "../ipc/stream_response.hpp"
+#include "../models/video.hpp"
+#include "../models/song.hpp"
+
 #include <sys/types.h>
 #include <string_view>
 #include <string>
-
-#include "../ipc/search_response.hpp"
 
 namespace services {
 
@@ -13,6 +16,9 @@ public:
     YTMusic(const std::string_view& app_name);
 
     ipc::SearchResponse search(const std::string& query);
+    ipc::StreamResponse stream(const music::SongRef& song);
+    ipc::StreamResponse stream(const music::VideoRef& video);
+
     void stop();
 
 private:
