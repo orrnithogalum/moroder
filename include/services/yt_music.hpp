@@ -17,6 +17,7 @@ public:
     YTMusic(const std::string_view& app_name);
 
     ipc::SearchResponse search(const std::string& query);
+    
     ipc::StreamResponse stream(const music::SongRef& song);
     ipc::StreamResponse stream(const music::VideoRef& video);
 
@@ -24,8 +25,11 @@ public:
     ipc::ControlResponse pause();
     ipc::ControlResponse backward(const std::uint8_t duration);
     ipc::ControlResponse forward(const std::uint8_t duration);
+    
+    // Ends the mpv process
     ipc::ControlResponse stop();
 
+    // Ends the mpv process and the python process
     void end();
 
 private:
