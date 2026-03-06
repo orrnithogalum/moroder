@@ -5,6 +5,7 @@
 #include "../ipc/stream/stream_response.hpp"
 #include "../models/video.hpp"
 #include "../models/song.hpp"
+#include "../ipc/request.hpp"
 
 #include <sys/types.h>
 #include <string_view>
@@ -41,6 +42,8 @@ private:
     char buffer[16384];
 
     pid_t python_pid;
+
+    template<typename ResponseType> ResponseType send(const ipc::Request& request, const std::string& log);
 };
 
 }

@@ -3,13 +3,14 @@
 #include "../../include/ipc/control/control_request.hpp"
 #include "../../include/ipc/stream/stream_request.hpp"
 #include "../../include/ipc/search/search_request.hpp"
+#include "../../include/ipc/request.hpp"
 
-#include <cstdint>
 #include <spdlog/spdlog.h>
 #include <filesystem>
-#include <string>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <cstdint>
+#include <string>
 
 namespace fs = std::filesystem;
 
@@ -92,170 +93,104 @@ void services::YTMusic::end() {
     python_pid = -1;
 }
 
-ipc::SearchResponse services::YTMusic::search(const std::string& query) {
-    auto request = ipc::SearchRequest(query);
-
-    spdlog::info("Python server searching for query: " + query);
-    
+template<typename ResponseType> ResponseType services::YTMusic::send(const ipc::Request& request, const std::string& log) {
     std::string request_string = request.serialize();
+
     write(pipe_stdin[1], request_string.c_str(), request_string.size());
     ssize_t n = read(pipe_stdout[0], this->buffer, sizeof(this->buffer)-1);
-
-    ipc::SearchResponse response;
     if (n <= 0) {
-        spdlog::warn("Python server returned empty on query: " + query);
-        return response;
+        spdlog::warn(log);
+        return ResponseType();
     }
 
     buffer[n] = '\0';
-    response = ipc::SearchResponse(buffer);
-    
-    return response;
+    return ResponseType(buffer);
+}
+
+ipc::SearchResponse services::YTMusic::search(const std::string& query) {
+    spdlog::info("Python server searching for query: {}", query);
+
+    ipc::SearchRequest request(query);
+
+    return send<ipc::SearchResponse>(
+        request,
+        "Python server returned empty on query: " + query
+    );
 }
 
 ipc::StreamResponse services::YTMusic::stream(const music::SongRef& song) {
-    auto request = ipc::StreamRequest(song);
+    spdlog::info("Python server streaming for song: {}", song.id);
 
-    spdlog::info("Python server streaming for song: " + song.id);
+    ipc::StreamRequest request(song);
 
-    std::string request_string = request.serialize();
-    write(pipe_stdin[1], request_string.c_str(), request_string.size());
-    ssize_t n = read(pipe_stdout[0], this->buffer, sizeof(this->buffer)-1);
-
-    ipc::StreamResponse response;
-    if (n <= 0) {
-        spdlog::warn("Python server returned empty on song: " + song.id);
-        return response;
-    }
-
-    buffer[n] = '\0';
-    response = ipc::StreamResponse(buffer);
-
-    return response;
+    return send<ipc::StreamResponse>(
+        request,
+        "Python server returned empty on song: " + song.id
+    );
 }
 
 ipc::StreamResponse services::YTMusic::stream(const music::VideoRef& video) {
-    auto request = ipc::StreamRequest(video);
+    spdlog::info("Python server streaming for video: {}", video.id);
 
-    spdlog::info("Python server streaming for video: " + video.id);
+    ipc::StreamRequest request(video);
 
-    std::string request_string = request.serialize();
-    write(pipe_stdin[1], request_string.c_str(), request_string.size());
-    ssize_t n = read(pipe_stdout[0], this->buffer, sizeof(this->buffer)-1);
-
-    ipc::StreamResponse response;
-    if (n <= 0) {
-        spdlog::warn("Python server returned empty on video: " + video.id);
-        return response;
-    }
-
-    buffer[n] = '\0';
-    response = ipc::StreamResponse(buffer);
-
-    return response;
+    return send<ipc::StreamResponse>(
+        request,
+        "Python server returned empty on video: " + video.id
+    );
 }
 
 ipc::ControlResponse services::YTMusic::resume() {
-    auto request = ipc::ControlRequest("resume");
+    ipc::ControlRequest request("resume");
 
     spdlog::info("Python server control for command: resume");
 
-    std::string request_string = request.serialize();
-    write(pipe_stdin[1], request_string.c_str(), request_string.size());
-    ssize_t n = read(pipe_stdout[0], this->buffer, sizeof(this->buffer)-1);
-
-    ipc::ControlResponse response;
-    if (n <= 0) {
-        spdlog::warn("Python server returned empty on command: resume");
-        return response;
-    }
-
-    buffer[n] = '\0';
-    response = ipc::ControlResponse(buffer);
-
-    return response;
+    return send<ipc::ControlResponse>(
+        request,
+        "Python server returned empty on command: resume"
+    );
 }
 
 ipc::ControlResponse services::YTMusic::pause() {
-    auto request = ipc::ControlRequest("pause");
+    ipc::ControlRequest request("pause");
 
     spdlog::info("Python server control for command: pause");
 
-    std::string request_string = request.serialize();
-    write(pipe_stdin[1], request_string.c_str(), request_string.size());
-    ssize_t n = read(pipe_stdout[0], this->buffer, sizeof(this->buffer)-1);
-
-    ipc::ControlResponse response;
-    if (n <= 0) {
-        spdlog::warn("Python server returned empty on command: pause");
-        return response;
-    }
-
-    buffer[n] = '\0';
-    response = ipc::ControlResponse(buffer);
-
-    return response;
+    return send<ipc::ControlResponse>(
+        request,
+        "Python server returned empty on command: pause"
+    );
 }
 
 ipc::ControlResponse services::YTMusic::backward(const std::uint8_t duration) {
-    auto request = ipc::ControlRequest("backward", duration);
+    ipc::ControlRequest request("backward", duration);
 
-    spdlog::info("Python server control for command: backward " + std::to_string(duration));
+    spdlog::info("Python server control for command: backward {}", duration);
 
-    std::string request_string = request.serialize();
-    write(pipe_stdin[1], request_string.c_str(), request_string.size());
-    ssize_t n = read(pipe_stdout[0], this->buffer, sizeof(this->buffer)-1);
-
-    ipc::ControlResponse response;
-    if (n <= 0) {
-        spdlog::warn("Python server returned empty on command: backward " + std::to_string(duration));
-        return response;
-    }
-
-    buffer[n] = '\0';
-    response = ipc::ControlResponse(buffer);
-
-    return response;
+    return send<ipc::ControlResponse>(
+        request,
+        "Python server returned empty on command: backward " + std::to_string(duration)
+    );
 }
 
 ipc::ControlResponse services::YTMusic::forward(const std::uint8_t duration) {
-    auto request = ipc::ControlRequest("forward", duration);
+    ipc::ControlRequest request("forward", duration);
 
-    spdlog::info("Python server control for command: forward " + std::to_string(duration));
+    spdlog::info("Python server control for command: forward {}", duration);
 
-    std::string request_string = request.serialize();
-    write(pipe_stdin[1], request_string.c_str(), request_string.size());
-    ssize_t n = read(pipe_stdout[0], this->buffer, sizeof(this->buffer)-1);
-
-    ipc::ControlResponse response;
-    if (n <= 0) {
-        spdlog::warn("Python server returned empty on command: forward " + std::to_string(duration));
-        return response;
-    }
-
-    buffer[n] = '\0';
-    response = ipc::ControlResponse(buffer);
-
-    return response;
+    return send<ipc::ControlResponse>(
+        request,
+        "Python server returned empty on command: forward " + std::to_string(duration)
+    );
 }
 
 ipc::ControlResponse services::YTMusic::stop() {
-    auto request = ipc::ControlRequest("stop");
+    ipc::ControlRequest request("stop");
 
     spdlog::info("Python server control for command: stop");
 
-    std::string request_string = request.serialize();
-    write(pipe_stdin[1], request_string.c_str(), request_string.size());
-    ssize_t n = read(pipe_stdout[0], this->buffer, sizeof(this->buffer)-1);
-
-    ipc::ControlResponse response;
-    if (n <= 0) {
-        spdlog::warn("Python server returned empty on command: stop");
-        return response;
-    }
-
-    buffer[n] = '\0';
-    response = ipc::ControlResponse(buffer);
-
-    return response;
+    return send<ipc::ControlResponse>(
+        request,
+        "Python server returned empty on command: stop"
+    );
 }
