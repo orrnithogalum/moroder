@@ -1,7 +1,8 @@
 #pragma once
 
-#include "../ipc/search_response.hpp"
-#include "../ipc/stream_response.hpp"
+#include "../ipc/control/control_response.hpp"
+#include "../ipc/search/search_response.hpp"
+#include "../ipc/stream/stream_response.hpp"
 #include "../models/video.hpp"
 #include "../models/song.hpp"
 
@@ -19,7 +20,13 @@ public:
     ipc::StreamResponse stream(const music::SongRef& song);
     ipc::StreamResponse stream(const music::VideoRef& video);
 
-    void stop();
+    ipc::ControlResponse resume();
+    ipc::ControlResponse pause();
+    ipc::ControlResponse backward(const std::uint8_t duration);
+    ipc::ControlResponse forward(const std::uint8_t duration);
+    ipc::ControlResponse stop();
+
+    void end();
 
 private:
     std::string python_server_path;

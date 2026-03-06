@@ -1,12 +1,12 @@
 #pragma once
 
-#include "request.hpp"
+#include "../request.hpp"
 
 namespace ipc {
 
 class SearchRequest : public Request {
 public:
-    explicit SearchRequest(std::string query) : query_(std::move(query)) {}
+    explicit SearchRequest(const std::string& query) : query_(std::move(query)) {}
 
     nlohmann::json to_json() const override {
         return {
@@ -16,7 +16,7 @@ public:
     }
 
 private:
-    std::string query_;
+    const std::string query_;
 };
 
 }

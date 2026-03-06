@@ -2,9 +2,9 @@
 
 #include <optional>
 
-#include "../models/video.hpp"
-#include "../models/song.hpp"
-#include "request.hpp"
+#include "../../models/video.hpp"
+#include "../../models/song.hpp"
+#include "../request.hpp"
 
 namespace ipc {
 

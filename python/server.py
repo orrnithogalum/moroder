@@ -4,18 +4,20 @@ from services.control import control
 from services.stream import stream
 from services.search import search
 
+import asyncio
+
 class YTMusicServer:
     def __init__(self):
-        self.ytm_default = YTMusic()
-        self.ytm_user = None
-        self.logged_in = False
+        self.ytm_default: YTMusic = YTMusic()
+        self.ytm_user: YTMusic | None = None
+        self.logged_in: bool = False
 
         # player state
-        self.player_process = None
-        self.player_reader = None
-        self.player_writer = None
-        self.player_socket = "/tmp/mpv_socket"
-        self.current_song = None
+        self.player_process: asyncio.subprocess.Process | None = None
+        self.player_reader: asyncio.StreamReader | None = None
+        self.player_writer: asyncio.StreamWriter | None = None
+        self.player_socket: str = "/tmp/mpv_socket"
+        self.current_song: str | None = None
 
 
     def login(self, credentials_path: str):

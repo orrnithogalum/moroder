@@ -2,7 +2,7 @@
 #include <spdlog/spdlog.h>
 #include <iostream>
 
-#include "../include/ipc/search_response.hpp"
+#include "../include/ipc/search/search_response.hpp"
 #include "../include/services/yt_music.hpp"
 
 #define APP_NAME_SMALL "ytmusic"
@@ -34,9 +34,20 @@ int main(int argc, char* argv[]) {
 
     ytmusic_service.stream(*video);
 
-    std::this_thread::sleep_for(std::chrono::seconds(10));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+    ytmusic_service.pause();
 
-    ytmusic_service.stop();
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    ytmusic_service.resume();
+
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    ytmusic_service.forward(10);
+
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    ytmusic_service.backward(10);
+
+    std::this_thread::sleep_for(std::chrono::seconds(5));
+    ytmusic_service.end();
 
     return 0;
 }

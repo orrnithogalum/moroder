@@ -1,10 +1,13 @@
 #include "../../include/services/yt_music.hpp"
 
-#include "../../include/ipc/stream_request.hpp"
-#include "../../include/ipc/search_request.hpp"
+#include "../../include/ipc/control/control_request.hpp"
+#include "../../include/ipc/stream/stream_request.hpp"
+#include "../../include/ipc/search/search_request.hpp"
 
+#include <cstdint>
 #include <spdlog/spdlog.h>
 #include <filesystem>
+#include <string>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -57,7 +60,9 @@ services::YTMusic::YTMusic(const std::string_view& app_name) {
     close(pipe_stdout[1]);
 }
 
-void services::YTMusic::stop() {
+void services::YTMusic::end() {
+    this->stop();
+
     if (python_pid <= 0) {
         return;
     }
@@ -146,6 +151,111 @@ ipc::StreamResponse services::YTMusic::stream(const music::VideoRef& video) {
 
     buffer[n] = '\0';
     response = ipc::StreamResponse(buffer);
+
+    return response;
+}
+
+ipc::ControlResponse services::YTMusic::resume() {
+    auto request = ipc::ControlRequest("resume");
+
+    spdlog::info("Python server control for command: resume");
+
+    std::string request_string = request.serialize();
+    write(pipe_stdin[1], request_string.c_str(), request_string.size());
+    ssize_t n = read(pipe_stdout[0], this->buffer, sizeof(this->buffer)-1);
+
+    ipc::ControlResponse response;
+    if (n <= 0) {
+        spdlog::warn("Python server returned empty on command: resume");
+        return response;
+    }
+
+    buffer[n] = '\0';
+    response = ipc::ControlResponse(buffer);
+
+    return response;
+}
+
+ipc::ControlResponse services::YTMusic::pause() {
+    auto request = ipc::ControlRequest("pause");
+
+    spdlog::info("Python server control for command: pause");
+
+    std::string request_string = request.serialize();
+    write(pipe_stdin[1], request_string.c_str(), request_string.size());
+    ssize_t n = read(pipe_stdout[0], this->buffer, sizeof(this->buffer)-1);
+
+    ipc::ControlResponse response;
+    if (n <= 0) {
+        spdlog::warn("Python server returned empty on command: pause");
+        return response;
+    }
+
+    buffer[n] = '\0';
+    response = ipc::ControlResponse(buffer);
+
+    return response;
+}
+
+ipc::ControlResponse services::YTMusic::backward(const std::uint8_t duration) {
+    auto request = ipc::ControlRequest("backward", duration);
+
+    spdlog::info("Python server control for command: backward " + std::to_string(duration));
+
+    std::string request_string = request.serialize();
+    write(pipe_stdin[1], request_string.c_str(), request_string.size());
+    ssize_t n = read(pipe_stdout[0], this->buffer, sizeof(this->buffer)-1);
+
+    ipc::ControlResponse response;
+    if (n <= 0) {
+        spdlog::warn("Python server returned empty on command: backward " + std::to_string(duration));
+        return response;
+    }
+
+    buffer[n] = '\0';
+    response = ipc::ControlResponse(buffer);
+
+    return response;
+}
+
+ipc::ControlResponse services::YTMusic::forward(const std::uint8_t duration) {
+    auto request = ipc::ControlRequest("forward", duration);
+
+    spdlog::info("Python server control for command: forward " + std::to_string(duration));
+
+    std::string request_string = request.serialize();
+    write(pipe_stdin[1], request_string.c_str(), request_string.size());
+    ssize_t n = read(pipe_stdout[0], this->buffer, sizeof(this->buffer)-1);
+
+    ipc::ControlResponse response;
+    if (n <= 0) {
+        spdlog::warn("Python server returned empty on command: forward " + std::to_string(duration));
+        return response;
+    }
+
+    buffer[n] = '\0';
+    response = ipc::ControlResponse(buffer);
+
+    return response;
+}
+
+ipc::ControlResponse services::YTMusic::stop() {
+    auto request = ipc::ControlRequest("stop");
+
+    spdlog::info("Python server control for command: stop");
+
+    std::string request_string = request.serialize();
+    write(pipe_stdin[1], request_string.c_str(), request_string.size());
+    ssize_t n = read(pipe_stdout[0], this->buffer, sizeof(this->buffer)-1);
+
+    ipc::ControlResponse response;
+    if (n <= 0) {
+        spdlog::warn("Python server returned empty on command: stop");
+        return response;
+    }
+
+    buffer[n] = '\0';
+    response = ipc::ControlResponse(buffer);
 
     return response;
 }

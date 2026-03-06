@@ -19,7 +19,7 @@ public:
             message_ = json_.value("message", "Unknown error");
         }
 
-        spdlog::info("Recieved reponse from python server: " + json_.dump(4));
+        spdlog::info("Received reponse from python server: " + json_.dump(4));
     }
 
     bool ok() const {

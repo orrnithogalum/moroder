@@ -1,4 +1,9 @@
-def search(server, query):
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from server import YTMusicServer
+
+def search(server: YTMusicServer, query: str):
     result_limit = 10
     try:
         results = server.ytm_default.search(

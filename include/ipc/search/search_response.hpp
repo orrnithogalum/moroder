@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../models/search_result.hpp"
-#include "response.hpp"
+#include "../../models/search_result.hpp"
+#include "../response.hpp"
 
 namespace ipc {
 

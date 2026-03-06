@@ -1,4 +1,9 @@
+from typing import TYPE_CHECKING
 from yt_dlp import YoutubeDL
+
+if TYPE_CHECKING:
+    from server import YTMusicServer
+
 import asyncio
 import os
 
@@ -7,14 +12,14 @@ def get_audio_url(id):
     url = f"https://www.youtube.com/watch?v={id}"
 
     try:
-        with YoutubeDL({"format": "bestaudio", "quiet": True, "no_warnings": True}) as ydl:
+        with YoutubeDL({"format": "best", "quiet": True, "no_warnings": True}) as ydl:
             info = ydl.extract_info(url, download=False)
             return info["url"]
     except Exception as e:
         raise RuntimeError(f"yt-dlp extraction failed: {e}")
 
 
-async def stream(server, id: str):
+async def stream(server: YTMusicServer, id: str):
     try:
         # resolve audio URL
         try:
