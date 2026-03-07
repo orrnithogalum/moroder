@@ -21,6 +21,26 @@ def get_audio_url(id):
 
 async def stream(server: YTMusicServer, id: str):
     try:
+        # stop existing playback if active
+        if server.player_process:
+            try:
+                server.player_process.terminate()
+                await server.player_process.wait()
+            except Exception:
+                pass
+
+            try:
+                if server.player_writer:
+                    server.player_writer.close()
+                    await server.player_writer.wait_closed()
+            except Exception:
+                pass
+
+            server.player_process = None
+            server.player_reader = None
+            server.player_writer = None
+            server.current_song = None
+
         # resolve audio URL
         try:
             audio_url = await asyncio.to_thread(get_audio_url, id)
@@ -30,7 +50,9 @@ async def stream(server: YTMusicServer, id: str):
         # remove old socket if present
         try:
             if os.path.exists(server.player_socket):
-                os.remove(server.player_socket)
+                os.unlink(server.player_socket)
+        except FileNotFoundError:
+            pass
         except Exception as e:
             return {"status": "error", "message": f"socket cleanup failed: {e}"}
 
@@ -39,6 +61,7 @@ async def stream(server: YTMusicServer, id: str):
             proc = await asyncio.create_subprocess_exec(
                 "mpv",
                 "--no-video",
+                "--no-config",
                 f"--input-ipc-server={server.player_socket}",
                 audio_url,
                 stdout=asyncio.subprocess.DEVNULL,

@@ -108,8 +108,6 @@ template<typename ResponseType> ResponseType services::YTMusic::send(const ipc::
 }
 
 ipc::SearchResponse services::YTMusic::search(const std::string& query) {
-    spdlog::info("Python server searching for query: {}", query);
-
     ipc::SearchRequest request(query);
 
     return send<ipc::SearchResponse>(
@@ -119,8 +117,6 @@ ipc::SearchResponse services::YTMusic::search(const std::string& query) {
 }
 
 ipc::StreamResponse services::YTMusic::stream(const music::SongRef& song) {
-    spdlog::info("Python server streaming for song: {}", song.id);
-
     ipc::StreamRequest request(song);
 
     return send<ipc::StreamResponse>(
@@ -130,8 +126,6 @@ ipc::StreamResponse services::YTMusic::stream(const music::SongRef& song) {
 }
 
 ipc::StreamResponse services::YTMusic::stream(const music::VideoRef& video) {
-    spdlog::info("Python server streaming for video: {}", video.id);
-
     ipc::StreamRequest request(video);
 
     return send<ipc::StreamResponse>(
@@ -143,8 +137,6 @@ ipc::StreamResponse services::YTMusic::stream(const music::VideoRef& video) {
 ipc::ControlResponse services::YTMusic::resume() {
     ipc::ControlRequest request("resume");
 
-    spdlog::info("Python server control for command: resume");
-
     return send<ipc::ControlResponse>(
         request,
         "Python server returned empty on command: resume"
@@ -153,8 +145,6 @@ ipc::ControlResponse services::YTMusic::resume() {
 
 ipc::ControlResponse services::YTMusic::pause() {
     ipc::ControlRequest request("pause");
-
-    spdlog::info("Python server control for command: pause");
 
     return send<ipc::ControlResponse>(
         request,
@@ -165,8 +155,6 @@ ipc::ControlResponse services::YTMusic::pause() {
 ipc::ControlResponse services::YTMusic::backward(const std::uint8_t duration) {
     ipc::ControlRequest request("backward", duration);
 
-    spdlog::info("Python server control for command: backward {}", duration);
-
     return send<ipc::ControlResponse>(
         request,
         "Python server returned empty on command: backward " + std::to_string(duration)
@@ -176,8 +164,6 @@ ipc::ControlResponse services::YTMusic::backward(const std::uint8_t duration) {
 ipc::ControlResponse services::YTMusic::forward(const std::uint8_t duration) {
     ipc::ControlRequest request("forward", duration);
 
-    spdlog::info("Python server control for command: forward {}", duration);
-
     return send<ipc::ControlResponse>(
         request,
         "Python server returned empty on command: forward " + std::to_string(duration)
@@ -186,8 +172,6 @@ ipc::ControlResponse services::YTMusic::forward(const std::uint8_t duration) {
 
 ipc::ControlResponse services::YTMusic::stop() {
     ipc::ControlRequest request("stop");
-
-    spdlog::info("Python server control for command: stop");
 
     return send<ipc::ControlResponse>(
         request,
