@@ -1,3 +1,8 @@
+/* ALBUM
+- The album object for a ytmusicapi search result of type "album"
+- Only includes information that is present in all search results of type "album"
+*/
+
 #pragma once
 
 #include "artist.hpp"

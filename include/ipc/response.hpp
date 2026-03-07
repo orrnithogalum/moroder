@@ -1,3 +1,11 @@
+/* RESPONSE
+- All classes that inherit from this are in this folder and are used to receive data from the python process in json format
+- Some responses are of similar format but code was still duplicated for readability.
+- No response can take in args in constructor.
+- All json parsing is done in cpp, except for some endpoints since the json response can be so long the buffer is overloaded 
+  (see include/ipc/browse/song_response.hpp and python/services/get_song.py).
+*/
+
 #pragma once
 
 #include <nlohmann/json.hpp>

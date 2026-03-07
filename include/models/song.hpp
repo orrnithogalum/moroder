@@ -1,3 +1,9 @@
+/* SONG REF & SONG
+- The song object for a ytmusicapi search result of type "song" or "video" (same thing)
+- SongRef only includes information that is present in all search results of type "song" or "video"
+- Song is the full song object with all details, only reliably obtainable after fetching song info from ytmusicapi
+*/
+
 #pragma once
 
 #include "artist.hpp"

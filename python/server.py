@@ -1,3 +1,8 @@
+# YTMusicServer
+# - Python server that exposes YTMusicAPI and mpv player control to cpp via JSON over stdin/stdout
+# - Handles search, streaming, playback control, and fetching detailed song info
+# - Maintains player state and optionally a logged-in user instance
+
 from ytmusicapi import YTMusic
 
 from services.get_song import get_song
@@ -8,6 +13,10 @@ from services.search import search
 import asyncio
 
 class YTMusicServer:
+    # - Wraps YTMusicAPI for default or user credentials
+    # - Handles streaming via mpv over a Unix IPC socket
+    # - Provides player control and search / song info
+
     def __init__(self):
         self.ytm_default: YTMusic = YTMusic()
         self.ytm_user: YTMusic | None = None
@@ -22,6 +31,10 @@ class YTMusicServer:
 
 
     def login(self, credentials_path: str):
+        # login
+        # - Creates a YTMusic instance using a credentials file
+        # - Marks server as logged in if successful
+        # - Currently unused
         try:
             self.ytm_user = YTMusic(credentials_path)
             self.logged_in = True
@@ -31,18 +44,31 @@ class YTMusicServer:
             return {"status": "error", "message": str(e)}
 
     def search(self, query: str):
+        # search
+        # - Performs a search via YTMusicAPI
         return search(self, query)
     
     async def stream(self, song_id: str):
+        # stream
+        # - Starts playback of a song via mpv
+        # - Stops any existing playback
         return await stream(self, song_id)
 
     async def control(self, command: str):
+        # control
+        # - Executes playback commands (pause, resume, seek, stop, etc.)
         return await control(self, command)
     
     def get_song(self, song_id: str):
+        #  get_song
+        # - Fetches detailed song info via YTMusicAPI
         return get_song(self, song_id)
 
     async def handle_request(self, req: dict):
+        # handle_request
+        # - Main entrypoint for JSON commands from cpp side
+        # - Dispatches actions to corresponding server methods
+        # - Returns JSON response with status and result
         action = req.get("action")
 
         if action == "search":

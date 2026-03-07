@@ -1,3 +1,8 @@
+/* ARTIST
+- The artist object for a ytmusicapi search result of type "artist"
+- Only includes information that is present in all search results of type "artist"
+*/
+
 #pragma once
 
 #include <nlohmann/json.hpp>

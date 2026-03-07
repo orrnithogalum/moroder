@@ -1,3 +1,9 @@
+# STREAM
+# - Handles streaming audio of a YouTube video using yt-dlp and mpv
+# - Resolves the best audio URL, stops any existing playback, and starts mpv asynchronously
+# - Uses a local IPC socket to control playback
+# - Returns status and song id, errors if anything fails
+
 from typing import TYPE_CHECKING
 from yt_dlp import YoutubeDL
 
@@ -9,6 +15,9 @@ import os
 
 
 def get_audio_url(id):
+    # get_audio_url
+    # - Resolves the best audio stream URL from a YouTube video
+    # - Uses yt-dlp with quiet mode to avoid flooding stdout
     url = f"https://www.youtube.com/watch?v={id}"
 
     try:
@@ -20,6 +29,14 @@ def get_audio_url(id):
 
 
 async def stream(server: YTMusicServer, id: str):
+    # stream
+    # - Stops any currently playing song
+    # - Cleans up old IPC socket
+    # - Launches mpv in no-video mode with IPC server
+    # - Uses cache (--cache=yes and --cache-secs=5) to prevent audio clipping on stream start(?) don't know if that really works
+    # - Connects to mpv via asyncio UNIX socket
+    # - Updates server player state
+    # - Returns status dict with "ok" or "error" messages
     try:
         # stop existing playback if active
         if server.player_process:

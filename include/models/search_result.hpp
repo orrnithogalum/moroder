@@ -1,3 +1,8 @@
+/* SEARCH RESULT
+- The object that encapsulates all search result types of ytmusicapi
+- Result data can only be of a single type in music::<Type>
+*/
+
 #pragma once
 
 #include "playlist.hpp"

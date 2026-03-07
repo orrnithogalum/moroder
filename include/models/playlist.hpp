@@ -1,3 +1,8 @@
+/* PLAYLIST
+- The playlist object for a ytmusicapi search result of type "playlist"
+- Only includes information that is present in all search results of type "playlist"
+*/
+
 #pragma once
 
 #include <nlohmann/json.hpp>
@@ -14,7 +19,7 @@ struct PlaylistRef {
     static PlaylistRef from_json(const nlohmann::json& j) {
         PlaylistRef p;
 
-        // id: can be browseId or playlistId
+        // id: can be browseId or playlistId (for some reason)
         if (j.contains("browseId") && j["browseId"].is_string()) {
             p.id = j["browseId"].get<std::string>();
         } else if (j.contains("playlistId") && j["playlistId"].is_string()) {
@@ -25,7 +30,7 @@ struct PlaylistRef {
 
         p.title = j.value("title", "");
 
-        // author can be string / array
+        // author can be string / array if there are multiple artists.
         if (j.contains("author")) {
             const auto& a = j["author"];
 

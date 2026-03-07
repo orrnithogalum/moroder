@@ -1,3 +1,9 @@
+/* REQUEST
+- All classes that inherit from this are in this folder and are used to send data to the python process in json format
+- Some requests are of similar format but code was still duplicated for readability.
+- Some requests take in custom args (see include/ipc/browse/ include/ipc/control/).
+*/
+
 #pragma once
 
 #include <nlohmann/json.hpp>

@@ -1,3 +1,9 @@
+/* YTMUSIC
+- Service responsible for all communications between cpp and the python server
+- Uses all requests and reponse classes as communication objects
+- Everything is logged
+*/
+
 #pragma once
 
 #include "../ipc/control/control_response.hpp"
@@ -18,32 +24,60 @@ public:
     YTMusic(const std::string_view& app_name);
 
     ipc::SearchResponse search(const std::string& query);
-    
     ipc::StreamResponse stream(const music::SongRef& song);
 
+    /* player controls
+    - basic playback operations
+    */
     ipc::ControlResponse resume();
     ipc::ControlResponse pause();
     ipc::ControlResponse backward(const std::uint8_t duration);
     ipc::ControlResponse forward(const std::uint8_t duration);
 
+    /* getSong
+    - Fetches extra song details for a given SongRef.
+    - SongResponse contains a Song object
+    */
     ipc::SongResponse getSong(const music::SongRef& ref);
     
-    // Ends the mpv process
+    /* stop
+    - Ends the mpv process
+    */
     ipc::ControlResponse stop();
 
-    // Ends the mpv process and the python process
+    /* end
+    - Ends the mpv process and the python process
+    - I could find a better name for this
+    */ 
     void end();
 
 private:
+    /* python_server_path
+    - Path to the python script
+    - Defined by cmake, will vary depending on if user builds with --install or not
+    - will be overridable
+    */
     std::string python_server_path;
 
+    /* pipes
+    - Used to send / receive data from python
+    */
     int pipe_stdin[2];
     int pipe_stdout[2];
 
+    /* buffer
+    - temporary storage for the python json response
+    */
     char buffer[16384];
 
+    /* python_pid
+    - PID of the python server (ran in a separate process)
+    */
     pid_t python_pid;
 
+    /* send
+    - serialized any request, send it, return the response
+    */
     template<typename ResponseType> ResponseType send(const ipc::Request& request, const std::string& log);
 };
 

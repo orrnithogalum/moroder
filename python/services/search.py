@@ -1,9 +1,18 @@
+# SEARCH
+# - Performs a search on YouTube Music using ytmusicapi
+# - Limits results to prevent large payloads that could overflow the buffer
+# - Returns status and a list of results
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from server import YTMusicServer
 
 def search(server: YTMusicServer, query: str):
+    # search
+    # - Uses server.ytm_default to perform a search
+    # - result_limit caps the number of results returned to prevent cpp buffer overflow
+    # - Returns a dictionary with status and results
     result_limit = 10
     try:
         results = server.ytm_default.search(
@@ -11,17 +20,8 @@ def search(server: YTMusicServer, query: str):
             limit=result_limit
         )
 
+        # slice to ensure we never exceed the limit
         results = results[:result_limit]
-
-        # songs = [
-        #     {
-        #         "title": r["title"],
-        #         "artist": r["artists"][0]["name"] if r.get("artists") else "",
-        #         "videoId": r["videoId"],
-        #     }
-        #     for r in results
-        #     if "videoId" in r
-        # ]
 
         return {"status": "ok", "results": results}
 

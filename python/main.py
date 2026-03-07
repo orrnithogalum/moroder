@@ -1,3 +1,9 @@
+# MAIN SERVER
+# - Entry point for the YTMusicServer Python process
+# - Reads JSON requests from stdin, passes them to YTMusicServer.handle_request
+# - Writes JSON responses to stdout
+# - Runs asynchronously to handle multiple requests sequentially without blocking
+
 from server import YTMusicServer
 
 import asyncio

@@ -1,3 +1,8 @@
+/* STREAM
+- Starts an audio stream for a given SongRef object.
+- Python endpoint in python/services/stream.py
+*/
+
 #pragma once
 
 #include <optional>

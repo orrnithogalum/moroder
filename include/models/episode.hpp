@@ -1,3 +1,9 @@
+/* EPISODE
+- The episode object for a ytmusicapi search result of type "episode"
+- Only includes information that is present in all search results of type "episode"
+- Only used for podcasts (I think)
+*/
+
 #pragma once
 
 #include <nlohmann/json.hpp>

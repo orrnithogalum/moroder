@@ -13,7 +13,7 @@ int main(int argc, char* argv[]) {
 
     auto ytmusic_service = services::YTMusic(APP_NAME_SMALL);
 
-    ipc::SearchResponse response = ytmusic_service.search("daft punk within drumless edition");
+    ipc::SearchResponse response = ytmusic_service.search("prmvo0uprc0"); // Daft punk within drumless edition
 
     if (response.results.empty()) {
         std::cout << "Exiting, no results" << std::endl;

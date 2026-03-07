@@ -1,3 +1,8 @@
+/* CONTROL
+- Allows player controls (play, pause, forward, backward etc.).
+- Python endpoint in python/services/control.py
+*/
+
 #pragma once
 
 #include "../request.hpp"
