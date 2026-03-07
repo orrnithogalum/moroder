@@ -3,7 +3,7 @@
 #include "../ipc/control/control_response.hpp"
 #include "../ipc/search/search_response.hpp"
 #include "../ipc/stream/stream_response.hpp"
-#include "../models/video.hpp"
+#include "../ipc/browse/song_response.hpp"
 #include "../models/song.hpp"
 #include "../ipc/request.hpp"
 
@@ -20,12 +20,13 @@ public:
     ipc::SearchResponse search(const std::string& query);
     
     ipc::StreamResponse stream(const music::SongRef& song);
-    ipc::StreamResponse stream(const music::VideoRef& video);
 
     ipc::ControlResponse resume();
     ipc::ControlResponse pause();
     ipc::ControlResponse backward(const std::uint8_t duration);
     ipc::ControlResponse forward(const std::uint8_t duration);
+
+    ipc::SongResponse getSong(const music::SongRef& ref);
     
     // Ends the mpv process
     ipc::ControlResponse stop();

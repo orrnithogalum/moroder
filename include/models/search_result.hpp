@@ -5,7 +5,6 @@
 #include "podcast.hpp"
 #include "artist.hpp"
 #include "album.hpp"
-#include "video.hpp"
 #include "song.hpp"
 
 #include <nlohmann/json.hpp>
@@ -21,8 +20,7 @@ using ResultData = std::variant<
     music::ArtistRef,
     music::PlaylistRef,
     music::EpisodeRef,
-    music::PodcastRef,
-    music::VideoRef
+    music::PodcastRef
 >;
 
 struct SearchResult {
@@ -36,11 +34,8 @@ struct SearchResult {
         res.category = j.contains("category") && j["category"].is_string() ? j["category"].get<std::string>() : "";
         res.resultType = j.contains("resultType") && j["resultType"].is_string() ? j["resultType"].get<std::string>() : "";
 
-        if (res.resultType == "song") {
+        if (res.resultType == "song" || res.resultType == "video") {
             res.data = music::SongRef::from_json(j);
-
-        } else if (res.resultType == "video") {
-            res.data = music::VideoRef::from_json(j);
 
         } else if (res.resultType == "album") {
             res.data = music::AlbumRef::from_json(j);

@@ -3,6 +3,7 @@
 #include "../../include/ipc/control/control_request.hpp"
 #include "../../include/ipc/stream/stream_request.hpp"
 #include "../../include/ipc/search/search_request.hpp"
+#include "../../include/ipc/browse/song_request.hpp"
 #include "../../include/ipc/request.hpp"
 
 #include <spdlog/spdlog.h>
@@ -125,15 +126,6 @@ ipc::StreamResponse services::YTMusic::stream(const music::SongRef& song) {
     );
 }
 
-ipc::StreamResponse services::YTMusic::stream(const music::VideoRef& video) {
-    ipc::StreamRequest request(video);
-
-    return send<ipc::StreamResponse>(
-        request,
-        "Python server returned empty on video: " + video.id
-    );
-}
-
 ipc::ControlResponse services::YTMusic::resume() {
     ipc::ControlRequest request("resume");
 
@@ -177,4 +169,16 @@ ipc::ControlResponse services::YTMusic::stop() {
         request,
         "Python server returned empty on command: stop"
     );
+}
+
+ipc::SongResponse services::YTMusic::getSong(const music::SongRef& ref) {
+    ipc::SongRequest request(ref);
+
+    ipc::SongResponse response = send<ipc::SongResponse>(
+        request,
+        "Python server returned empty on song request: " + ref.id
+    );
+
+    response.song.ref = ref;
+    return response;
 }

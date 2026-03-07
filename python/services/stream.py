@@ -12,7 +12,7 @@ def get_audio_url(id):
     url = f"https://www.youtube.com/watch?v={id}"
 
     try:
-        with YoutubeDL({"format": "best", "quiet": True, "no_warnings": True}) as ydl:
+        with YoutubeDL({"format": "bestaudio/best", "quiet": True, "no_warnings": True}) as ydl:
             info = ydl.extract_info(url, download=False)
             return info["url"]
     except Exception as e:
@@ -62,6 +62,8 @@ async def stream(server: YTMusicServer, id: str):
                 "mpv",
                 "--no-video",
                 "--no-config",
+                "--cache=yes",
+                "--cache-secs=5",
                 f"--input-ipc-server={server.player_socket}",
                 audio_url,
                 stdout=asyncio.subprocess.DEVNULL,

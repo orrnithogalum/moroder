@@ -48,4 +48,48 @@ struct SongRef {
     }
 };
 
+struct Song {
+    SongRef ref;
+
+    int duration_seconds = 0;
+    std::string view_count;
+
+    std::string publish_date;
+    std::string upload_date;
+
+    static Song from_json(const nlohmann::json& j) {
+        Song s;
+
+        if (j.contains("videoDetails")) {
+            const auto& vd = j["videoDetails"];
+
+            s.ref.id = vd.value("videoId", "");
+            s.ref.title = vd.value("title", "");
+
+            if (vd.contains("thumbnail") &&
+                vd["thumbnail"].contains("thumbnails") &&
+                vd["thumbnail"]["thumbnails"].is_array() &&
+                !vd["thumbnail"]["thumbnails"].empty()) {
+
+                s.ref.thumbnail =
+                    vd["thumbnail"]["thumbnails"].back().value("url", "");
+            }
+
+            s.duration_seconds = std::stoi(vd.value("lengthSeconds", "0"));
+            s.view_count = vd.value("viewCount", "");
+        }
+
+        if (j.contains("microformat") &&
+            j["microformat"].contains("microformatDataRenderer")) {
+
+            const auto& mf = j["microformat"]["microformatDataRenderer"];
+
+            s.publish_date = mf.value("publishDate", "");
+            s.upload_date = mf.value("uploadDate", "");
+        }
+
+        return s;
+    }
+};
+
 }

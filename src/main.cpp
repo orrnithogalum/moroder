@@ -1,4 +1,3 @@
-#include <ostream>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/spdlog.h>
 #include <iostream>
@@ -21,32 +20,27 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
-    auto* video = std::get_if<music::VideoRef>(&response.results[0].data);
-    if (!video) {
+    auto* video_ref = std::get_if<music::SongRef>(&response.results[0].data);
+    if (!video_ref) {
         std::cout << "Exiting, results found but the first one wasn't a video." << std::endl;
         return 0;
     }
 
-    std::cout << "Video: " << video->title << "\n";
-    if (!video->artists.empty()) {
-        std::cout << "Artist: " << video->artists[0].name << "\n";
+    music::Song video = ytmusic_service.getSong(*video_ref).song;
+
+
+    std::cout << "Video: " << video.ref.title << "\n";
+    if (!video.ref.artists.empty()) {
+        std::cout << "Artist: " << video.ref.artists[0].name << "\n";
     }
-    std::cout << "Id: " << video->id << "\n";
+    std::cout << "Id: " << video.ref.id << "\n";
+
 
     std::cout << "Start stream..." << std::endl;
-    ytmusic_service.stream(*video);
-    std::cout << "stream started?" << std::endl;
-
-    std::cout << "Start stream2..." << std::endl;
-    ytmusic_service.stream(*video);
-    std::cout << "stream2 started?" << std::endl;
+    ytmusic_service.stream(video.ref);
 
     std::this_thread::sleep_for(std::chrono::seconds(10));
     std::cout << "pause" << std::endl;
-    ytmusic_service.pause();
-
-    std::this_thread::sleep_for(std::chrono::seconds(2));
-    std::cout << "pause2" << std::endl;
     ytmusic_service.pause();
 
     std::this_thread::sleep_for(std::chrono::seconds(2));
@@ -54,23 +48,11 @@ int main(int argc, char* argv[]) {
     ytmusic_service.resume();
 
     std::this_thread::sleep_for(std::chrono::seconds(2));
-    std::cout << "resume2" << std::endl;
-    ytmusic_service.resume();
-
-    std::this_thread::sleep_for(std::chrono::seconds(2));
     std::cout << "forward" << std::endl;
-    ytmusic_service.forward(10);
-
-    std::this_thread::sleep_for(std::chrono::seconds(2));
-    std::cout << "forward2" << std::endl;
-    ytmusic_service.forward(10);
+    ytmusic_service.forward(30);
 
     std::this_thread::sleep_for(std::chrono::seconds(2));
     std::cout << "backward" << std::endl;
-    ytmusic_service.backward(10);
-
-    std::this_thread::sleep_for(std::chrono::seconds(2));
-    std::cout << "backward2" << std::endl;
     ytmusic_service.backward(10);
 
     std::this_thread::sleep_for(std::chrono::seconds(5));

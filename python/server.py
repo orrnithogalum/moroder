@@ -1,5 +1,6 @@
 from ytmusicapi import YTMusic
 
+from services.get_song import get_song
 from services.control import control
 from services.stream import stream
 from services.search import search
@@ -37,6 +38,9 @@ class YTMusicServer:
 
     async def control(self, command: str):
         return await control(self, command)
+    
+    def get_song(self, song_id: str):
+        return get_song(self, song_id)
 
     async def handle_request(self, req: dict):
         action = req.get("action")
@@ -48,10 +52,13 @@ class YTMusicServer:
             return self.login(req.get("credentials_path", ""))
 
         elif action == "stream":
-            return await self.stream(req.get("id"))
+            return await self.stream(req.get("id", ""))
 
         elif action == "control":
-            return await self.control(req.get("command"))
+            return await self.control(req.get("command", ""))
+        
+        elif action == "get_song":
+            return self.get_song(req.get("id", ""))
 
         else:
             return {
