@@ -26,6 +26,7 @@ FetchContent_MakeAvailable(nlohmann_json)
 
 find_package(spdlog REQUIRED)
 find_package(nlohmann_json REQUIRED)
+find_package(sdbus-c++ REQUIRED)
 
 set(SOURCES
     src/services/mpris.cpp
@@ -40,6 +41,7 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE
     spdlog::spdlog
     nlohmann_json::nlohmann_json
+    SDBusCpp::sdbus-c++
 )
 
 target_compile_definitions(${PROJECT_NAME}

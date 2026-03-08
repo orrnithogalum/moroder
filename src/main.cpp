@@ -3,15 +3,77 @@
 #include <iostream>
 
 #include "../include/ipc/search/search_response.hpp"
+#include "../include/services/mpris.hpp"
 #include "../include/services/music.hpp"
 
-#define APP_NAME_SMALL "ytmusic"
+#define APP_NAME_HUMAN "Youtube Music TUI"
+#define APP_NAME "ytmusic"
 
 int main(int argc, char* argv[]) {
-    auto logger = spdlog::basic_logger_mt(APP_NAME_SMALL, std::string("logs/") + APP_NAME_SMALL + ".txt", true);
+    auto logger = spdlog::basic_logger_mt(APP_NAME, std::string("logs/") + APP_NAME + ".txt", true);
     spdlog::set_default_logger(logger);
 
-    auto ytmusic_service = services::YTMusic(APP_NAME_SMALL);
+    // ------------
+    // MPRIS SERVER
+    // ------------
+    int i = 0;
+    int64_t pos = 0;
+    bool playing = false;
+
+    auto opt = services::Mpris::make(APP_NAME);
+    if (!opt) {
+        fprintf(stderr, "can't connect: someone already there.\n");
+        return 1;
+    }
+
+    auto &mpris_service = *opt;
+
+    mpris_service.setHumanName(APP_NAME_HUMAN);
+    mpris_service.setMetadata({
+        { services::Field::TrackId, sdbus::Variant("/1"            ) },
+        { services::Field::Album,   sdbus::Variant("an album"      ) },
+        { services::Field::Title,   sdbus::Variant("best song ever") },
+        { services::Field::Artist,  sdbus::Variant("idk"           ) },
+        { services::Field::Length,  sdbus::Variant(200 * 1000 * 1000) } // 200 seconds
+    });
+
+    mpris_service.onQuit([&] { std::exit(0); });
+    mpris_service.onNext([&] { i++; });
+    mpris_service.onPrevious([&] { i--; });
+    
+    mpris_service.onPause([&] {
+        playing = false;
+        mpris_service.setPlaybackStatus(services::PlaybackStatus::Paused);
+    });
+    
+    mpris_service.onToggle([&] {
+        playing = !playing;
+        mpris_service.setPlaybackStatus(playing ? services::PlaybackStatus::Playing : services::PlaybackStatus::Paused);
+    });
+    
+    mpris_service.onStop([&] {
+        playing = false;
+        mpris_service.setPlaybackStatus(services::PlaybackStatus::Stopped);
+    });
+    
+    mpris_service.onPlay([&] {
+        playing = true;
+        mpris_service.setPlaybackStatus(services::PlaybackStatus::Playing);
+    });
+    
+    mpris_service.onSeek(        [&] (int64_t p) { pos += p; mpris_service.setPosition(pos); });
+    mpris_service.onSetPosition([&] (int64_t p) { pos  = p; mpris_service.setPosition(pos); });
+
+    mpris_service.onLoopStatusChanged([&] (services::LoopStatus status) { });
+    mpris_service.onShuffleChanged([&] (bool shuffle) { });
+
+    mpris_service.startLoopAsync();
+    mpris_service.setPosition(0);
+
+    // ----------------
+    // YTB MUSIC PLAYER
+    // ----------------
+    auto ytmusic_service = services::YTMusic(APP_NAME);
 
     ipc::SearchResponse response = ytmusic_service.search("prmvo0uprc0"); // Daft punk within drumless edition
 
