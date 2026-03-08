@@ -28,7 +28,8 @@ find_package(spdlog REQUIRED)
 find_package(nlohmann_json REQUIRED)
 
 set(SOURCES
-    src/services/yt_music.cpp
+    src/services/mpris.cpp
+    src/services/music.cpp
 
     src/main.cpp
 )
