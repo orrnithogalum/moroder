@@ -3,7 +3,7 @@
 #include <iostream>
 
 #include "../include/ipc/search/search_response.hpp"
-#include "../include/services/yt_music.hpp"
+#include "../include/services/music.hpp"
 
 #define APP_NAME_SMALL "ytmusic"
 

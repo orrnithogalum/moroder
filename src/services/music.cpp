@@ -1,4 +1,4 @@
-#include "../../include/services/yt_music.hpp"
+#include "../../include/services/music.hpp"
 
 #include "../../include/ipc/control/control_request.hpp"
 #include "../../include/ipc/stream/stream_request.hpp"
