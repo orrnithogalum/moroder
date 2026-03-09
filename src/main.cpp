@@ -15,7 +15,7 @@ int main(int argc, char* argv[]) {
     // --------------------------------------
     //             LOGGER SETUP
     // --------------------------------------
-    auto logger = spdlog::basic_logger_mt(APP_NAME, std::string("logs/") + APP_NAME + ".txt", true);
+    auto logger = spdlog::basic_logger_mt(APP_NAME, std::string("logs/") + APP_NAME + ".log", true);
     spdlog::set_default_logger(logger);
 
 
