@@ -5,10 +5,10 @@
 
 from ytmusicapi import YTMusic
 
-from services.get_song import get_song
-from services.control import control
-from services.stream import stream
-from services.search import search
+from modules.get_song import get_song
+from modules.control import control
+from modules.stream import stream
+from modules.search import search
 
 import asyncio
 
