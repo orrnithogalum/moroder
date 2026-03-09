@@ -8,8 +8,8 @@
 #include "../include/services/mpris.hpp"
 #include "../include/services/music.hpp"
 
-#define APP_NAME_HUMAN "Youtube Music TUI"
-#define APP_NAME "ytmusic"
+#define APP_NAME_HUMAN "Moroder"
+#define APP_NAME "moroder"
 
 int main(int argc, char* argv[]) {
     // --------------------------------------
