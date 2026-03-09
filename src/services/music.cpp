@@ -10,7 +10,6 @@
 #include <filesystem>
 #include <sys/wait.h>
 #include <unistd.h>
-#include <cstdint>
 #include <string>
 
 namespace fs = std::filesystem;
@@ -144,7 +143,16 @@ ipc::ControlResponse services::YTMusic::pause() {
     );
 }
 
-ipc::ControlResponse services::YTMusic::backward(const std::uint8_t duration) {
+ipc::ControlResponse services::YTMusic::setPosition(const float position) {
+    ipc::ControlRequest request("setpos", position);
+
+    return send<ipc::ControlResponse>(
+        request,
+        "Python server returned empty on command: setpos " + std::to_string(position)
+    );
+}
+
+ipc::ControlResponse services::YTMusic::backward(const float duration) {
     ipc::ControlRequest request("backward", duration);
 
     return send<ipc::ControlResponse>(
@@ -153,7 +161,7 @@ ipc::ControlResponse services::YTMusic::backward(const std::uint8_t duration) {
     );
 }
 
-ipc::ControlResponse services::YTMusic::forward(const std::uint8_t duration) {
+ipc::ControlResponse services::YTMusic::forward(const float duration) {
     ipc::ControlRequest request("forward", duration);
 
     return send<ipc::ControlResponse>(

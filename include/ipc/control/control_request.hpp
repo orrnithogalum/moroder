@@ -7,21 +7,20 @@
 
 #include "../request.hpp"
 
-#include <cstdint>
 #include <string>
 
 namespace ipc {
 
 class ControlRequest : public Request {
 public:
-    explicit ControlRequest(std::string command, std::uint8_t duration = 0) : duration_(duration), command_(std::move(command)) {}
+    explicit ControlRequest(const std::string& command, const float arg = 0) : arg_(arg), command_(std::move(command)) {}
 
     nlohmann::json to_json() const override {
         std::string final_command = command_;
 
-        if(command_ == "forward" || command_ == "backward") {
+        if(command_ == "forward" || command_ == "backward" || command_ == "setpos") {
             final_command += " ";
-            final_command += std::to_string(duration_);
+            final_command += std::to_string(arg_);
         }
 
         nlohmann::json j{
@@ -33,8 +32,8 @@ public:
     }
 
 private:
-    const std::uint8_t duration_;
     const std::string command_;
+    const int arg_;
 };
 
 }
