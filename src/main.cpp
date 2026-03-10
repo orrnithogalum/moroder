@@ -23,14 +23,15 @@ int main(int argc, char* argv[]) {
     //              FETCH SONG
     // --------------------------------------
     auto ytmusic_service = services::YTMusic(APP_NAME);
-    ipc::SearchResponse search_response = ytmusic_service.search("iNjGNNoUjkk"); // Daft punk within, random access memories edition
+    // ipc::SearchResponse search_response = ytmusic_service.search("iNjGNNoUjkk"); // Within, Daft Punk, Random Access Memories
+    ipc::SearchResponse search_response = ytmusic_service.search("1LrHumAQBso"); // Sing for absolution, Muse, Absolution
 
     if (search_response.results.empty()) {
         std::cout << "Exiting, no results" << std::endl;
         return 0;
     }
 
-    auto* song_ref = std::get_if<music::SongRef>(&search_response.results[0].data);
+    auto* song_ref = std::get_if<music::SongRef>(&search_response.results[1].data);
     if (!song_ref) {
         std::cout << "Exiting, results found but the selected one wasn't a video." << std::endl;
         return 0;
@@ -55,6 +56,7 @@ int main(int argc, char* argv[]) {
     auto &mpris_service = *opt;
 
     ipc::StreamResponse stream_response = ytmusic_service.stream(video.ref);
+    mpris_service.setPlaybackStatus(services::PlaybackStatus::Playing);
 
     mpris_service.setHumanName(APP_NAME_HUMAN);
     mpris_service.setMetadata({
@@ -65,8 +67,6 @@ int main(int argc, char* argv[]) {
         { services::Field::Length,  sdbus::Variant(stream_response.duration) },
         { services::Field::ArtUrl,  sdbus::Variant(video.ref.thumbnail) }
     });
-
-    mpris_service.setPlaybackStatus(services::PlaybackStatus::Playing);
 
     mpris_service.onQuit([&] { 
         ytmusic_service.end();
@@ -137,7 +137,7 @@ int main(int argc, char* argv[]) {
     mpris_service.startLoopAsync();
 
     
-    std::this_thread::sleep_for(std::chrono::seconds(10));
+    std::this_thread::sleep_for(std::chrono::seconds(20));
 
     return 0;
 }
