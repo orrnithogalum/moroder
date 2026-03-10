@@ -143,7 +143,7 @@ ipc::ControlResponse services::YTMusic::pause() {
     );
 }
 
-ipc::ControlResponse services::YTMusic::setPosition(const float position) {
+ipc::ControlResponse services::YTMusic::setPosition(const uint64_t position) {
     ipc::ControlRequest request("setpos", position);
 
     return send<ipc::ControlResponse>(
@@ -152,7 +152,7 @@ ipc::ControlResponse services::YTMusic::setPosition(const float position) {
     );
 }
 
-ipc::ControlResponse services::YTMusic::backward(const float duration) {
+ipc::ControlResponse services::YTMusic::backward(const uint64_t duration) {
     ipc::ControlRequest request("backward", duration);
 
     return send<ipc::ControlResponse>(
@@ -161,7 +161,7 @@ ipc::ControlResponse services::YTMusic::backward(const float duration) {
     );
 }
 
-ipc::ControlResponse services::YTMusic::forward(const float duration) {
+ipc::ControlResponse services::YTMusic::forward(const uint64_t duration) {
     ipc::ControlRequest request("forward", duration);
 
     return send<ipc::ControlResponse>(

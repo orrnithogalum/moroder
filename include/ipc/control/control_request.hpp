@@ -13,7 +13,7 @@ namespace ipc {
 
 class ControlRequest : public Request {
 public:
-    explicit ControlRequest(const std::string& command, const float arg = 0) : arg_(arg), command_(std::move(command)) {}
+    explicit ControlRequest(const std::string& command, const uint64_t arg = 0) : arg_(arg), command_(std::move(command)) {}
 
     nlohmann::json to_json() const override {
         std::string final_command = command_;

@@ -67,44 +67,45 @@ async def control(server: YTMusicServer, command: str):
         await send_cmd(reader, writer, ["set_property", "pause", False])
 
     elif command.startswith("forward"):
-        # Seek forward a given number of seconds (float)
+        # Seek forward a given number of microseconds (int)
         parts = command.split()
         if len(parts) != 2:
-            return {"status": "error", "message": "Usage: forward <float>"}
+            return {"status": "error", "message": "Usage: forward <microseconds>"}
 
         try:
-            seconds = float(parts[1])
+            # convert input to float seconds; if int > 1000 it might be microseconds
+            value = float(parts[1])
+            seconds = value / 1000000 if value > 1000 else value
         except ValueError:
             return {"status": "error", "message": "Invalid number"}
 
         await send_cmd(reader, writer, ["seek", seconds, "relative"])
 
     elif command.startswith("backward"):
-        # Seek backward a given number of seconds (float)
+        # Seek backward a given number of microseconds (int)
         parts = command.split()
         if len(parts) != 2:
-            return {"status": "error", "message": "Usage: backward <float>"}
+            return {"status": "error", "message": "Usage: backward <microseconds>"}
 
         try:
-            seconds = float(parts[1])
+            value = float(parts[1])
+            seconds = -value / 1000000 if value > 1000 else -value
         except ValueError:
             return {"status": "error", "message": "Invalid number"}
 
-        await send_cmd(reader, writer, ["seek", -seconds, "relative"])
+        await send_cmd(reader, writer, ["seek", seconds, "relative"])
 
     elif command.startswith("setpos"):
-        # Set position in song for a given position (float)
+        # Set position in song for a given position in microseconds (int)
         parts = command.split()
         if len(parts) != 2:
-            return {"status": "error", "message": "Usage: setpos <seconds>"}
+            return {"status": "error", "message": "Usage: backward <microseconds>"}
 
         try:
-            seconds = float(parts[1])
+            value = float(parts[1])
+            seconds = value / 1000000
         except ValueError:
             return {"status": "error", "message": "Invalid number"}
-
-        if seconds < 0:
-            return {"status": "error", "message": f"Position ({seconds}) cannot be negative"}
 
         await send_cmd(reader, writer, ["seek", seconds, "absolute"])
 

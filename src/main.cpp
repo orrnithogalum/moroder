@@ -80,8 +80,6 @@ int main(int argc, char* argv[]) {
         playing = false;
         
         ipc::ControlResponse control_response = ytmusic_service.pause();
-
-        // Convert to milliseconds
         mpris_service.setPosition(static_cast<uint64_t>(control_response.position));
 
         mpris_service.setPlaybackStatus(services::PlaybackStatus::Paused);
@@ -116,11 +114,10 @@ int main(int argc, char* argv[]) {
     mpris_service.onSeek([&] (int64_t p) {
         pos += p;
         
-        // Convert to seconds
         if(p < 0) {
-            ytmusic_service.backward(p / 1000000.0);    
+            ytmusic_service.backward(p);    
         } else {
-            ytmusic_service.forward(p / 1000000.0);
+            ytmusic_service.forward(p);
         }
 
         mpris_service.setPosition(pos);
@@ -129,8 +126,7 @@ int main(int argc, char* argv[]) {
     mpris_service.onSetPosition([&] (int64_t p) {
         pos  = p;
 
-        // Convert to seconds
-        ytmusic_service.setPosition(p / 1000000.0);    
+        ytmusic_service.setPosition(p);    
 
         mpris_service.setPosition(pos);
     });

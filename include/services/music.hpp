@@ -31,9 +31,9 @@ public:
     */
     ipc::ControlResponse resume();
     ipc::ControlResponse pause();
-    ipc::ControlResponse setPosition(const float position);
-    ipc::ControlResponse backward(const float duration);
-    ipc::ControlResponse forward(const float duration);
+    ipc::ControlResponse setPosition(const uint64_t position);
+    ipc::ControlResponse backward(const uint64_t duration);
+    ipc::ControlResponse forward(const uint64_t duration);
 
     /* getSong
     - Fetches extra song details for a given SongRef.
