@@ -23,7 +23,9 @@ def get_audio_url(id):
     try:
         with YoutubeDL({"format": "bestaudio/best", "quiet": True, "no_warnings": True}) as ydl:
             info = ydl.extract_info(url, download=False)
-            return info["url"]
+            duration_ms = int(info.get("duration", 0) * 1000 * 1000)
+            
+            return info["url"], duration_ms
     except Exception as e:
         raise RuntimeError(f"yt-dlp extraction failed: {e}")
 
@@ -60,7 +62,7 @@ async def stream(server: YTMusicServer, id: str):
 
         # resolve audio URL
         try:
-            audio_url = await asyncio.to_thread(get_audio_url, id)
+            audio_url, duration_ms = await asyncio.to_thread(get_audio_url, id)
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
@@ -119,7 +121,8 @@ async def stream(server: YTMusicServer, id: str):
 
         return {
             "status": "ok",
-            "id": id
+            "id": id,
+            "duration": duration_ms
         }
 
     except Exception as e:

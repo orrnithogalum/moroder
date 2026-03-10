@@ -6,7 +6,7 @@ namespace ipc {
 
 class ControlResponse : public Response {
 public:
-    float position;
+    uint64_t position = 0;
 
     explicit ControlResponse() : Response() {}
 
@@ -15,7 +15,7 @@ public:
             return;
         }
 
-        position = json_.value("position", 0.0f);
+        position = json_["position"].get<uint64_t>();
     }
 };
 

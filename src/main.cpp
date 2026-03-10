@@ -1,9 +1,9 @@
-#include <algorithm>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/spdlog.h>
 #include <iostream>
 
 #include "../include/ipc/control/control_response.hpp"
+#include "../include/ipc/stream/stream_response.hpp"
 #include "../include/ipc/search/search_response.hpp"
 #include "../include/services/mpris.hpp"
 #include "../include/services/music.hpp"
@@ -23,14 +23,14 @@ int main(int argc, char* argv[]) {
     //              FETCH SONG
     // --------------------------------------
     auto ytmusic_service = services::YTMusic(APP_NAME);
-    ipc::SearchResponse response = ytmusic_service.search("iNjGNNoUjkk"); // Daft punk within, random access memories edition
+    ipc::SearchResponse search_response = ytmusic_service.search("iNjGNNoUjkk"); // Daft punk within, random access memories edition
 
-    if (response.results.empty()) {
+    if (search_response.results.empty()) {
         std::cout << "Exiting, no results" << std::endl;
         return 0;
     }
 
-    auto* song_ref = std::get_if<music::SongRef>(&response.results[0].data);
+    auto* song_ref = std::get_if<music::SongRef>(&search_response.results[0].data);
     if (!song_ref) {
         std::cout << "Exiting, results found but the selected one wasn't a video." << std::endl;
         return 0;
@@ -54,15 +54,19 @@ int main(int argc, char* argv[]) {
 
     auto &mpris_service = *opt;
 
+    ipc::StreamResponse stream_response = ytmusic_service.stream(video.ref);
+
     mpris_service.setHumanName(APP_NAME_HUMAN);
     mpris_service.setMetadata({
         { services::Field::TrackId, sdbus::Variant(services::OBJECT_PATH + "/track/" + video.ref.id) },
-        { services::Field::Album,   sdbus::Variant("an album") },
+        { services::Field::Album,   sdbus::Variant(video.album_title) },
         { services::Field::Title,   sdbus::Variant(video.ref.title) },
         { services::Field::Artist,  sdbus::Variant(video.ref.artists[0].name) },
-        { services::Field::Length,  sdbus::Variant(video.duration_seconds * 1000 * 1000) },
+        { services::Field::Length,  sdbus::Variant(stream_response.duration) },
         { services::Field::ArtUrl,  sdbus::Variant(video.ref.thumbnail) }
     });
+
+    mpris_service.setPlaybackStatus(services::PlaybackStatus::Playing);
 
     mpris_service.onQuit([&] { 
         ytmusic_service.end();
@@ -75,10 +79,10 @@ int main(int argc, char* argv[]) {
     mpris_service.onPause([&] {
         playing = false;
         
-        ipc::ControlResponse response = ytmusic_service.pause();
+        ipc::ControlResponse control_response = ytmusic_service.pause();
 
         // Convert to milliseconds
-        mpris_service.setPosition(static_cast<uint64_t>(response.position * 1000 * 1000));
+        mpris_service.setPosition(static_cast<uint64_t>(control_response.position));
 
         mpris_service.setPlaybackStatus(services::PlaybackStatus::Paused);
     });
@@ -136,10 +140,8 @@ int main(int argc, char* argv[]) {
 
     mpris_service.startLoopAsync();
 
-    ytmusic_service.stream(video.ref);
-    mpris_service.setPlaybackStatus(services::PlaybackStatus::Playing);
     
-    std::this_thread::sleep_for(std::chrono::seconds(std::min(video.duration_seconds, 20)));
+    std::this_thread::sleep_for(std::chrono::seconds(10));
 
     return 0;
 }

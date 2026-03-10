@@ -59,10 +59,10 @@ class YTMusicServer:
         # - Executes playback commands (pause, resume, seek, stop, etc.)
         return await control(self, command)
     
-    def get_song(self, song_id: str):
+    def get_song(self, song_title: str, song_artist: str):
         #  get_song
-        # - Fetches detailed song info via YTMusicAPI
-        return get_song(self, song_id)
+        # - Fetches detailed song info via MusicBrainz API
+        return get_song(self, song_title, song_artist)
 
     async def handle_request(self, req: dict):
         # handle_request
@@ -84,7 +84,7 @@ class YTMusicServer:
             return await self.control(req.get("command", ""))
         
         elif action == "get_song":
-            return self.get_song(req.get("id", ""))
+            return self.get_song(req.get("song_title", ""), req.get("song_artist", ""))
 
         else:
             return {

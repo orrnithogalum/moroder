@@ -54,7 +54,7 @@ async def control(server: YTMusicServer, command: str):
 
     async def current_position():
         pos = await get_property(reader, writer, "playback-time")
-        return pos if pos is not None else 0
+        return int(pos * 1000 * 1000) if pos is not None else 0
     
     pos = await current_position()
 

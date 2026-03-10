@@ -19,7 +19,8 @@ public:
 
         nlohmann::json j{
             {"action", "get_song"},
-            {"id", song_ref_.id}
+            {"song_title", song_ref_.title},
+            {"song_artist", song_ref_.artists[0].name}
         };
 
         return j;

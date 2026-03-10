@@ -1,43 +1,81 @@
 # GET_SONG
-# - Fetches full song details from ytmusicapi using video_id
-# - Filters videoDetails and microformatDataRenderer from the full JSON response
+# - Fetches full song details from musicbrainz api using song title and song artist
 
 from typing import TYPE_CHECKING
+import requests
 
 if TYPE_CHECKING:
     from server import YTMusicServer
 
-def get_song(server: YTMusicServer, video_id: str):
+
+def get_song(server: YTMusicServer, song_title: str, song_artist: str):
     # get_song
-    # - This filtering is necessary because the full ytmusicapi response can be very large and overflow the cpp buffer
-    # - Extracts key fields: videoId, title, lengthSeconds, viewCount, thumbnail, publishDate, uploadDate, category
-    # - Returns a simplified JSON dictionary with status and song data
+    # - This filtering is necessary because the full musicbrainz api response can be very large and overflow the cpp buffer
+    # - Extracts key fields: album title.
+    # - Returns a simplified JSON dictionary with status and data
     try:
-        data = server.ytm_default.get_song(video_id)
+        url = "https://musicbrainz.org/ws/2/recording/"
 
-        video = data.get("videoDetails", {})
-        micro = data.get("microformat", {}).get("microformatDataRenderer", {})
+        params = {
+            "query": f'recording:"{song_title}" AND artist:"{song_artist}"',
+            "fmt": "json",
+            "limit": 20
+        }
 
-        # extract thumbnail list
-        thumbnails = video.get("thumbnail", {}).get("thumbnails", [])
+        headers = {
+            "User-Agent": "moroder/1.0 (LittleBigOwI@github.com)"
+        }
+
+        response = requests.get(url, params=params, headers=headers)
+        data = response.json()
+
+        if not data.get("recordings"):
+            raise Exception("Song not found")
+
+        album_title = None
+        # publish_date = None
+        # track_count = None
+        # length_seconds = None
+
+        for rec in data["recordings"]:
+
+            # length_seconds = int(rec.get("length", 0) / 1000) if rec.get("length") else None
+
+            for release in rec.get("releases", []):
+
+                rg = release.get("release-group", {})
+
+                primary_type = rg.get("primary-type")
+                secondary_types = rg.get("secondary-types", [])
+
+                release_artist = release.get("artist-credit", [{}])[0].get("name", "")
+
+                if primary_type != "Album":
+                    continue
+
+                if secondary_types:
+                    continue
+
+                if release_artist.lower() != song_artist.lower():
+                    continue
+
+                album_title = rg.get("title")
+                # publish_date = release.get("date")
+
+                # media = release.get("media", [])
+                # if media:
+                #     track_count = media[0].get("track-count")
+
+                break
+
+            if album_title:
+                break
+
+        if not album_title:
+            raise Exception("No valid album release found")
 
         result = {
-            "videoDetails": {
-                "videoId": video.get("videoId"),
-                "title": video.get("title"),
-                "lengthSeconds": video.get("lengthSeconds"),
-                "viewCount": video.get("viewCount"),
-                "thumbnail": {
-                    "thumbnails": thumbnails
-                }
-            },
-            "microformat": {
-                "microformatDataRenderer": {
-                    "publishDate": micro.get("publishDate"),
-                    "uploadDate": micro.get("uploadDate"),
-                    "category": micro.get("category")
-                }
-            }
+            "album": album_title,
         }
 
         return {
