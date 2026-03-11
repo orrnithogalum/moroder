@@ -24,7 +24,8 @@ int main(int argc, char* argv[]) {
     // --------------------------------------
     auto ytmusic_service = services::YTMusic(APP_NAME);
     // ipc::SearchResponse search_response = ytmusic_service.search("iNjGNNoUjkk"); // Within, Daft Punk, Random Access Memories
-    ipc::SearchResponse search_response = ytmusic_service.search("1LrHumAQBso"); // Sing for absolution, Muse, Absolution
+    // ipc::SearchResponse search_response = ytmusic_service.search("1LrHumAQBso"); // Sing for absolution, Muse, Absolution
+    ipc::SearchResponse search_response = ytmusic_service.search(argv[1]); // Sing for absolution, Muse, Absolution
 
     if (search_response.results.empty()) {
         std::cout << "Exiting, no results" << std::endl;
