@@ -11,31 +11,12 @@ if TYPE_CHECKING:
 import asyncio
 import json
 
-async def send_cmd(reader: asyncio.StreamReader, writer: asyncio.StreamWriter, cmd: list[str | int | float | bool]):
-    # send command
-    writer.write((json.dumps({"command": cmd}) + "\n").encode())
-    await writer.drain()
 
-    while True:
-        line = await reader.readline()
-        if not line:
-            return None
-
-        try:
-            data = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-
-        # Only return if this is a response to the command
-        if "error" in data:
-            return data
-        # Otherwise, it's an event, loop and wait for the real response
-
-async def get_property(reader: asyncio.StreamReader, writer: asyncio.StreamWriter, prop: str):
+async def get_property(server: YTMusicServer, prop: str):
     # get_property
     # - get player data and return it
-    resp = await send_cmd(reader, writer, ["get_property", prop])
-    
+    resp = await server.send_cmd(["get_property", prop])
+
     if resp and resp.get("error") == "success":
         return resp.get("data")
     
@@ -49,22 +30,19 @@ async def control(server: YTMusicServer, command: str):
     if not server.player_writer or not server.player_reader:
         return {"status": "error", "message": "No active player"}
 
-    reader = server.player_reader
-    writer = server.player_writer
-
     async def current_position():
-        pos = await get_property(reader, writer, "playback-time")
+        pos = await get_property(server, "playback-time")
         return int(pos * 1000 * 1000) if pos is not None else 0
     
     pos = await current_position()
 
     if command == "pause":
         # Pause playback
-        await send_cmd(reader, writer, ["set_property", "pause", True])
+        await server.send_cmd(["set_property", "pause", True])
 
     elif command == "resume":
         # Resume playback
-        await send_cmd(reader, writer, ["set_property", "pause", False])
+        await server.send_cmd(["set_property", "pause", False])
 
     elif command.startswith("forward"):
         # Seek forward a given number of microseconds (int)
@@ -79,7 +57,7 @@ async def control(server: YTMusicServer, command: str):
         except ValueError:
             return {"status": "error", "message": "Invalid number"}
 
-        await send_cmd(reader, writer, ["seek", seconds, "relative"])
+        await server.send_cmd(["seek", seconds, "relative"])
 
     elif command.startswith("backward"):
         # Seek backward a given number of microseconds (int)
@@ -93,7 +71,7 @@ async def control(server: YTMusicServer, command: str):
         except ValueError:
             return {"status": "error", "message": "Invalid number"}
 
-        await send_cmd(reader, writer, ["seek", seconds, "relative"])
+        await server.send_cmd(["seek", seconds, "relative"])
 
     elif command.startswith("setpos"):
         # Set position in song for a given position in microseconds (int)
@@ -107,7 +85,7 @@ async def control(server: YTMusicServer, command: str):
         except ValueError:
             return {"status": "error", "message": "Invalid number"}
 
-        await send_cmd(reader, writer, ["seek", seconds, "absolute"])
+        await server.send_cmd(["seek", seconds, "absolute"])
 
     elif command == "stop":
         # Terminate the mpv player process

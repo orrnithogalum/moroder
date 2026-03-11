@@ -31,8 +31,58 @@ class YTMusicServer:
         self.player_socket: str = "/tmp/mpv_socket"
         self.current_song: str | None = None
 
+        # mpv
+        self.mpv_pending: dict[int, asyncio.Future] = {}
+        self.mpv_reader_task = None
+        self.mpv_request_id = 0
+        
         # events
-        self.event_pipe = os.fdopen(event_fd, "wb", buffering=0)
+        self.event_pipe = os.fdopen(event_fd, "wb", buffering=0) if event_fd is not None else None
+
+    async def mpv_reader_loop(self):
+        reader = self.player_reader
+
+        while True:
+            line = await reader.readline()
+            if not line:
+                self.send_event("stop")
+                break
+
+            try:
+                data = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+
+            if "request_id" in data:
+                rid = data["request_id"]
+                fut = self.mpv_pending.pop(rid, None)
+
+                if fut and not fut.done():
+                    fut.set_result(data)
+
+            elif "event" in data:
+                if data["event"] == "end-file":
+                    self.send_event("song-end")
+
+    async def send_cmd(self, cmd: list):
+        if not self.player_writer:
+            raise RuntimeError("mpv not running")
+
+        self.mpv_request_id += 1
+        rid = self.mpv_request_id
+
+        payload = {
+            "command": cmd,
+            "request_id": rid
+        }
+
+        fut = asyncio.get_running_loop().create_future()
+        self.mpv_pending[rid] = fut
+
+        self.player_writer.write((json.dumps(payload) + "\n").encode())
+        await self.player_writer.drain()
+
+        return await fut
 
     def send_event(self, name: str):
         # Send an event to cpp as JSON. cpp parses this in a seperate thread.
@@ -65,6 +115,11 @@ class YTMusicServer:
         # - Performs a search via YTMusicAPI
         return search(self, query)
     
+    def get_song(self, song_title: str, song_artist: str):
+        #  get_song
+        # - Fetches detailed song info via MusicBrainz API
+        return get_song(self, song_title, song_artist)
+    
     async def stream(self, song_id: str):
         # stream
         # - Starts playback of a song via mpv
@@ -75,11 +130,6 @@ class YTMusicServer:
         # control
         # - Executes playback commands (pause, resume, seek, stop, etc.)
         return await control(self, command)
-    
-    def get_song(self, song_title: str, song_artist: str):
-        #  get_song
-        # - Fetches detailed song info via MusicBrainz API
-        return get_song(self, song_title, song_artist)
 
     async def handle_request(self, req: dict):
         # handle_request

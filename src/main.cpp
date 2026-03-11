@@ -136,8 +136,7 @@ int main(int argc, char* argv[]) {
     mpris_service.startLoopAsync();
 
     
-    std::this_thread::sleep_for(std::chrono::seconds(240));
-
+    ytmusic_service.waitUntilStreamEnds();
     ytmusic_service.quit();
 
     return 0;

@@ -60,6 +60,10 @@ async def stream(server: YTMusicServer, id: str):
             server.player_writer = None
             server.current_song = None
 
+        if server.mpv_reader_task:
+            server.mpv_reader_task.cancel()
+            server.mpv_reader_task = None
+
         # resolve audio URL
         try:
             audio_url, duration_ms = await asyncio.to_thread(get_audio_url, id)
@@ -118,6 +122,8 @@ async def stream(server: YTMusicServer, id: str):
         server.player_reader = reader
         server.player_writer = writer
         server.current_song = id
+
+        server.mpv_reader_task = asyncio.create_task(server.mpv_reader_loop())
 
         return {
             "status": "ok",

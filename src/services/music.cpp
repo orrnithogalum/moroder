@@ -30,24 +30,36 @@ void services::YTMusic::event_worker(int fd) {
 
         // In case multiple events are sent in one read, split by newline
         size_t start = 0;
-
         while (start < raw.size()) {
             size_t end = raw.find('\n', start);
             if (end == std::string::npos) end = raw.size();
 
             std::string line = raw.substr(start, end - start);
-            if (!line.empty()) {
-                ipc::EventResponse event(line);
-                spdlog::info("Received event: {}", event.name);
-
-                if (event.name == "stop") {
-                    return;
-                }
-
-                spdlog::info("Python server unknown event received: " + event.name);
+            
+            if (line.empty()) {
+                continue;
             }
 
+            ipc::EventResponse event(line);
+            spdlog::info("Received event: {}", event.name);
+
             start = end + 1;
+
+            if (event.name == "stop") {
+                return;
+            }
+
+            if (event.name == "song-end") {
+                {
+                    std::lock_guard<std::mutex> lock(event_mutex);
+                    this->song_finished = true;
+                }
+
+                event_cv.notify_one();
+                continue;
+            }
+
+            spdlog::info("Python server unknown event received: " + event.name);
         }
     }
 }
@@ -137,6 +149,16 @@ void services::YTMusic::quit() {
     }
 
     python_pid = -1;
+}
+
+void services::YTMusic::waitUntilStreamEnds() {
+    std::unique_lock<std::mutex> lock(event_mutex);
+
+    event_cv.wait(lock, [this]() {
+        return song_finished;
+    });
+
+    song_finished = false;
 }
 
 template<typename ResponseType> ResponseType services::YTMusic::send(const ipc::Request& request, const std::string& log) {

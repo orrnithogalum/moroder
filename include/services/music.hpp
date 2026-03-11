@@ -50,6 +50,7 @@ public:
     - Ends the mpv process and the python process
     */ 
     void quit();
+    void waitUntilStreamEnds();
 
 private:
     /* python_server_path
@@ -80,6 +81,10 @@ private:
     - Polls events in the dedicated event_pipe
     */
     std::thread event_thread;
+    std::mutex event_mutex;
+    std::condition_variable event_cv;
+
+    bool song_finished = false;
 
     /* send
     - serialized any request, send it, return the response
