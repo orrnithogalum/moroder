@@ -42,6 +42,7 @@ class YTMusicServer:
     async def mpv_reader_loop(self):
         reader = self.player_reader
 
+        # Parse line by line, command or event
         try:
             while True:
                 line = await reader.readline()
@@ -62,10 +63,12 @@ class YTMusicServer:
                 elif "event" in data:
                     if data["event"] == "end-file":
                         self.send_event("song-end")
+        
         except asyncio.CancelledError:
             pass
         
         finally:
+            # Cleanup in case of mpv instance killed
             self.player_reader = None
             self.player_writer = None
 
