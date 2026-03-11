@@ -98,7 +98,7 @@ int main(int argc, char* argv[]) {
     
     mpris_service.onStop([&] {
         playing = false;
-        ytmusic_service.stop();
+        // ytmusic_service.stop();
 
         mpris_service.setPlaybackStatus(services::PlaybackStatus::Stopped);
     });
@@ -132,11 +132,14 @@ int main(int argc, char* argv[]) {
 
     mpris_service.onLoopStatusChanged([&] (services::LoopStatus status) { });
     mpris_service.onShuffleChanged([&] (bool shuffle) { });
-
     mpris_service.startLoopAsync();
 
-    
     ytmusic_service.waitUntilStreamEnds();
+
+    stream_response = ytmusic_service.stream(video.ref);
+    ytmusic_service.waitUntilStreamEnds();
+
+    spdlog::info("Quitting...");
     ytmusic_service.quit();
 
     return 0;

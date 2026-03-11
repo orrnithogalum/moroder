@@ -33,7 +33,7 @@ class YTMusicServer:
 
         # mpv
         self.mpv_pending: dict[int, asyncio.Future] = {}
-        self.mpv_reader_task = None
+        self.mpv_reader_task: asyncio.Task = None
         self.mpv_request_id = 0
         
         # events
@@ -42,29 +42,35 @@ class YTMusicServer:
     async def mpv_reader_loop(self):
         reader = self.player_reader
 
-        while True:
-            line = await reader.readline()
-            if not line:
-                self.send_event("stop")
-                break
+        try:
+            while True:
+                line = await reader.readline()
+                if not line:
+                    break
 
-            try:
-                data = json.loads(line)
-            except json.JSONDecodeError:
-                continue
+                try:
+                    data = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
 
-            if "request_id" in data:
-                rid = data["request_id"]
-                fut = self.mpv_pending.pop(rid, None)
+                if "request_id" in data:
+                    rid = data["request_id"]
+                    fut = self.mpv_pending.pop(rid, None)
+                    if fut and not fut.done():
+                        fut.set_result(data)
 
-                if fut and not fut.done():
-                    fut.set_result(data)
-
-            elif "event" in data:
-                if data["event"] == "end-file":
-                    self.send_event("song-end")
+                elif "event" in data:
+                    if data["event"] == "end-file":
+                        self.send_event("song-end")
+        except asyncio.CancelledError:
+            pass
+        
+        finally:
+            self.player_reader = None
+            self.player_writer = None
 
     async def send_cmd(self, cmd: list):
+        # Send a command to mpv
         if not self.player_writer:
             raise RuntimeError("mpv not running")
 

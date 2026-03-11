@@ -62,6 +62,10 @@ async def stream(server: YTMusicServer, id: str):
 
         if server.mpv_reader_task:
             server.mpv_reader_task.cancel()
+            try:
+                await server.mpv_reader_task
+            except asyncio.CancelledError:
+                pass
             server.mpv_reader_task = None
 
         # resolve audio URL
@@ -85,6 +89,7 @@ async def stream(server: YTMusicServer, id: str):
                 "mpv",
                 "--no-video",
                 "--no-config",
+                "--idle=yes",
                 "--cache=yes",
                 "--cache-secs=5",
                 f"--input-ipc-server={server.player_socket}",

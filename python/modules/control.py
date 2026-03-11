@@ -8,10 +8,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from server import YTMusicServer
 
-import asyncio
-import json
-
-
 async def get_property(server: YTMusicServer, prop: str):
     # get_property
     # - get player data and return it
