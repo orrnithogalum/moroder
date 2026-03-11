@@ -16,6 +16,7 @@ int main(int argc, char* argv[]) {
     //             LOGGER SETUP
     // --------------------------------------
     auto logger = spdlog::basic_logger_mt(APP_NAME, std::string("logs/") + APP_NAME + ".log", true);
+    logger->flush_on(spdlog::level::info); // flush on every info or higher
     spdlog::set_default_logger(logger);
 
 
@@ -32,7 +33,7 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
-    auto* song_ref = std::get_if<music::SongRef>(&search_response.results[1].data);
+    auto* song_ref = std::get_if<music::SongRef>(&search_response.results[0].data);
     if (!song_ref) {
         std::cout << "Exiting, results found but the selected one wasn't a video." << std::endl;
         return 0;
@@ -69,10 +70,7 @@ int main(int argc, char* argv[]) {
         { services::Field::ArtUrl,  sdbus::Variant(video.ref.thumbnail) }
     });
 
-    mpris_service.onQuit([&] { 
-        ytmusic_service.end();
-        std::exit(0); 
-    });
+    mpris_service.onQuit([&] {});
 
     mpris_service.onNext([&] { i++; });
     mpris_service.onPrevious([&] { i--; });
@@ -138,7 +136,9 @@ int main(int argc, char* argv[]) {
     mpris_service.startLoopAsync();
 
     
-    std::this_thread::sleep_for(std::chrono::seconds(20));
+    std::this_thread::sleep_for(std::chrono::seconds(240));
+
+    ytmusic_service.quit();
 
     return 0;
 }

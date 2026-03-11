@@ -113,6 +113,8 @@ async def control(server: YTMusicServer, command: str):
         # Terminate the mpv player process
         server.player_process.terminate()
         await server.player_process.wait()
+
+        server.send_event("stop")
         return {"status": "ok", "stopped": True}
 
     else:

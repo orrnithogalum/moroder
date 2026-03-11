@@ -11,7 +11,7 @@ import json
 import sys
 
 async def main():
-    server = YTMusicServer()
+    server = YTMusicServer(int(sys.argv[1]))
 
     while True:
         try:

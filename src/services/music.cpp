@@ -3,6 +3,7 @@
 #include "../../include/ipc/control/control_request.hpp"
 #include "../../include/ipc/stream/stream_request.hpp"
 #include "../../include/ipc/search/search_request.hpp"
+#include "../../include/ipc/event/event_response.hpp"
 #include "../../include/ipc/browse/song_request.hpp"
 #include "../../include/ipc/request.hpp"
 
@@ -14,6 +15,42 @@
 
 namespace fs = std::filesystem;
 
+void services::YTMusic::event_worker(int fd) {
+    char local_buffer[8192];
+
+    while (true) {
+        ssize_t n = read(fd, local_buffer, sizeof(local_buffer) - 1);
+        if (n <= 0) {
+            spdlog::warn("Event pipe closed or read error");
+            break;
+        }
+
+        local_buffer[n] = '\0';
+        std::string raw(local_buffer);
+
+        // In case multiple events are sent in one read, split by newline
+        size_t start = 0;
+
+        while (start < raw.size()) {
+            size_t end = raw.find('\n', start);
+            if (end == std::string::npos) end = raw.size();
+
+            std::string line = raw.substr(start, end - start);
+            if (!line.empty()) {
+                ipc::EventResponse event(line);
+                spdlog::info("Received event: {}", event.name);
+
+                if (event.name == "stop") {
+                    return;
+                }
+
+                spdlog::info("Python server unknown event received: " + event.name);
+            }
+
+            start = end + 1;
+        }
+    }
+}
 services::YTMusic::YTMusic(const std::string_view& app_name) {
 
     spdlog::info("Python server starting...");
@@ -33,7 +70,7 @@ services::YTMusic::YTMusic(const std::string_view& app_name) {
 
     spdlog::info("Python path: " + this->python_server_path);
 
-    if (pipe(this->pipe_stdin) == -1 || pipe(this->pipe_stdout) == -1) {
+    if (pipe(this->pipe_stdin) == -1 || pipe(this->pipe_stdout) == -1 || pipe(this->pipe_event) == -1) {
         throw std::runtime_error("Python server could not create pipe");
     }
 
@@ -51,7 +88,10 @@ services::YTMusic::YTMusic(const std::string_view& app_name) {
         dup2(pipe_stdout[1], STDOUT_FILENO); // redirect stdout
         close(pipe_stdout[1]);
 
-        execl("/usr/bin/python", "/usr/bin/python", "-u", this->python_server_path.c_str(), (char*) nullptr);
+        close(pipe_event[0]);
+        std::string fd_str = std::to_string(pipe_event[1]);
+
+        execl("/usr/bin/python", "/usr/bin/python", "-u", this->python_server_path.c_str(), fd_str.c_str(), (char*) nullptr);
 
         // If exec fails
         throw std::runtime_error("Python server could not run");
@@ -59,10 +99,16 @@ services::YTMusic::YTMusic(const std::string_view& app_name) {
 
     close(pipe_stdin[0]);
     close(pipe_stdout[1]);
+    close(pipe_event[1]);
+
+    this->event_thread = std::thread([this]() {
+        this->event_worker(pipe_event[0]);
+    });
 }
 
-void services::YTMusic::end() {
+void services::YTMusic::quit() {
     this->stop();
+    this->event_thread.join();
 
     if (python_pid <= 0) {
         return;

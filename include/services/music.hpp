@@ -48,9 +48,8 @@ public:
 
     /* end
     - Ends the mpv process and the python process
-    - I could find a better name for this
     */ 
-    void end();
+    void quit();
 
 private:
     /* python_server_path
@@ -63,6 +62,7 @@ private:
     /* pipes
     - Used to send / receive data from python
     */
+    int pipe_event[2];
     int pipe_stdin[2];
     int pipe_stdout[2];
 
@@ -76,10 +76,20 @@ private:
     */
     pid_t python_pid;
 
+    /* event_thread
+    - Polls events in the dedicated event_pipe
+    */
+    std::thread event_thread;
+
     /* send
     - serialized any request, send it, return the response
     */
     template<typename ResponseType> ResponseType send(const ipc::Request& request, const std::string& log);
+
+    /* event_worker
+    - Event polling logic
+    */
+    void event_worker(int fd);
 };
 
 }
