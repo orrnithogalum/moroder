@@ -51,7 +51,7 @@ int main(int argc, char* argv[]) {
 
     auto opt = services::Mpris::make(APP_NAME);
     if (!opt) {
-        fprintf(stderr, "can't connect: someone already there.\n");
+        fprintf(stderr, "Can't connect: someone already there.\n");
         return 1;
     }
 
@@ -98,7 +98,7 @@ int main(int argc, char* argv[]) {
     
     mpris_service.onStop([&] {
         playing = false;
-        // ytmusic_service.stop();
+        ytmusic_service.stop();
 
         mpris_service.setPlaybackStatus(services::PlaybackStatus::Stopped);
     });
@@ -123,10 +123,9 @@ int main(int argc, char* argv[]) {
     });
 
     mpris_service.onSetPosition([&] (int64_t p) {
-        pos  = p;
+        pos = p;
 
         ytmusic_service.setPosition(p);    
-
         mpris_service.setPosition(pos);
     });
 
