@@ -5,9 +5,9 @@
 #include "../include/ipc/control/control_response.hpp"
 #include "../include/ipc/stream/stream_response.hpp"
 #include "../include/ipc/search/search_response.hpp"
+#include "../include/services/social.hpp"
 #include "../include/services/mpris.hpp"
 #include "../include/services/music.hpp"
-#include "../include/services/social.hpp"
 
 #define APP_NAME_HUMAN "Moroder"
 #define APP_NAME "moroder"
