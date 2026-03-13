@@ -44,7 +44,7 @@ int main(int argc, char* argv[]) {
 
 
     // --------------------------------------
-    //      START MPRIS, MUSIC & STATUS
+    //      START MPRIS, MUSIC & SOCIAL
     // --------------------------------------
     int i = 0;
     int64_t pos = 0;
