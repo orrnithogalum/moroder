@@ -105,7 +105,6 @@ int main(int argc, char* argv[]) {
         } else {
             music_service.resume();
             social_service.resume();
-            social_service.setPosition(pos);
         }
 
         mpris_service.setPlaybackStatus(playing ? services::PlaybackStatus::Playing : services::PlaybackStatus::Paused);
