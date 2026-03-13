@@ -31,13 +31,13 @@ int main(int argc, char* argv[]) {
 
     if (search_response.results.empty()) {
         std::cout << "Exiting, no results" << std::endl;
-        return 0;
+        exit(0);
     }
 
     auto* song_ref = std::get_if<music::SongRef>(&search_response.results[0].data);
     if (!song_ref) {
         std::cout << "Exiting, results found but the selected one wasn't a video." << std::endl;
-        return 0;
+        exit(0);
     }
 
     music::Song video = music_service.getSong(*song_ref).song;
@@ -83,8 +83,8 @@ int main(int argc, char* argv[]) {
 
     mpris_service.onQuit([&] {});
 
-    mpris_service.onNext([&] { i++; });
-    mpris_service.onPrevious([&] { i--; });
+    // mpris_service.onNext([&] { i++; });
+    // mpris_service.onPrevious([&] { i--; });
     
     mpris_service.onPause([&] {
         playing = false;
@@ -105,6 +105,7 @@ int main(int argc, char* argv[]) {
         } else {
             music_service.resume();
             social_service.resume();
+            social_service.setPosition(pos);
         }
 
         mpris_service.setPlaybackStatus(playing ? services::PlaybackStatus::Playing : services::PlaybackStatus::Paused);
@@ -122,6 +123,7 @@ int main(int argc, char* argv[]) {
         playing = true;
         music_service.resume();
         social_service.resume();
+        social_service.setPosition(pos);
 
         mpris_service.setPlaybackStatus(services::PlaybackStatus::Playing);
     });

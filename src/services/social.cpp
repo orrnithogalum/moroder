@@ -139,12 +139,11 @@ void services::Social::updatePresence() {
 
     activity.SetAssets(assets);
 
-    client->UpdateRichPresence(activity,
-        [](discordpp::ClientResult result)
-        {
-            if (!result.Successful()) {}
-                spdlog::warn("Social server wasn't able to update status.");
-        });
+    client->UpdateRichPresence(activity, [](discordpp::ClientResult result) {
+        if (!result.Successful()) {
+            spdlog::warn("Social server wasn't able to update status.");
+        }
+    });
 }
 
 void services::Social::threadLoop() {
