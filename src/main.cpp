@@ -7,6 +7,7 @@
 #include "../include/ipc/search/search_response.hpp"
 #include "../include/services/mpris.hpp"
 #include "../include/services/music.hpp"
+#include "../include/services/social.hpp"
 
 #define APP_NAME_HUMAN "Moroder"
 #define APP_NAME "moroder"
@@ -23,10 +24,10 @@ int main(int argc, char* argv[]) {
     // --------------------------------------
     //              FETCH SONG
     // --------------------------------------
-    auto ytmusic_service = services::YTMusic(APP_NAME);
-    // ipc::SearchResponse search_response = ytmusic_service.search("iNjGNNoUjkk"); // Within, Daft Punk, Random Access Memories
-    // ipc::SearchResponse search_response = ytmusic_service.search("1LrHumAQBso"); // Sing for absolution, Muse, Absolution
-    ipc::SearchResponse search_response = ytmusic_service.search(argv[1]); // Sing for absolution, Muse, Absolution
+    auto music_service = services::Music(APP_NAME);
+    // ipc::SearchResponse search_response = music_service.search("iNjGNNoUjkk"); // Within, Daft Punk, Random Access Memories
+    // ipc::SearchResponse search_response = music_service.search("1LrHumAQBso"); // Sing for absolution, Muse, Absolution
+    ipc::SearchResponse search_response = music_service.search(argv[1]);
 
     if (search_response.results.empty()) {
         std::cout << "Exiting, no results" << std::endl;
@@ -39,11 +40,11 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
-    music::Song video = ytmusic_service.getSong(*song_ref).song;
+    music::Song video = music_service.getSong(*song_ref).song;
 
 
     // --------------------------------------
-    //              START MPRIS
+    //      START MPRIS, MUSIC & STATUS
     // --------------------------------------
     int i = 0;
     int64_t pos = 0;
@@ -57,7 +58,9 @@ int main(int argc, char* argv[]) {
 
     auto &mpris_service = *opt;
 
-    ipc::StreamResponse stream_response = ytmusic_service.stream(video.ref);
+    auto social_service = services::Social(1481401025964540125);
+
+    ipc::StreamResponse stream_response = music_service.stream(video.ref);
     mpris_service.setPlaybackStatus(services::PlaybackStatus::Playing);
 
     mpris_service.setHumanName(APP_NAME_HUMAN);
@@ -70,6 +73,14 @@ int main(int argc, char* argv[]) {
         { services::Field::ArtUrl,  sdbus::Variant(video.ref.thumbnail) }
     });
 
+    social_service.setStatus(
+        video.ref.title,
+        video.ref.artists[0].name,
+        video.album_title,
+        video.ref.thumbnail,
+        stream_response.duration
+    );
+
     mpris_service.onQuit([&] {});
 
     mpris_service.onNext([&] { i++; });
@@ -78,7 +89,8 @@ int main(int argc, char* argv[]) {
     mpris_service.onPause([&] {
         playing = false;
         
-        ipc::ControlResponse control_response = ytmusic_service.pause();
+        ipc::ControlResponse control_response = music_service.pause();
+        social_service.pause();
         mpris_service.setPosition(static_cast<uint64_t>(control_response.position));
 
         mpris_service.setPlaybackStatus(services::PlaybackStatus::Paused);
@@ -88,9 +100,11 @@ int main(int argc, char* argv[]) {
         playing = !playing;
 
         if(playing) {
-            ytmusic_service.pause();
+            music_service.pause();
+            social_service.pause();
         } else {
-            ytmusic_service.resume();
+            music_service.resume();
+            social_service.resume();
         }
 
         mpris_service.setPlaybackStatus(playing ? services::PlaybackStatus::Playing : services::PlaybackStatus::Paused);
@@ -98,14 +112,16 @@ int main(int argc, char* argv[]) {
     
     mpris_service.onStop([&] {
         playing = false;
-        ytmusic_service.stop();
+        music_service.stop();
+        social_service.removeStatus();
 
         mpris_service.setPlaybackStatus(services::PlaybackStatus::Stopped);
     });
     
     mpris_service.onPlay([&] {
         playing = true;
-        ytmusic_service.resume();
+        music_service.resume();
+        social_service.resume();
 
         mpris_service.setPlaybackStatus(services::PlaybackStatus::Playing);
     });
@@ -114,18 +130,20 @@ int main(int argc, char* argv[]) {
         pos += p;
         
         if(p < 0) {
-            ytmusic_service.backward(p);    
+            music_service.backward(p);
         } else {
-            ytmusic_service.forward(p);
+            music_service.forward(p);
         }
 
+        social_service.setPosition(pos);  
         mpris_service.setPosition(pos);
     });
 
     mpris_service.onSetPosition([&] (int64_t p) {
         pos = p;
 
-        ytmusic_service.setPosition(p);    
+        music_service.setPosition(pos);
+        social_service.setPosition(pos);
         mpris_service.setPosition(pos);
     });
 
@@ -133,13 +151,39 @@ int main(int argc, char* argv[]) {
     mpris_service.onShuffleChanged([&] (bool shuffle) { });
     mpris_service.startLoopAsync();
 
-    ytmusic_service.waitUntilStreamEnds();
+    music_service.waitUntilStreamEnds();
 
-    stream_response = ytmusic_service.stream(video.ref);
-    ytmusic_service.waitUntilStreamEnds();
+    pos = 0;
+    mpris_service.setPosition(pos);
+    mpris_service.sendSeekedSignal(pos);
+
+    mpris_service.setPlaybackStatus(services::PlaybackStatus::Stopped);
+    stream_response = music_service.stream(video.ref);
+    mpris_service.setPlaybackStatus(services::PlaybackStatus::Playing);
+    
+    // reset metadata for another supposed song
+    mpris_service.setMetadata({
+        { services::Field::TrackId, sdbus::Variant(services::OBJECT_PATH + "/track/" + video.ref.id) },
+        { services::Field::Album,   sdbus::Variant(video.album_title) },
+        { services::Field::Title,   sdbus::Variant(video.ref.title) },
+        { services::Field::Artist,  sdbus::Variant(video.ref.artists[0].name) },
+        { services::Field::Length,  sdbus::Variant(stream_response.duration) },
+        { services::Field::ArtUrl,  sdbus::Variant(video.ref.thumbnail) }
+    });
+
+    // reset discord status for another supposed song
+    social_service.setStatus(
+        video.ref.title,
+        video.ref.artists[0].name,
+        video.album_title,
+        video.ref.thumbnail,
+        stream_response.duration
+    );
+
+    music_service.waitUntilStreamEnds();
 
     spdlog::info("Quitting...");
-    ytmusic_service.quit();
+    music_service.quit();
 
     return 0;
 }

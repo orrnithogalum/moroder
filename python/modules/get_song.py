@@ -5,10 +5,10 @@ from typing import TYPE_CHECKING
 import requests
 
 if TYPE_CHECKING:
-    from server import YTMusicServer
+    from server import MusicServer
 
 
-def get_song(server: YTMusicServer, song_title: str, song_artist: str):
+def get_song(server: MusicServer, song_title: str, song_artist: str):
     # get_song
     # - This filtering is necessary because the full iTunes API response can contain many results
     # - Extracts key fields: album title.

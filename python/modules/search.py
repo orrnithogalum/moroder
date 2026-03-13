@@ -6,9 +6,9 @@
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from server import YTMusicServer
+    from server import MusicServer
 
-def search(server: YTMusicServer, query: str):
+def search(server: MusicServer, query: str):
     # search
     # - Uses server.ytm_default to perform a search
     # - result_limit caps the number of results returned to prevent cpp buffer overflow

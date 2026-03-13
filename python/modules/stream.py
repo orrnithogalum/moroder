@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from yt_dlp import YoutubeDL
 
 if TYPE_CHECKING:
-    from server import YTMusicServer
+    from server import MusicServer
 
 import asyncio
 import os
@@ -30,7 +30,7 @@ def get_audio_url(id):
         raise RuntimeError(f"yt-dlp extraction failed: {e}")
 
 
-async def stream(server: YTMusicServer, id: str):
+async def stream(server: MusicServer, id: str):
     # stream
     # - Stops any currently playing song
     # - Cleans up old IPC socket

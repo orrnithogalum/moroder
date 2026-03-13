@@ -15,7 +15,7 @@
 
 namespace fs = std::filesystem;
 
-void services::YTMusic::event_worker(int fd) {
+void services::Music::event_worker(int fd) {
     char local_buffer[8192];
 
     while (true) {
@@ -63,11 +63,11 @@ void services::YTMusic::event_worker(int fd) {
         }
     }
 }
-services::YTMusic::YTMusic(const std::string_view& app_name) {
+services::Music::Music(const std::string_view& app_name) {
 
     spdlog::info("Python server starting...");
 
-    fs::path installed = "/usr/share/ytmusic/python/main.py";
+    fs::path installed = std::string("/usr/share/") + std::string(app_name) + "/python/main.py";
     fs::path dev = YTM_DEV_PYTHON_PATH;
 
     if (fs::exists(installed)) {
@@ -118,7 +118,7 @@ services::YTMusic::YTMusic(const std::string_view& app_name) {
     });
 }
 
-void services::YTMusic::quit() {
+void services::Music::quit() {
     this->stop();
     this->event_thread.join();
 
@@ -151,7 +151,7 @@ void services::YTMusic::quit() {
     python_pid = -1;
 }
 
-void services::YTMusic::waitUntilStreamEnds() {
+void services::Music::waitUntilStreamEnds() {
     std::unique_lock<std::mutex> lock(event_mutex);
 
     event_cv.wait(lock, [this]() {
@@ -161,7 +161,7 @@ void services::YTMusic::waitUntilStreamEnds() {
     song_finished = false;
 }
 
-template<typename ResponseType> ResponseType services::YTMusic::send(const ipc::Request& request, const std::string& log) {
+template<typename ResponseType> ResponseType services::Music::send(const ipc::Request& request, const std::string& log) {
     std::string request_string = request.serialize();
 
     write(pipe_stdin[1], request_string.c_str(), request_string.size());
@@ -175,7 +175,7 @@ template<typename ResponseType> ResponseType services::YTMusic::send(const ipc::
     return ResponseType(buffer);
 }
 
-ipc::SearchResponse services::YTMusic::search(const std::string& query) {
+ipc::SearchResponse services::Music::search(const std::string& query) {
     ipc::SearchRequest request(query);
 
     return send<ipc::SearchResponse>(
@@ -184,7 +184,7 @@ ipc::SearchResponse services::YTMusic::search(const std::string& query) {
     );
 }
 
-ipc::StreamResponse services::YTMusic::stream(const music::SongRef& song) {
+ipc::StreamResponse services::Music::stream(const music::SongRef& song) {
     ipc::StreamRequest request(song);
 
     return send<ipc::StreamResponse>(
@@ -193,7 +193,7 @@ ipc::StreamResponse services::YTMusic::stream(const music::SongRef& song) {
     );
 }
 
-ipc::ControlResponse services::YTMusic::resume() {
+ipc::ControlResponse services::Music::resume() {
     ipc::ControlRequest request("resume");
 
     return send<ipc::ControlResponse>(
@@ -202,7 +202,7 @@ ipc::ControlResponse services::YTMusic::resume() {
     );
 }
 
-ipc::ControlResponse services::YTMusic::pause() {
+ipc::ControlResponse services::Music::pause() {
     ipc::ControlRequest request("pause");
 
     return send<ipc::ControlResponse>(
@@ -211,7 +211,7 @@ ipc::ControlResponse services::YTMusic::pause() {
     );
 }
 
-ipc::ControlResponse services::YTMusic::setPosition(const uint64_t position) {
+ipc::ControlResponse services::Music::setPosition(const uint64_t position) {
     ipc::ControlRequest request("setpos", position);
 
     return send<ipc::ControlResponse>(
@@ -220,7 +220,7 @@ ipc::ControlResponse services::YTMusic::setPosition(const uint64_t position) {
     );
 }
 
-ipc::ControlResponse services::YTMusic::backward(const uint64_t duration) {
+ipc::ControlResponse services::Music::backward(const uint64_t duration) {
     ipc::ControlRequest request("backward", duration);
 
     return send<ipc::ControlResponse>(
@@ -229,7 +229,7 @@ ipc::ControlResponse services::YTMusic::backward(const uint64_t duration) {
     );
 }
 
-ipc::ControlResponse services::YTMusic::forward(const uint64_t duration) {
+ipc::ControlResponse services::Music::forward(const uint64_t duration) {
     ipc::ControlRequest request("forward", duration);
 
     return send<ipc::ControlResponse>(
@@ -238,7 +238,7 @@ ipc::ControlResponse services::YTMusic::forward(const uint64_t duration) {
     );
 }
 
-ipc::ControlResponse services::YTMusic::stop() {
+ipc::ControlResponse services::Music::stop() {
     ipc::ControlRequest request("stop");
 
     return send<ipc::ControlResponse>(
@@ -247,7 +247,7 @@ ipc::ControlResponse services::YTMusic::stop() {
     );
 }
 
-ipc::SongResponse services::YTMusic::getSong(const music::SongRef& ref) {
+ipc::SongResponse services::Music::getSong(const music::SongRef& ref) {
     ipc::SongRequest request(ref);
 
     ipc::SongResponse response = send<ipc::SongResponse>(

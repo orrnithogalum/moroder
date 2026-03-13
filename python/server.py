@@ -1,4 +1,4 @@
-# YTMusicServer
+# MusicServer
 # - Python server that exposes YTMusicAPI and mpv player control to cpp via JSON over stdin/stdout
 # - Handles search, streaming, playback control, and fetching detailed song info
 # - Maintains player state and optionally a logged-in user instance
@@ -14,7 +14,7 @@ import asyncio
 import json
 import os
 
-class YTMusicServer:
+class MusicServer:
     # - Wraps YTMusicAPI for default or user credentials
     # - Handles streaming via mpv over a Unix IPC socket
     # - Provides player control and search / song info

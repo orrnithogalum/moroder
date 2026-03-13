@@ -1,4 +1,4 @@
-/* YTMUSIC
+/* MUSIC
 - Service responsible for all communications between cpp and the python server
 - Uses all requests and reponse classes as communication objects
 - Everything is logged
@@ -19,9 +19,9 @@
 
 namespace services {
 
-class YTMusic {
+class Music {
 public:
-    YTMusic(const std::string_view& app_name);
+    Music(const std::string_view& app_name);
 
     ipc::SearchResponse search(const std::string& query);
     ipc::StreamResponse stream(const music::SongRef& song);

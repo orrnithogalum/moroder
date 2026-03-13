@@ -39,6 +39,7 @@ find_package(sdbus-c++ REQUIRED)
 set(SOURCES
     src/services/mpris.cpp
     src/services/music.cpp
+    src/services/social.cpp
 
     src/main.cpp
 )

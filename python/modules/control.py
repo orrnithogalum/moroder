@@ -6,9 +6,9 @@
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from server import YTMusicServer
+    from server import MusicServer
 
-async def get_property(server: YTMusicServer, prop: str):
+async def get_property(server: MusicServer, prop: str):
     # get_property
     # - get player data and return it
     resp = await server.send_cmd(["get_property", prop])
@@ -18,7 +18,7 @@ async def get_property(server: YTMusicServer, prop: str):
     
     return None
 
-async def control(server: YTMusicServer, command: str):
+async def control(server: MusicServer, command: str):
     # control
     # - Executes a player control command on the given server
     # - Commands: pause, resume, forward <seconds>, backward <seconds>, stop

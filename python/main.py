@@ -1,17 +1,17 @@
 # MAIN SERVER
-# - Entry point for the YTMusicServer Python process
-# - Reads JSON requests from stdin, passes them to YTMusicServer.handle_request
+# - Entry point for the MusicServer Python process
+# - Reads JSON requests from stdin, passes them to MusicServer.handle_request
 # - Writes JSON responses to stdout
 # - Runs asynchronously to handle multiple requests sequentially without blocking
 
-from server import YTMusicServer
+from server import MusicServer
 
 import asyncio
 import json
 import sys
 
 async def main():
-    server = YTMusicServer(int(sys.argv[1]))
+    server = MusicServer(int(sys.argv[1]))
 
     while True:
         try:
