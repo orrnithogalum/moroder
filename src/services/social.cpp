@@ -7,9 +7,7 @@
 
 #include <chrono>
 
-namespace services {
-
-Social::Social(uint64_t application_id) : app_id(application_id) {
+services::Social::Social(uint64_t application_id) : app_id(application_id) {
     client = std::make_shared<discordpp::Client>();
     client->SetApplicationId(app_id);
 
@@ -49,7 +47,7 @@ Social::Social(uint64_t application_id) : app_id(application_id) {
     worker = std::thread(&Social::threadLoop, this);
 }
 
-Social::~Social() {
+services::Social::~Social() {
     running = false;
 
     if (worker.joinable()) {
@@ -57,7 +55,7 @@ Social::~Social() {
     }
 }
 
-void Social::setStatus(const std::string& t, const std::string& a, const std::string& alb, const std::string& cover, uint64_t d) {
+void services::Social::setStatus(const std::string& t, const std::string& a, const std::string& alb, const std::string& cover, uint64_t d) {
     std::lock_guard lock(mutex);
 
     this->title = t;
@@ -73,7 +71,7 @@ void Social::setStatus(const std::string& t, const std::string& a, const std::st
     this->updatePresence();
 }
 
-void Social::pause() {
+void services::Social::pause() {
     std::lock_guard lock(mutex);
 
     if (!has_status) return;
@@ -82,7 +80,7 @@ void Social::pause() {
     updatePresence();
 }
 
-void Social::resume() {
+void services::Social::resume() {
     std::lock_guard lock(mutex);
 
     if (!has_status) return;
@@ -93,7 +91,7 @@ void Social::resume() {
     updatePresence();
 }
 
-void Social::setPosition(uint64_t p) {
+void services::Social::setPosition(uint64_t p) {
     std::lock_guard lock(mutex);
 
     if (!has_status) return;
@@ -102,7 +100,7 @@ void Social::setPosition(uint64_t p) {
     updatePresence();
 }
 
-void Social::removeStatus() {
+void services::Social::removeStatus() {
     std::lock_guard lock(mutex);
 
     has_status = false;
@@ -110,7 +108,7 @@ void Social::removeStatus() {
     client->ClearRichPresence();
 }
 
-void Social::updatePresence() {
+void services::Social::updatePresence() {
     if (!has_status)
         return;
 
@@ -149,11 +147,9 @@ void Social::updatePresence() {
         });
 }
 
-void Social::threadLoop() {
+void services::Social::threadLoop() {
     while (running) {
         discordpp::RunCallbacks();
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
-}
-
 }

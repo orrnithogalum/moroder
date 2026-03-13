@@ -118,7 +118,7 @@ services::Music::Music(const std::string_view& app_name) {
     });
 }
 
-void services::Music::quit() {
+services::Music::~Music() {
     this->stop();
     this->event_thread.join();
 

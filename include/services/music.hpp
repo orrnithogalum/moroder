@@ -22,6 +22,7 @@ namespace services {
 class Music {
 public:
     Music(const std::string_view& app_name);
+    ~Music();
 
     ipc::SearchResponse search(const std::string& query);
     ipc::StreamResponse stream(const music::SongRef& song);
@@ -46,10 +47,6 @@ public:
     */
     ipc::ControlResponse stop();
 
-    /* end
-    - Ends the mpv process and the python process
-    */ 
-    void quit();
     void waitUntilStreamEnds();
 
 private:

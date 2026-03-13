@@ -182,8 +182,5 @@ int main(int argc, char* argv[]) {
 
     music_service.waitUntilStreamEnds();
 
-    spdlog::info("Quitting...");
-    music_service.quit();
-
     return 0;
 }
