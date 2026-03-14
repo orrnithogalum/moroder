@@ -1,194 +1,13 @@
+#include <ftxui/component/screen_interactive.hpp>
+#include <ftxui/component/component.hpp>
+
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/spdlog.h>
-#include <iostream>
 
-#include "../include/ipc/control/control_response.hpp"
-#include "../include/ipc/stream/stream_response.hpp"
-#include "../include/ipc/search/search_response.hpp"
-#include "../include/services/social.hpp"
 #include "../include/services/player.hpp"
-#include "../include/services/mpris.hpp"
-#include "../include/services/music.hpp"
 
 #define APP_NAME_HUMAN "Moroder"
 #define APP_NAME "moroder"
-
-int main_old(int argc, char* argv[]) {
-    // --------------------------------------
-    //             LOGGER SETUP
-    // --------------------------------------
-    auto logger = spdlog::basic_logger_mt(APP_NAME, std::string("logs/") + APP_NAME + ".log", true);
-    logger->flush_on(spdlog::level::info); // flush on every info or higher
-    spdlog::set_default_logger(logger);
-
-
-    // --------------------------------------
-    //              FETCH SONG
-    // --------------------------------------
-    auto music_service = services::Music(APP_NAME);
-    // ipc::SearchResponse search_response = music_service.search("iNjGNNoUjkk"); // Within, Daft Punk, Random Access Memories
-    // ipc::SearchResponse search_response = music_service.search("1LrHumAQBso"); // Sing for absolution, Muse, Absolution
-    ipc::SearchResponse search_response = music_service.search(argv[1]);
-
-    if (search_response.results.empty()) {
-        std::cout << "Exiting, no results" << std::endl;
-        exit(0);
-    }
-
-    auto* song_ref = std::get_if<music::SongRef>(&search_response.results[0].data);
-    if (!song_ref) {
-        std::cout << "Exiting, results found but the selected one wasn't a video." << std::endl;
-        exit(0);
-    }
-
-    music::Song video = music_service.getSong(*song_ref).song;
-
-
-    // --------------------------------------
-    //      START MPRIS, MUSIC & SOCIAL
-    // --------------------------------------
-    int i = 0;
-    int64_t pos = 0;
-    bool playing = false;
-
-    auto opt = services::Mpris::make(APP_NAME);
-    if (!opt) {
-        fprintf(stderr, "Can't connect: someone already there.\n");
-        return 1;
-    }
-
-    auto &mpris_service = *opt;
-
-    auto social_service = services::Social(1481401025964540125);
-
-    ipc::StreamResponse stream_response = music_service.stream(video.ref);
-    mpris_service.setPlaybackStatus(services::PlaybackStatus::Playing);
-
-    mpris_service.setHumanName(APP_NAME_HUMAN);
-    mpris_service.setMetadata({
-        { services::Field::TrackId, sdbus::Variant(services::OBJECT_PATH + "/track/" + video.ref.id) },
-        { services::Field::Album,   sdbus::Variant(video.album_title) },
-        { services::Field::Title,   sdbus::Variant(video.ref.title) },
-        { services::Field::Artist,  sdbus::Variant(video.ref.artists[0].name) },
-        { services::Field::Length,  sdbus::Variant(stream_response.duration) },
-        { services::Field::ArtUrl,  sdbus::Variant(video.ref.thumbnail) }
-    });
-
-    social_service.setStatus(
-        video.ref.title,
-        video.ref.artists[0].name,
-        video.album_title,
-        video.ref.thumbnail,
-        stream_response.duration
-    );
-
-    mpris_service.onQuit([&] {});
-
-    // mpris_service.onNext([&] { i++; });
-    // mpris_service.onPrevious([&] { i--; });
-    
-    mpris_service.onPause([&] {
-        playing = false;
-        
-        ipc::ControlResponse control_response = music_service.pause();
-        social_service.pause();
-        mpris_service.setPosition(static_cast<uint64_t>(control_response.position));
-
-        mpris_service.setPlaybackStatus(services::PlaybackStatus::Paused);
-    });
-    
-    mpris_service.onToggle([&] {
-        playing = !playing;
-
-        if(playing) {
-            music_service.pause();
-            social_service.pause();
-        } else {
-            music_service.resume();
-            social_service.resume();
-        }
-
-        mpris_service.setPlaybackStatus(playing ? services::PlaybackStatus::Playing : services::PlaybackStatus::Paused);
-    });
-    
-    mpris_service.onStop([&] {
-        playing = false;
-        music_service.stop();
-        social_service.removeStatus();
-
-        mpris_service.setPlaybackStatus(services::PlaybackStatus::Stopped);
-    });
-    
-    mpris_service.onPlay([&] {
-        playing = true;
-        music_service.resume();
-        social_service.resume();
-        social_service.setPosition(pos);
-
-        mpris_service.setPlaybackStatus(services::PlaybackStatus::Playing);
-    });
-    
-    mpris_service.onSeek([&] (int64_t p) {
-        pos += p;
-        
-        if(p < 0) {
-            music_service.backward(p);
-        } else {
-            music_service.forward(p);
-        }
-
-        social_service.setPosition(pos);  
-        mpris_service.setPosition(pos);
-    });
-
-    mpris_service.onSetPosition([&] (int64_t p) {
-        pos = p;
-
-        music_service.setPosition(pos);
-        social_service.setPosition(pos);
-        mpris_service.setPosition(pos);
-    });
-
-    mpris_service.onLoopStatusChanged([&] (services::LoopStatus status) { });
-    mpris_service.onShuffleChanged([&] (bool shuffle) { });
-    mpris_service.startLoopAsync();
-
-    music_service.waitUntilStreamEnds();
-
-    pos = 0;
-    mpris_service.setPosition(pos);
-    mpris_service.sendSeekedSignal(pos);
-
-    mpris_service.setPlaybackStatus(services::PlaybackStatus::Stopped);
-    stream_response = music_service.stream(video.ref);
-    mpris_service.setPlaybackStatus(services::PlaybackStatus::Playing);
-    
-    // reset metadata for another supposed song
-    mpris_service.setMetadata({
-        { services::Field::TrackId, sdbus::Variant(services::OBJECT_PATH + "/track/" + video.ref.id) },
-        { services::Field::Album,   sdbus::Variant(video.album_title) },
-        { services::Field::Title,   sdbus::Variant(video.ref.title) },
-        { services::Field::Artist,  sdbus::Variant(video.ref.artists[0].name) },
-        { services::Field::Length,  sdbus::Variant(stream_response.duration) },
-        { services::Field::ArtUrl,  sdbus::Variant(video.ref.thumbnail) }
-    });
-
-    // reset discord status for another supposed song
-    social_service.setStatus(
-        video.ref.title,
-        video.ref.artists[0].name,
-        video.album_title,
-        video.ref.thumbnail,
-        stream_response.duration
-    );
-
-    music_service.waitUntilStreamEnds();
-
-    return 0;
-}
-
-#include <ftxui/component/screen_interactive.hpp>
-#include <ftxui/component/component.hpp>
 
 using namespace ftxui;
 
@@ -199,22 +18,63 @@ int main(int argc, char* argv[]) {
 
     auto screen = ScreenInteractive::Fullscreen();
 
-    services::Player player(APP_NAME, 0);
+    services::Player player(APP_NAME, APP_NAME_HUMAN, 1481401025964540125);
 
-    player.setOnRequestCompletedCallback([&]() {
+    // Trigger UI update when request completes
+    player.setOnRequestCompletedCallback([&](services::Player::Command::Type type) {
         screen.PostEvent(Event::Custom);
     });
 
     std::string query;
-    std::vector<std::string> results;
+    int selected_index = 0; // track selected search result
+    bool browsing_results = false; // true if navigating results
 
     auto input = Input(&query, "Search");
+
     input |= CatchEvent([&](Event event) {
-        if (event == Event::Return) {
-            player.search(query);
+        std::lock_guard lock(player.state_mutex);
+
+        auto& results = player.state.search_results;
+
+        if(event == Event::Return) {
+            if (browsing_results) {
+                // Log selected song if browsing results
+                if (!results.empty() && selected_index >= 0 && selected_index < (int)results.size()) {
+                    auto& r = results[selected_index];
+                    std::visit([&](auto&& data) {
+                        using T = std::decay_t<decltype(data)>;
+                        if constexpr (std::is_same_v<T, music::SongRef>) {
+                            
+                            player.stream(data);
+                            
+                        }
+                    }, r.data);
+                }
+            } else {
+                // Enter pressed in input → trigger search
+                player.search(query);
+                selected_index = 0;
+            }
             return true;
+        
+        } else if (event == Event::ArrowDown) {
+            if (!results.empty()) {
+                browsing_results = true;
+                selected_index = (selected_index + 1) % results.size();
+            }
+            return true;
+
+        } else if (event == Event::ArrowUp) {
+            if (!results.empty()) {
+                browsing_results = true;
+                selected_index = (selected_index - 1 + results.size()) % results.size();
+            }
+            return true;
+
+        } else {
+            browsing_results = false; // any other key → back to typing mode
+            return false;
         }
-        return false;
     });
 
     auto renderer = Renderer(input, [&] {
@@ -225,34 +85,33 @@ int main(int argc, char* argv[]) {
         }
 
         std::vector<Element> result_elements;
-        
-        if(state_copy.loading_search) {
+
+        if (state_copy.is_loading_search) {
             result_elements.push_back(text("Loading...") | italic | dim);
         } else {
-            for (auto& r : state_copy.search_results) {
+            for (size_t i = 0; i < state_copy.search_results.size(); ++i) {
+                auto& r = state_copy.search_results[i];
                 std::string label = r.resultType;
 
                 std::visit([&](auto&& data) {
-
                     using T = std::decay_t<decltype(data)>;
-
                     if constexpr (std::is_same_v<T, music::SongRef>) {
-                        label = "🎵 " + data.title;
-
+                        label = "[SONG] " + data.title;
                     } else if constexpr (std::is_same_v<T, music::AlbumRef>) {
-                        label = "💿 " + data.title;
-
+                        label = "[ALBUM] " + data.title;
                     } else if constexpr (std::is_same_v<T, music::ArtistRef>) {
-                        label = "👤 " + data.name;
-
+                        label = "[ARTIST] " + data.name;
                     } else if constexpr (std::is_same_v<T, music::PlaylistRef>) {
-                        label = "📂 " + data.title;
-
+                        label = "[PLAYLIST] " + data.title;
                     }
-
                 }, r.data);
 
-                result_elements.push_back(text(label));
+                // Highlight the selected element
+                if ((int)i == selected_index) {
+                    result_elements.push_back(text("> " + label) | inverted);
+                } else {
+                    result_elements.push_back(text("  " + label));
+                }
             }
         }
 

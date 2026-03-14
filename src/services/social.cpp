@@ -1,11 +1,8 @@
-#include <cstdint>
 #define DISCORDPP_IMPLEMENTATION
 
 #include "../../include/services/social.hpp"
 
 #include "spdlog/spdlog.h"
-
-#include <chrono>
 
 services::Social::Social(const uint64_t application_id) : app_id(application_id) {
     client = std::make_shared<discordpp::Client>();
