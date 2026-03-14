@@ -13,6 +13,8 @@
   The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 */
 
+#pragma once
+
 #include <sdbus-c++/sdbus-c++.h>
 #include <string>
 #include <vector>

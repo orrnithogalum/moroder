@@ -6,13 +6,14 @@
 #include "../include/ipc/stream/stream_response.hpp"
 #include "../include/ipc/search/search_response.hpp"
 #include "../include/services/social.hpp"
+#include "../include/services/player.hpp"
 #include "../include/services/mpris.hpp"
 #include "../include/services/music.hpp"
 
 #define APP_NAME_HUMAN "Moroder"
 #define APP_NAME "moroder"
 
-int main(int argc, char* argv[]) {
+int main_old(int argc, char* argv[]) {
     // --------------------------------------
     //             LOGGER SETUP
     // --------------------------------------
@@ -184,4 +185,92 @@ int main(int argc, char* argv[]) {
     music_service.waitUntilStreamEnds();
 
     return 0;
+}
+
+#include <ftxui/component/screen_interactive.hpp>
+#include <ftxui/component/component.hpp>
+
+using namespace ftxui;
+
+int main(int argc, char* argv[]) {
+    auto logger = spdlog::basic_logger_mt(APP_NAME, std::string("logs/") + APP_NAME + ".log", true);
+    logger->flush_on(spdlog::level::info); // flush on every info or higher
+    spdlog::set_default_logger(logger);
+
+    auto screen = ScreenInteractive::Fullscreen();
+
+    services::Player player(APP_NAME, 0);
+
+    player.setOnRequestCompletedCallback([&]() {
+        screen.PostEvent(Event::Custom);
+    });
+
+    std::string query;
+    std::vector<std::string> results;
+
+    auto input = Input(&query, "Search");
+    input |= CatchEvent([&](Event event) {
+        if (event == Event::Return) {
+            player.search(query);
+            return true;
+        }
+        return false;
+    });
+
+    auto renderer = Renderer(input, [&] {
+        services::Player::PlayerState state_copy;
+        {
+            std::lock_guard lock(player.state_mutex);
+            state_copy = player.state;
+        }
+
+        std::vector<Element> result_elements;
+        
+        if(state_copy.loading_search) {
+            result_elements.push_back(text("Loading...") | italic | dim);
+        } else {
+            for (auto& r : state_copy.search_results) {
+                std::string label = r.resultType;
+
+                std::visit([&](auto&& data) {
+
+                    using T = std::decay_t<decltype(data)>;
+
+                    if constexpr (std::is_same_v<T, music::SongRef>) {
+                        label = "🎵 " + data.title;
+
+                    } else if constexpr (std::is_same_v<T, music::AlbumRef>) {
+                        label = "💿 " + data.title;
+
+                    } else if constexpr (std::is_same_v<T, music::ArtistRef>) {
+                        label = "👤 " + data.name;
+
+                    } else if constexpr (std::is_same_v<T, music::PlaylistRef>) {
+                        label = "📂 " + data.title;
+
+                    }
+
+                }, r.data);
+
+                result_elements.push_back(text(label));
+            }
+        }
+
+        return vbox({
+            text("Search") | bold,
+            input->Render(),
+            separator(),
+            vbox(std::move(result_elements)) | frame
+        });
+    });
+
+    auto main_component = Container::Vertical({
+        input
+    });
+
+    auto ui = Renderer(main_component, [&] {
+        return renderer->Render();
+    });
+
+    screen.Loop(ui);
 }

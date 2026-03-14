@@ -23,6 +23,11 @@ async def control(server: MusicServer, command: str):
     # - Executes a player control command on the given server
     # - Commands: pause, resume, forward <seconds>, backward <seconds>, stop
     # - Returns a JSON-like status dictionary
+
+    # command events, sent even if no active players are there.
+    if command == "stop":
+        server.send_event("stop")
+
     if not server.player_writer or not server.player_reader:
         return {"status": "error", "message": "No active player"}
 
@@ -88,7 +93,6 @@ async def control(server: MusicServer, command: str):
         server.player_process.terminate()
         await server.player_process.wait()
 
-        server.send_event("stop")
         return {"status": "ok", "stopped": True}
 
     else:

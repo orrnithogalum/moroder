@@ -21,7 +21,6 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/gabime/spdlog.git
     GIT_TAG v1.13.0
 )
-
 FetchContent_MakeAvailable(spdlog)
 
 FetchContent_Declare(
@@ -29,8 +28,14 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/nlohmann/json.git
     GIT_TAG v3.11.3
 )
-
 FetchContent_MakeAvailable(nlohmann_json)
+
+FetchContent_Declare(
+  ftxui
+  GIT_REPOSITORY https://github.com/ArthurSonzogni/ftxui.git
+  GIT_TAG v6.1.9
+)
+FetchContent_MakeAvailable(ftxui)
 
 find_package(spdlog REQUIRED)
 find_package(nlohmann_json REQUIRED)
@@ -39,6 +44,7 @@ find_package(sdbus-c++ REQUIRED)
 set(SOURCES
     src/services/mpris.cpp
     src/services/music.cpp
+    src/services/player.cpp
     src/services/social.cpp
 
     src/main.cpp
@@ -55,6 +61,10 @@ target_link_libraries(${PROJECT_NAME}
     nlohmann_json::nlohmann_json
     SDBusCpp::sdbus-c++
 
+    ftxui::screen
+    ftxui::dom
+    ftxui::component
+
     ${DISCORD_LIB_PATH}
 )
 
@@ -63,6 +73,10 @@ set(CMAKE_INSTALL_RPATH "$ORIGIN")
 
 target_compile_definitions(${PROJECT_NAME}
     PRIVATE YTM_DEV_PYTHON_PATH="${CMAKE_SOURCE_DIR}/python/main.py"
+)
+
+target_compile_options(${PROJECT_NAME} PRIVATE
+    $<$<CONFIG:Release>:-O3>
 )
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD

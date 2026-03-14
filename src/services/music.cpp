@@ -35,6 +35,7 @@ void services::Music::event_worker(int fd) {
             if (end == std::string::npos) end = raw.size();
 
             std::string line = raw.substr(start, end - start);
+            start = end + 1;
             
             if (line.empty()) {
                 continue;
@@ -42,8 +43,6 @@ void services::Music::event_worker(int fd) {
 
             ipc::EventResponse event(line);
             spdlog::info("Received event: {}", event.name);
-
-            start = end + 1;
 
             if (event.name == "stop") {
                 return;

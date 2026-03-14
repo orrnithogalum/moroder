@@ -19,7 +19,7 @@ public:
     - Initializes the Discord client with the given application ID
     - Starts the worker thread to run the Discord callback loop
     */
-    Social(uint64_t application_id);
+    Social(const uint64_t application_id);
 
     /* Destructor
     - Stops the worker thread and cleans up the Discord client
@@ -31,7 +31,7 @@ public:
     */
     void pause();
     void resume();
-    void setPosition(uint64_t position);
+    void setPosition(const uint64_t position);
 
     void setStatus(const std::string& title, const std::string& author, const std::string& album, const std::string& cover_url, uint64_t duration);
 

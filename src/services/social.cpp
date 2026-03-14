@@ -7,7 +7,7 @@
 
 #include <chrono>
 
-services::Social::Social(uint64_t application_id) : app_id(application_id) {
+services::Social::Social(const uint64_t application_id) : app_id(application_id) {
     client = std::make_shared<discordpp::Client>();
     client->SetApplicationId(app_id);
 
@@ -91,7 +91,7 @@ void services::Social::resume() {
     updatePresence();
 }
 
-void services::Social::setPosition(uint64_t p) {
+void services::Social::setPosition(const uint64_t p) {
     std::lock_guard lock(mutex);
 
     if (!has_status) return;
