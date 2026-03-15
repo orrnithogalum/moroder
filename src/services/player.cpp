@@ -238,8 +238,8 @@ void services::Player::queueSong(const music::SongRef& song) {
         state.song_queue.push_back(song);
 
         if (!state.is_streaming_audio && !state.is_loading_song) {
+            state.queue_position = state.song_queue.size() - 1;
             should_stream = true;
-            state.queue_position = 0;
         }
     }
 
@@ -253,21 +253,26 @@ void services::Player::queueSong(const music::SongRef& song) {
 
 void services::Player::skipSongForward() {
     music::SongRef next_song;
+    bool should_skip = true;
 
     {
         std::lock_guard lock(state_mutex);
         if (state.queue_position + 1 >= state.song_queue.size()) {
             state.is_streaming_audio = false;
-            spdlog::warn("Tried to skip to next song, but queue is done.");
+            should_skip = false;
             
-            return;
+            spdlog::warn("Tried to skip to next song, but queue is done.");
+                        
+        } else {
+            state.queue_position++;
+            next_song = state.song_queue[state.queue_position];
         }
 
-        state.queue_position++;
-        next_song = state.song_queue[state.queue_position];
     }
 
-    stream(next_song);
+    if(should_skip) {
+        stream(next_song);
+    }
 }
 
 void services::Player::skipSongBackward() {
