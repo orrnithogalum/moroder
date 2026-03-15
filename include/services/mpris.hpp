@@ -127,6 +127,8 @@ private:
     int64_t position = 0;
 
     bool shuffle = false;
+    bool is_next_possible;
+    bool is_previous_possible;
 
     void changeProperty(const std::string &interface, const std::string &name, sdbus::Variant value);
     void changePropertyControlled(std::vector<std::string> args);
@@ -173,6 +175,10 @@ public:
     void setShuffle(bool value);
 
     void sendSeekedSignal(int64_t position);
+
+    void setIsNextPossible(bool possible);
+    void setIsPreviousPossible(bool possible);
+    void updatePlayerControls();
 };
 
 }

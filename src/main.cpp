@@ -32,9 +32,13 @@ int main(int argc, char* argv[]) {
     auto input = Input(&query, "Search");
 
     input |= CatchEvent([&](Event event) {
-        std::lock_guard lock(player.state_mutex);
+        services::Player::PlayerState state_copy;
+        {
+            std::lock_guard lock(player.state_mutex);
+            state_copy = player.state;
+        }
 
-        auto& results = player.state.search_results;
+        auto& results = state_copy.search_results;
 
         if(event == Event::Return) {
             if (browsing_results) {
@@ -45,7 +49,7 @@ int main(int argc, char* argv[]) {
                         using T = std::decay_t<decltype(data)>;
                         if constexpr (std::is_same_v<T, music::SongRef>) {
                             
-                            player.stream(data);
+                            player.queueSong(data);
                             
                         }
                     }, r.data);

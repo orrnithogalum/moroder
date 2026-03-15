@@ -16,6 +16,7 @@
 #include <sys/types.h>
 #include <string_view>
 #include <string>
+#include <mutex>
 
 namespace services {
 
@@ -47,7 +48,12 @@ public:
     */
     ipc::ControlResponse stop();
 
-    void waitUntilStreamEnds();
+    using StreamDoneCallback = std::function<void()>;
+
+    void setOnStreamDone(StreamDoneCallback cb) {
+        std::lock_guard lock(callback_mutex);
+        on_stream_done = std::move(cb);
+    }
 
 private:
     /* python_server_path
@@ -78,8 +84,9 @@ private:
     - Polls events in the dedicated event_pipe
     */
     std::thread event_thread;
-    std::mutex event_mutex;
-    std::condition_variable event_cv;
+
+    std::mutex callback_mutex;
+    StreamDoneCallback on_stream_done;
 
     bool song_finished = false;
 
@@ -92,6 +99,13 @@ private:
     - Event polling logic
     */
     void event_worker(int fd);
+
+    void notifyStreamDone() {
+        std::lock_guard lock(callback_mutex);
+        if (on_stream_done) {
+            on_stream_done();
+        }
+    };
 };
 
 }

@@ -5,11 +5,11 @@ bool services::Mpris::canControl() const {
 }
 
 bool services::Mpris::canGoNext() const {
-    return canControl() && bool(next_fn);
+    return canControl() && bool(next_fn) && this->is_next_possible;
 }
 
 bool services::Mpris::canGoPrevious() const {
-    return canControl() && bool(previous_fn);
+    return canControl() && bool(previous_fn) && this->is_previous_possible;
 }
 
 bool services::Mpris::canPlay() const {
@@ -150,7 +150,7 @@ void services::Mpris::changePropertyControlled(std::vector<std::string> args)
 
     std::map<std::string, sdbus::Variant> d;
     for (const auto &v : args) {
-        if (f(v)) d[v] = sdbus::Variant(true);
+        d[v] = sdbus::Variant(f(v));
     }
 
     object->emitSignal("PropertiesChanged")
@@ -252,4 +252,21 @@ void services::Mpris::startLoopAsync() {
 
 void services::Mpris::sendSeekedSignal(int64_t position) {
     object->emitSignal("Seeked").onInterface(MEDIAPLAYER2PLAYER).withArguments(position);
+}
+
+void services::Mpris::setIsNextPossible(bool possible) {
+    this->is_next_possible = possible;
+    this->changePropertyControlled({"CanGoNext"});
+}
+
+void services::Mpris::setIsPreviousPossible(bool possible) {
+    this->is_previous_possible = possible;
+    this->changePropertyControlled({"CanGoPrevious"});
+}
+
+void services::Mpris::updatePlayerControls() {
+    this->changePropertyControlled({
+        "CanGoNext",
+        "CanGoPrevious"
+    });
 }

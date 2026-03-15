@@ -11,6 +11,8 @@ namespace services {
 class Player {
 public:
     struct PlayerState {
+        std::deque<music::SongRef> song_queue;
+
         std::vector<ipc::SearchResult> search_results;
         music::Song current_song;
 
@@ -44,15 +46,20 @@ public:
     Player(const std::string_view& app_name, const std::string_view& app_name_human, const uint64_t app_id);
     ~Player();
 
+    void skipSongForward();
+    void skipSongBackward();
+
+    void search(const std::string& query);
+    void stream(const music::SongRef& song);
+    
+    void queueSong(const music::SongRef& song);
+
     using RequestCompletedCallback = std::function<void(Command::Type)>;
 
     void setOnRequestCompletedCallback(RequestCompletedCallback cb) {
         std::lock_guard lock(callback_mutex);
         on_request_completed = std::move(cb);
     }
-
-    void search(const std::string& query);
-    void stream(const music::SongRef& song);
 
 private:
     std::condition_variable command_cv;
@@ -78,6 +85,7 @@ private:
     }
 
     void worker_loop();
+    void updateMprisControls();
 };
 
 }

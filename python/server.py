@@ -62,7 +62,10 @@ class MusicServer:
 
                 elif "event" in data:
                     if data["event"] == "end-file":
-                        self.send_event("song-end")
+                        reason = data.get("reason")
+
+                        if reason == "eof":
+                            self.send_event("song-end")
         
         except asyncio.CancelledError:
             pass

@@ -49,12 +49,7 @@ void services::Music::event_worker(int fd) {
             }
 
             if (event.name == "song-end") {
-                {
-                    std::lock_guard<std::mutex> lock(event_mutex);
-                    this->song_finished = true;
-                }
-
-                event_cv.notify_one();
+                notifyStreamDone();
                 continue;
             }
 
@@ -148,16 +143,6 @@ services::Music::~Music() {
     }
 
     python_pid = -1;
-}
-
-void services::Music::waitUntilStreamEnds() {
-    std::unique_lock<std::mutex> lock(event_mutex);
-
-    event_cv.wait(lock, [this]() {
-        return song_finished;
-    });
-
-    song_finished = false;
 }
 
 template<typename ResponseType> ResponseType services::Music::send(const ipc::Request& request, const std::string& log) {
