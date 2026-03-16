@@ -4,29 +4,36 @@
 
 #include "spdlog/spdlog.h"
 
+#include <algorithm>
+
 services::Social::Social(const uint64_t application_id) : app_id(application_id) {
     client = std::make_shared<discordpp::Client>();
     client->SetApplicationId(app_id);
 
     client->AddLogCallback([](const std::string& message, discordpp::LoggingSeverity severity) {
+            // Remove trailing line returns
+            std::string clean = message;
+            std::replace(clean.begin(), clean.end(), '\n', ' ');
+            std::replace(clean.begin(), clean.end(), '\r', ' ');        
+            
             switch (severity) {
                 case discordpp::LoggingSeverity::Verbose:
-                    spdlog::debug("{}", message);
+                    spdlog::debug("{}", clean);
                     break;
                 case discordpp::LoggingSeverity::Info:
-                    spdlog::info("{}", message);
+                    spdlog::info("{}", clean);
                     break;
                 case discordpp::LoggingSeverity::Warning:
-                    spdlog::warn("{}", message);
+                    spdlog::warn("{}", clean);
                     break;
                 case discordpp::LoggingSeverity::Error:
-                    spdlog::error("{}", message);
+                    spdlog::error("{}", clean);
                     break;
                 case discordpp::LoggingSeverity::None:
-                    spdlog::trace("{}", message);
+                    spdlog::trace("{}", clean);
                     break;
                 default:
-                    spdlog::info("{}", message);
+                    spdlog::info("{}", clean);
                     break;
             }
         },
