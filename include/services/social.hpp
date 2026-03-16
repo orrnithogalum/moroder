@@ -26,8 +26,8 @@ public:
     */
     ~Social();
 
-    /* rich presence controls
-    - basic playback operations
+    /* Rich presence controls
+    - Basic playback operations
     */
     void pause();
     void resume();

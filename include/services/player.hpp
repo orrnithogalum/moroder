@@ -1,3 +1,8 @@
+/* PLAYER
+- Service that wraps: Music, Mpris and Social into one service
+- Adds queuing support
+*/
+
 #pragma once
 
 #include "mpris.hpp"
@@ -10,6 +15,9 @@ namespace services {
 
 class Player {
 public:
+    /* PlayerState
+    - Shared player state between all threads
+    */
     struct PlayerState {
         std::deque<music::SongRef> song_queue;
 
@@ -24,6 +32,10 @@ public:
         bool is_loading_song = false;
     };
 
+    /* Command
+    - Player commands to queue
+    - A threads loops over queued commands and executes them
+    */
     struct Command {
         enum Type {
             Empty,
@@ -32,6 +44,8 @@ public:
         };
 
         Type type;
+
+        // We could use std::variant here, but no real use.
         std::string query;
         music::SongRef song;
 
@@ -46,6 +60,9 @@ public:
     Player(const std::string_view& app_name, const std::string_view& app_name_human, const uint64_t app_id);
     ~Player();
 
+    /* Player controls
+    - Basic playback operations
+    */
     void skipSongForward();
     void skipSongBackward();
 
@@ -85,6 +102,10 @@ private:
     }
 
     void worker_loop();
+    
+    /* updateMprisControls
+    - Updates the mpris buttons (activated / deactivated) based on queue position.
+    */
     void updateMprisControls();
 };
 

@@ -238,6 +238,12 @@ void services::Player::queueSong(const music::SongRef& song) {
         state.song_queue.push_back(song);
 
         if (!state.is_streaming_audio && !state.is_loading_song) {
+            /* Bug fix:
+            - Let a song play to it's end.
+            - Once the song is finished, queue another song.
+            - Queue position was wrong. The following line fixes that.
+            - Forces queue position to last position.
+            */
             state.queue_position = state.song_queue.size() - 1;
             should_stream = true;
         }

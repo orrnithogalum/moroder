@@ -28,8 +28,8 @@ public:
     ipc::SearchResponse search(const std::string& query);
     ipc::StreamResponse stream(const music::SongRef& song);
 
-    /* player controls
-    - basic playback operations
+    /* Player controls
+    - Basic playback operations
     */
     ipc::ControlResponse resume();
     ipc::ControlResponse pause();
