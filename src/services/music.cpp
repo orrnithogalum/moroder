@@ -96,8 +96,9 @@ services::Music::Music(const std::string_view& app_name) {
 
         close(pipe_event[0]);
         std::string fd_str = std::to_string(pipe_event[1]);
+        std::string app_name_str(app_name);
 
-        execl("/usr/bin/python", "/usr/bin/python", "-u", this->python_server_path.c_str(), fd_str.c_str(), (char*) nullptr);
+        execl("/usr/bin/python", "/usr/bin/python", "-u", this->python_server_path.c_str(), fd_str.c_str(), app_name_str.c_str(), (char*) nullptr);
 
         // If exec fails
         throw std::runtime_error("Python server could not run");

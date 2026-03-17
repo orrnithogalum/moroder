@@ -58,7 +58,7 @@ async def ensure_mpv(server: "MusicServer"):
         raise RuntimeError(f"mpv launch failed: {e}")
 
     # wait for IPC socket
-    for _ in range(40):  # ~2s
+    for _ in range(20):  # ~1s
         if os.path.exists(server.player_socket):
             break
         await asyncio.sleep(0.05)

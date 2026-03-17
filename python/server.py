@@ -19,7 +19,7 @@ class MusicServer:
     # - Handles streaming via mpv over a Unix IPC socket
     # - Provides player control and search / song info
 
-    def __init__(self, event_fd: int = None):
+    def __init__(self, event_fd: int = None, app_name: str = ""):
         self.ytm_default: YTMusic = YTMusic()
         self.ytm_user: YTMusic | None = None
         self.logged_in: bool = False
@@ -28,8 +28,11 @@ class MusicServer:
         self.player_process: asyncio.subprocess.Process | None = None
         self.player_reader: asyncio.StreamReader | None = None
         self.player_writer: asyncio.StreamWriter | None = None
-        self.player_socket: str = "/tmp/mpv_socket"
+        self.player_socket: str = f"/tmp/{app_name}_socket"
         self.current_song: str | None = None
+
+        if(os.path.exists(self.player_socket)):
+            os.remove(self.player_socket)
 
         # mpv
         self.mpv_pending: dict[int, asyncio.Future] = {}
