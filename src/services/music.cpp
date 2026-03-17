@@ -204,8 +204,8 @@ ipc::ControlResponse services::Music::setPosition(const uint64_t position) {
     );
 }
 
-ipc::ControlResponse services::Music::backward(const uint64_t duration) {
-    ipc::ControlRequest request("backward", duration);
+ipc::ControlResponse services::Music::seekBackward(const uint64_t duration) {
+    ipc::ControlRequest request("seek-backward", duration);
 
     return send<ipc::ControlResponse>(
         request,
@@ -213,12 +213,30 @@ ipc::ControlResponse services::Music::backward(const uint64_t duration) {
     );
 }
 
-ipc::ControlResponse services::Music::forward(const uint64_t duration) {
-    ipc::ControlRequest request("forward", duration);
+ipc::ControlResponse services::Music::seekForward(const uint64_t duration) {
+    ipc::ControlRequest request("seek-forward", duration);
 
     return send<ipc::ControlResponse>(
         request,
         "Python server returned empty on command: forward " + std::to_string(duration)
+    );
+}
+
+ipc::ControlResponse services::Music::skipBackward() {
+    ipc::ControlRequest request("skip-backward");
+
+    return send<ipc::ControlResponse>(
+        request,
+        "Python server returned empty on command: skip-backward"
+    );
+}
+
+ipc::ControlResponse services::Music::skipForward() {
+    ipc::ControlRequest request("skip-forward");
+
+    return send<ipc::ControlResponse>(
+        request,
+        "Python server returned empty on command: forward"
     );
 }
 

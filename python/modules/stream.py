@@ -14,126 +14,100 @@ import asyncio
 import os
 
 
-def get_audio_url(id):
-    # get_audio_url
-    # - Resolves the best audio stream URL from a YouTube video
-    # - Uses yt-dlp with quiet mode to avoid flooding stdout
+def get_audio_url(id: str):
     url = f"https://www.youtube.com/watch?v={id}"
 
     try:
-        with YoutubeDL({"format": "bestaudio/best", "quiet": True, "no_warnings": True}) as ydl:
+        with YoutubeDL({
+            "format": "bestaudio/best",
+            "quiet": True,
+            "no_warnings": True
+        }) as ydl:
             info = ydl.extract_info(url, download=False)
-            duration_ms = int(info.get("duration", 0) * 1000 * 1000)
-            
-            return info["url"], duration_ms
+
+            duration_micros = int(info.get("duration", 0) * 1000 * 1000)
+
+            return info["url"], duration_micros
+
     except Exception as e:
         raise RuntimeError(f"yt-dlp extraction failed: {e}")
 
 
-async def stream(server: MusicServer, id: str):
-    # stream
-    # - Stops any currently playing song
-    # - Cleans up old IPC socket
-    # - Launches mpv in no-video mode with IPC server
-    # - Uses cache (--cache=yes and --cache-secs=5) to prevent audio clipping on stream start(?) don't know if that really works
-    # - Connects to mpv via asyncio UNIX socket
-    # - Updates server player state
-    # - Returns status dict with "ok" or "error" messages
+async def ensure_mpv(server: "MusicServer"):
+    # Start mpv only if not already running
+    if server.player_process:
+        return
+
     try:
-        # stop existing playback if active
-        if server.player_process:
-            try:
-                server.player_process.terminate()
-                await server.player_process.wait()
-            except Exception:
-                pass
+        proc = await asyncio.create_subprocess_exec(
+            "mpv",
+            "--no-video",
+            "--no-config",
+            "--idle=yes",
+            "--cache=yes",
+            "--cache-secs=10",
+            "--prefetch-playlist=yes",
+            "--playlist-start=0",
+            f"--input-ipc-server={server.player_socket}",
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL
+        )
+    except FileNotFoundError:
+        raise RuntimeError("mpv not installed")
+    except Exception as e:
+        raise RuntimeError(f"mpv launch failed: {e}")
 
-            try:
-                if server.player_writer:
-                    server.player_writer.close()
-                    await server.player_writer.wait_closed()
-            except Exception:
-                pass
+    # wait for IPC socket
+    for _ in range(40):  # ~2s
+        if os.path.exists(server.player_socket):
+            break
+        await asyncio.sleep(0.05)
+    else:
+        proc.terminate()
+        raise RuntimeError("mpv IPC socket not created")
 
-            server.player_process = None
-            server.player_reader = None
-            server.player_writer = None
-            server.current_song = None
+    try:
+        reader, writer = await asyncio.open_unix_connection(server.player_socket)
+    except Exception as e:
+        proc.terminate()
+        raise RuntimeError(f"IPC connection failed: {e}")
 
-        if server.mpv_reader_task:
-            server.mpv_reader_task.cancel()
-            try:
-                await server.mpv_reader_task
-            except asyncio.CancelledError:
-                pass
-            server.mpv_reader_task = None
+    server.player_process = proc
+    server.player_reader = reader
+    server.player_writer = writer
 
+    server.mpv_reader_task = asyncio.create_task(server.mpv_reader_loop())
+
+
+async def stream(server: "MusicServer", id: str):
+    try:
         # resolve audio URL
         try:
-            audio_url, duration_ms = await asyncio.to_thread(get_audio_url, id)
+            audio_url, duration_micros = await asyncio.to_thread(get_audio_url, id)
         except Exception as e:
             return {"status": "error", "message": str(e)}
 
-        # remove old socket if present
+        # ensure mpv is running
         try:
-            if os.path.exists(server.player_socket):
-                os.unlink(server.player_socket)
-        except FileNotFoundError:
-            pass
+            await ensure_mpv(server)
         except Exception as e:
-            return {"status": "error", "message": f"socket cleanup failed: {e}"}
+            return {"status": "error", "message": str(e)}
 
-        # start mpv
         try:
-            proc = await asyncio.create_subprocess_exec(
-                "mpv",
-                "--no-video",
-                "--no-config",
-                "--idle=yes",
-                "--cache=yes",
-                "--cache-secs=5",
-                f"--input-ipc-server={server.player_socket}",
-                audio_url,
-                stdout=asyncio.subprocess.DEVNULL,
-                stderr=asyncio.subprocess.DEVNULL
-            )
-        except FileNotFoundError:
-            return {"status": "error", "message": "mpv not installed"}
-        except Exception as e:
-            return {"status": "error", "message": f"mpv launch failed: {e}"}
-
-        # wait for IPC socket
-        try:
-            for _ in range(20):  # ~1 second
-                if os.path.exists(server.player_socket):
-                    break
-                await asyncio.sleep(0.05)
+            if server.current_song is None:
+                # nothing playing → replace
+                await server.send_cmd(["loadfile", audio_url, "replace"])
+                server.current_song = id
             else:
-                proc.terminate()
-                return {"status": "error", "message": "mpv IPC socket not created"}
+                # already playing → queue
+                await server.send_cmd(["loadfile", audio_url, "append-play"])
         except Exception as e:
-            proc.terminate()
-            return {"status": "error", "message": f"socket wait failed: {e}"}
-
-        # connect IPC
-        try:
-            reader, writer = await asyncio.open_unix_connection(server.player_socket)
-        except Exception as e:
-            proc.terminate()
-            return {"status": "error", "message": f"IPC connection failed: {e}"}
-
-        # update server state
-        server.player_process = proc
-        server.player_reader = reader
-        server.player_writer = writer
-        server.current_song = id
-
-        server.mpv_reader_task = asyncio.create_task(server.mpv_reader_loop())
+            return {"status": "error", "message": f"mpv command failed: {e}"}
 
         return {
             "status": "ok",
             "id": id,
-            "duration": duration_ms
+            "duration": duration_micros,
         }
 
     except Exception as e:

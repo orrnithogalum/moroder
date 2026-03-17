@@ -19,7 +19,7 @@ public:
     - Shared player state between all threads
     */
     struct PlayerState {
-        std::deque<music::SongRef> song_queue;
+        std::deque<music::Song> song_queue;
 
         std::vector<ipc::SearchResult> search_results;
         music::Song current_song;
@@ -39,8 +39,15 @@ public:
     struct Command {
         enum Type {
             Empty,
+            Queue,
             Search,
             Stream,
+
+            SkipBackward,
+            SkipForward,
+
+            // SeekForward,
+            // SeekBackward
         };
 
         Type type;
@@ -50,8 +57,8 @@ public:
         music::SongRef song;
 
         explicit Command() : type(Empty) {}
-        explicit Command(const std::string& q) : type(Search), query(q) {}
-        explicit Command(const music::SongRef& s) : type(Stream), song(s) {}
+        explicit Command(const std::string& q) : query(q), type(Search) {}
+        explicit Command(const music::SongRef& s, Type t) : song(s), type(t) {}
     };
 
     PlayerState state;
@@ -63,10 +70,11 @@ public:
     /* Player controls
     - Basic playback operations
     */
-    void skipSongForward();
-    void skipSongBackward();
+    void skipForward();
+    void skipBackward();
 
     void search(const std::string& query);
+    void queue(const music::SongRef& song);
     void stream(const music::SongRef& song);
     
     void queueSong(const music::SongRef& song);
@@ -107,6 +115,13 @@ private:
     - Updates the mpris buttons (activated / deactivated) based on queue position.
     */
     void updateMprisControls();
+
+    /* update...Data
+    - Updates the album / thumbnail / other song data to external services.
+    */
+    void updateMprisData();
+    void updateSocialData();
+
 };
 
 }

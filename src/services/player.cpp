@@ -66,9 +66,9 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
         state.song_position += p;
         
         if(p < 0) {
-            music_service->backward(p);
+            music_service->seekBackward(p);
         } else {
-            music_service->forward(p);
+            music_service->seekForward(p);
         }
 
         social_service->setPosition(state.song_position);  
@@ -87,11 +87,11 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
     mpris_service->onShuffleChanged([&] (bool shuffle) { });
 
     mpris_service->onNext([this](){
-        skipSongForward();
+        skipForward();
     });
 
     mpris_service->onPrevious([this](){
-        skipSongBackward();
+        skipBackward();
     });
 
     mpris_service->setIsNextPossible(false);
@@ -100,12 +100,22 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
     mpris_service->startLoopAsync();
     
     music_service->setOnStreamDone([this] {
+        bool should_skip = false;
         {
             std::lock_guard lock(state_mutex);
-            this->state.is_loading_song = false;
-            this->state.is_streaming_audio = false;
+            this->state.queue_position++;
+            
+            if (state.queue_position < state.song_queue.size()) {
+                state.current_song = state.song_queue[state.queue_position];
+                should_skip = true;
+            }
         }
-        skipSongForward();
+
+        if(should_skip) {
+            this->updateMprisControls();
+            this->updateMprisData();
+            this->updateSocialData();
+        }
     });
 }
 
@@ -148,40 +158,49 @@ void services::Player::worker_loop() {
         }
 
         case Command::Stream: {
-            music::Song video = music_service->getSong(cmd.song).song;
+            music::Song song = music_service->getSong(cmd.song).song;
             ipc::StreamResponse response = music_service->stream(cmd.song);
-
-            video.duration = response.duration;
+            song.duration = response.duration;
 
             {
                 std::lock_guard lock(state_mutex);
+                state.song_queue.push_back(song);
+            
                 state.is_streaming_audio = true;
                 state.is_loading_song = false;
-                state.current_song = video;
+                state.current_song = song;
                 state.song_position = 0;
             }
 
             this->updateMprisControls();
 
-            mpris_service->setMetadata({
-                { services::Field::TrackId, sdbus::Variant(services::OBJECT_PATH + "/track/" + video.ref.id) },
-                { services::Field::Album,   sdbus::Variant(video.album_title) },
-                { services::Field::Title,   sdbus::Variant(video.ref.title) },
-                { services::Field::Artist,  sdbus::Variant(video.ref.artists[0].name) },
-                { services::Field::Length,  sdbus::Variant(video.duration) },
-                { services::Field::ArtUrl,  sdbus::Variant(video.ref.thumbnail) }
-            });
-            mpris_service->setPlaybackStatus(services::PlaybackStatus::Playing);
-            mpris_service->setPosition(0);
-            mpris_service->sendSeekedSignal(0);
+            this->updateMprisData();
+            this->updateSocialData();
 
-            social_service->setStatus(
-                video.ref.title,
-                video.ref.artists[0].name,
-                video.album_title,
-                video.ref.thumbnail,
-                video.duration
-            );
+            break;
+        }
+
+        case Command::Queue: {
+            music::Song song = music_service->getSong(cmd.song).song;
+            ipc::StreamResponse response = music_service->stream(cmd.song);
+            song.duration = response.duration;
+
+            {
+                std::lock_guard lock(state_mutex);
+                state.song_queue.push_back(song);
+            }
+
+            this->updateMprisControls();
+
+            break;
+        }
+
+        case Command::SkipBackward: {
+
+        }
+
+        case Command::SkipForward: {
+
         }
 
         }
@@ -223,7 +242,16 @@ void services::Player::stream(const music::SongRef& song) {
 
     {
         std::lock_guard lock(command_mutex);
-        command_queue.push(Command(song));
+        command_queue.push(Command(song, Command::Stream));
+    }
+
+    command_cv.notify_one();
+}
+
+void services::Player::queue(const music::SongRef& song) {
+    {
+        std::lock_guard lock(command_mutex);
+        command_queue.push(Command(song, Command::Queue));
     }
 
     command_cv.notify_one();
@@ -235,30 +263,25 @@ void services::Player::queueSong(const music::SongRef& song) {
     {
         std::lock_guard lock(state_mutex);
 
-        state.song_queue.push_back(song);
-
         if (!state.is_streaming_audio && !state.is_loading_song) {
-            /* Bug fix:
-            - Let a song play to it's end.
-            - Once the song is finished, queue another song.
-            - Queue position was wrong. The following line fixes that.
-            - Forces queue position to last position.
-            */
-            state.queue_position = state.song_queue.size() - 1;
             should_stream = true;
         }
     }
 
-    updateMprisControls();
+    this->updateMprisControls();
 
-    if (should_stream)
+    if (should_stream) {
         stream(song);
-
-    spdlog::info("Queued song: " + song.title + " by " + song.artists[0].name);
+        spdlog::info("Stream song: " + song.title + " by " + song.artists[0].name);
+    
+    } else {
+        queue(song);
+        spdlog::info("Queued song: " + song.title + " by " + song.artists[0].name);
+    }
 }
 
-void services::Player::skipSongForward() {
-    music::SongRef next_song;
+void services::Player::skipForward() {
+    music::Song next_song;
     bool should_skip = true;
 
     {
@@ -272,31 +295,45 @@ void services::Player::skipSongForward() {
         } else {
             state.queue_position++;
             next_song = state.song_queue[state.queue_position];
+            state.current_song = next_song;
         }
 
     }
 
     if(should_skip) {
-        stream(next_song);
+        music_service->skipForward();
+        this->updateMprisControls();
+        this->updateMprisData();
+        this->updateSocialData();
     }
 }
 
-void services::Player::skipSongBackward() {
-    music::SongRef previous_song;
+void services::Player::skipBackward() {
+    music::Song previous_song;
+    bool should_skip = true;
 
     {
         std::lock_guard lock(state_mutex);
 
         if (state.queue_position == 0 || state.song_queue.empty()) {
-            spdlog::warn("Tried to skip to previous song, but already at start of queue.");
-            return;
-        }
+            state.is_streaming_audio = false;
+            should_skip = false;
 
-        state.queue_position--;
-        previous_song = state.song_queue[state.queue_position];
+            spdlog::warn("Tried to skip to previous song, but already at start of queue.");
+        
+        } else {
+            state.queue_position--;
+            previous_song = state.song_queue[state.queue_position];
+            state.current_song = previous_song;
+        }
     }
 
-    stream(previous_song);
+    if(should_skip) {
+        music_service->skipBackward();
+        this->updateMprisControls();
+        this->updateMprisData();
+        this->updateSocialData();
+    }
 }
 
 void services::Player::updateMprisControls() {
@@ -306,4 +343,42 @@ void services::Player::updateMprisControls() {
         mpris_service->setIsPreviousPossible(state.queue_position > 0 && state.song_queue.size() > 1);
         mpris_service->updatePlayerControls();
     }
+}
+
+void services::Player::updateMprisData() {
+    music::Song video;
+
+    {
+        std::lock_guard lock(state_mutex);  
+        video = state.current_song;
+    }
+
+    mpris_service->setMetadata({
+        { services::Field::TrackId, sdbus::Variant(services::OBJECT_PATH + "/track/" + video.ref.id) },
+        { services::Field::Album,   sdbus::Variant(video.album_title) },
+        { services::Field::Title,   sdbus::Variant(video.ref.title) },
+        { services::Field::Artist,  sdbus::Variant(video.ref.artists[0].name) },
+        { services::Field::Length,  sdbus::Variant(video.duration) },
+        { services::Field::ArtUrl,  sdbus::Variant(video.ref.thumbnail) }
+    });
+    mpris_service->setPlaybackStatus(services::PlaybackStatus::Playing);
+    mpris_service->setPosition(0);
+    mpris_service->sendSeekedSignal(0);
+}
+
+void services::Player::updateSocialData() {
+    music::Song video;
+
+    {
+        std::lock_guard lock(state_mutex);  
+        video = state.current_song;
+    }
+
+    social_service->setStatus(
+        video.ref.title,
+        video.ref.artists[0].name,
+        video.album_title,
+        video.ref.thumbnail,
+        video.duration
+    );
 }

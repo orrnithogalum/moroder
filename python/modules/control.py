@@ -5,6 +5,8 @@
 
 from typing import TYPE_CHECKING
 
+import os
+
 if TYPE_CHECKING:
     from server import MusicServer
 
@@ -45,7 +47,7 @@ async def control(server: MusicServer, command: str):
         # Resume playback
         await server.send_cmd(["set_property", "pause", False])
 
-    elif command.startswith("forward"):
+    elif command.startswith("seek-forward"):
         # Seek forward a given number of microseconds (int)
         parts = command.split()
         if len(parts) != 2:
@@ -60,7 +62,7 @@ async def control(server: MusicServer, command: str):
 
         await server.send_cmd(["seek", seconds, "relative"])
 
-    elif command.startswith("backward"):
+    elif command.startswith("seek-backward"):
         # Seek backward a given number of microseconds (int)
         parts = command.split()
         if len(parts) != 2:
@@ -73,6 +75,25 @@ async def control(server: MusicServer, command: str):
             return {"status": "error", "message": "Invalid number"}
 
         await server.send_cmd(["seek", seconds, "relative"])
+
+    elif command == "skip-forward":
+        # Skip to next song in mpv playlist
+        try:
+            await server.send_cmd(["playlist-next", "force"])
+            return {"status": "ok"}
+        
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+
+    elif command == "skip-backward":
+        # Go to previous song in mpv playlist
+        try:
+            await server.send_cmd(["playlist-prev", "force"])
+            return {"status": "ok"}
+
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
 
     elif command.startswith("setpos"):
         # Set position in song for a given position in microseconds (int)
@@ -92,6 +113,8 @@ async def control(server: MusicServer, command: str):
         # Terminate the mpv player process
         server.player_process.terminate()
         await server.player_process.wait()
+
+        os.remove(server.player_socket)
 
         return {"status": "ok", "stopped": True}
 
