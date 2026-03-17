@@ -196,11 +196,21 @@ void services::Player::worker_loop() {
         }
 
         case Command::SkipBackward: {
+            music_service->skipBackward();
+            this->updateMprisControls();
+            this->updateMprisData();
+            this->updateSocialData();
 
+            break;
         }
 
         case Command::SkipForward: {
-
+            music_service->skipForward();
+            this->updateMprisControls();
+            this->updateMprisData();
+            this->updateSocialData();
+            
+            break;
         }
 
         }
@@ -235,11 +245,6 @@ void services::Player::search(const std::string& query) {
 }
 
 void services::Player::stream(const music::SongRef& song) {
-    {
-        std::lock_guard lock(state_mutex);
-        state.is_loading_song = true;
-    }
-
     {
         std::lock_guard lock(command_mutex);
         command_queue.push(Command(song, Command::Stream));
@@ -301,10 +306,12 @@ void services::Player::skipForward() {
     }
 
     if(should_skip) {
-        music_service->skipForward();
-        this->updateMprisControls();
-        this->updateMprisData();
-        this->updateSocialData();
+        {
+            std::lock_guard lock(command_mutex);
+            command_queue.push(Command(Command::SkipForward));
+        }
+
+        command_cv.notify_one();
     }
 }
 
@@ -329,10 +336,12 @@ void services::Player::skipBackward() {
     }
 
     if(should_skip) {
-        music_service->skipBackward();
-        this->updateMprisControls();
-        this->updateMprisData();
-        this->updateSocialData();
+        {
+            std::lock_guard lock(command_mutex);
+            command_queue.push(Command(Command::SkipBackward));
+        }
+
+        command_cv.notify_one();
     }
 }
 

@@ -57,8 +57,10 @@ public:
         music::SongRef song;
 
         explicit Command() : type(Empty) {}
+        explicit Command(Type t) : type(t) {}
         explicit Command(const std::string& q) : query(q), type(Search) {}
         explicit Command(const music::SongRef& s, Type t) : song(s), type(t) {}
+        
     };
 
     PlayerState state;
