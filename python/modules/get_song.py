@@ -2,10 +2,11 @@
 # - Fetches full song details from iTunes Search API using song title and song artist
 
 from typing import TYPE_CHECKING
-import requests
 
 if TYPE_CHECKING:
     from server import MusicServer
+
+import requests
 
 
 def get_song(server: MusicServer, song_title: str, song_artist: str):
@@ -20,12 +21,10 @@ def get_song(server: MusicServer, song_title: str, song_artist: str):
             "term": f"{song_title} {song_artist}",  # search by song and artist
             "entity": "song",
             "country": "US",
-            "limit": 10
+            "limit": 10,
         }
 
-        headers = {
-            "User-Agent": "moroder/1.0 (LittleBigOwI@github.com)"
-        }
+        headers = {"User-Agent": "moroder/1.0 (LittleBigOwI@github.com)"}
 
         response = requests.get(url, params=params, headers=headers)
         data = response.json()
@@ -44,13 +43,7 @@ def get_song(server: MusicServer, song_title: str, song_artist: str):
             "album": album_title,
         }
 
-        return {
-            "status": "ok",
-            "song": result
-        }
+        return {"status": "ok", "song": result}
 
     except Exception as e:
-        return {
-            "status": "error",
-            "message": str(e)
-        }
+        return {"status": "error", "message": str(e)}

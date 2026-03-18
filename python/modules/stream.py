@@ -18,20 +18,25 @@ def get_audio_url(id: str):
     url = f"https://www.youtube.com/watch?v={id}"
 
     try:
-        with YoutubeDL({
-            "format": "bestaudio/best",
-            "quiet": True,
-            "no_warnings": True
-        }) as ydl:
+        with YoutubeDL(
+            {"format": "bestaudio/best", "quiet": True, "no_warnings": True}
+        ) as ydl:
             info = ydl.extract_info(url, download=False)
 
-            duration_micros = int(info.get("duration", 0) * 1000 * 1000)
+            duration = info.get("duration", 0)
 
-            return info["url"], duration_micros
+            if not duration:
+                duration = 0
+
+            duration_micros = int(duration * 1000 * 1000)
+
+            if "url" in info:
+                return info["url"], duration_micros
+            else:
+                return url, duration_micros
 
     except Exception as e:
         raise RuntimeError(f"yt-dlp extraction failed: {e}")
-
 
 async def ensure_mpv(server: "MusicServer"):
     # Start mpv only if not already running
@@ -50,7 +55,7 @@ async def ensure_mpv(server: "MusicServer"):
             "--playlist-start=0",
             f"--input-ipc-server={server.player_socket}",
             stdout=asyncio.subprocess.DEVNULL,
-            stderr=asyncio.subprocess.DEVNULL
+            stderr=asyncio.subprocess.DEVNULL,
         )
     except FileNotFoundError:
         raise RuntimeError("mpv not installed")
@@ -77,7 +82,6 @@ async def ensure_mpv(server: "MusicServer"):
     server.player_writer = writer
 
     server.mpv_reader_task = asyncio.create_task(server.mpv_reader_loop())
-
 
 async def stream(server: "MusicServer", id: str):
     try:

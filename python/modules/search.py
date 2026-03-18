@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from server import MusicServer
 
+
 def search(server: MusicServer, query: str):
     # search
     # - Uses server.ytm_default to perform a search
@@ -15,10 +16,7 @@ def search(server: MusicServer, query: str):
     # - Returns a dictionary with status and results
     result_limit = 10
     try:
-        results = server.ytm_default.search(
-            query,
-            limit=result_limit
-        )
+        results = server.ytm_default.search(query, limit=result_limit)
 
         # slice to ensure we never exceed the limit
         results = results[:result_limit]

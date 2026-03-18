@@ -5,10 +5,11 @@
 
 from typing import TYPE_CHECKING
 
-import os
-
 if TYPE_CHECKING:
     from server import MusicServer
+
+import os
+
 
 async def get_property(server: MusicServer, prop: str):
     # get_property
@@ -17,7 +18,7 @@ async def get_property(server: MusicServer, prop: str):
 
     if resp and resp.get("error") == "success":
         return resp.get("data")
-    
+
     return None
 
 async def control(server: MusicServer, command: str):
@@ -30,13 +31,13 @@ async def control(server: MusicServer, command: str):
     if command == "stop":
         server.send_event("stop")
 
-    if not server.player_writer or not server.player_reader:
+    if not server.player_writer or not server.player_reader or not server.player_process:
         return {"status": "error", "message": "No active player"}
 
     async def current_position():
         pos = await get_property(server, "playback-time")
         return int(pos * 1000 * 1000) if pos is not None else 0
-    
+
     pos = await current_position()
 
     if command == "pause":
@@ -81,10 +82,9 @@ async def control(server: MusicServer, command: str):
         try:
             await server.send_cmd(["playlist-next", "force"])
             return {"status": "ok"}
-        
+
         except Exception as e:
             return {"status": "error", "message": str(e)}
-
 
     elif command == "skip-backward":
         # Go to previous song in mpv playlist
@@ -120,13 +120,7 @@ async def control(server: MusicServer, command: str):
 
     else:
         # Unknown command
-        return {
-            "status": "error",
-            "message": f"Unknown control: {command}"
-        }
-    
+        return {"status": "error", "message": f"Unknown control: {command}"}
+
     # Command succeeded
-    return {
-        "status": "ok",
-        "position": pos
-    }
+    return {"status": "ok", "position": pos}
