@@ -1,6 +1,5 @@
 #include "../../include/services/player.hpp"
 
-#include <mutex>
 #include <spdlog/spdlog.h>
 
 services::Player::Player(const std::string_view& app_name, const std::string_view& app_name_human, const uint64_t app_id) {
@@ -103,6 +102,11 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
         bool should_skip = false;
         {
             std::lock_guard lock(state_mutex);
+
+            /* Since we use mpv playlist feature for buffering, we need to increment queue position no matter what.
+            - This means that queue position can be equal or greater than the queue size
+            - So we check for that.
+            */
             this->state.queue_position++;
             
             if (state.queue_position < state.song_queue.size()) {

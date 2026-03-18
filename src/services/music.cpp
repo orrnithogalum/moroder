@@ -62,7 +62,7 @@ services::Music::Music(const std::string_view& app_name) {
     spdlog::info("Python server starting...");
 
     fs::path installed = std::string("/usr/share/") + std::string(app_name) + "/python/main.py";
-    fs::path dev = YTM_DEV_PYTHON_PATH;
+    fs::path dev = MORODER_DEV_PYTHON_PATH;
 
     if (fs::exists(installed)) {
         this->python_server_path = installed.string();
@@ -86,12 +86,14 @@ services::Music::Music(const std::string_view& app_name) {
     }
 
     if (this->python_pid == 0) {
+        // redirect stdin
         close(pipe_stdin[1]);
-        dup2(pipe_stdin[0], STDIN_FILENO);   // redirect stdin
+        dup2(pipe_stdin[0], STDIN_FILENO); 
         close(pipe_stdin[0]);
 
+        // redirect stdout
         close(pipe_stdout[0]);
-        dup2(pipe_stdout[1], STDOUT_FILENO); // redirect stdout
+        dup2(pipe_stdout[1], STDOUT_FILENO);
         close(pipe_stdout[1]);
 
         close(pipe_event[0]);

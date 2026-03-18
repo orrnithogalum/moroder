@@ -72,7 +72,7 @@ set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 set(CMAKE_INSTALL_RPATH "$ORIGIN")
 
 target_compile_definitions(${PROJECT_NAME}
-    PRIVATE YTM_DEV_PYTHON_PATH="${CMAKE_SOURCE_DIR}/python/main.py"
+    PRIVATE MORODER_DEV_PYTHON_PATH="${CMAKE_SOURCE_DIR}/python/main.py"
 )
 
 target_compile_options(${PROJECT_NAME} PRIVATE

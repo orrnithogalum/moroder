@@ -52,7 +52,9 @@ public:
 
         Type type;
 
-        // We could use std::variant here, but no real use.
+        /* We could use std::variant here, but I'm too lazy.
+        - Problem for future me.
+        */
         std::string query;
         music::SongRef song;
 
@@ -123,7 +125,6 @@ private:
     */
     void updateMprisData();
     void updateSocialData();
-
 };
 
 }
