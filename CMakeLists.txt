@@ -14,6 +14,9 @@ set(DISCORD_SDK_INCLUDE_DIR "${DISCORD_SDK_ROOT}/include")
 set(DISCORD_LIB_PATH "${DISCORD_SDK_LIB_DIR}/libdiscord_partner_sdk.so")
 set(DISCORD_SHARED_LIB "${DISCORD_SDK_LIB_DIR}/libdiscord_partner_sdk.so")
 
+# Compile with cmake -DMORODER_DEV=OFF .. for release builds
+option(MORODER_DEV "Enable dev build" ON)
+
 include(FetchContent)
 
 FetchContent_Declare(
@@ -56,7 +59,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${DISCORD_SDK_INCLUDE_DIR})
 
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-    
+
     spdlog::spdlog
     nlohmann_json::nlohmann_json
     SDBusCpp::sdbus-c++
@@ -71,9 +74,19 @@ target_link_libraries(${PROJECT_NAME}
 set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 set(CMAKE_INSTALL_RPATH "$ORIGIN")
 
-target_compile_definitions(${PROJECT_NAME}
-    PRIVATE MORODER_DEV_PYTHON_PATH="${CMAKE_SOURCE_DIR}/python/main.py"
-)
+if(MORODER_DEV)
+    target_compile_definitions(${PROJECT_NAME}
+        PRIVATE
+        MORODER_PYTHON_PATH="${CMAKE_SOURCE_DIR}/python"
+        MORODER_LOG_PATH="${CMAKE_SOURCE_DIR}/logs"
+    )
+else()
+    target_compile_definitions(${PROJECT_NAME}
+        PRIVATE
+        MORODER_PYTHON_PATH="$ENV{HOME}/.local/share/moroder/python"
+        MORODER_LOG_PATH="$ENV{HOME}/.local/share/moroder/logs"
+    )
+endif()
 
 target_compile_options(${PROJECT_NAME} PRIVATE
     $<$<CONFIG:Release>:-O3>
@@ -86,5 +99,3 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 )
 
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION bin)
-
-install(DIRECTORY python/ DESTINATION share/moroder/python)

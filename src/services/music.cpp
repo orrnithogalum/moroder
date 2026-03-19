@@ -36,7 +36,7 @@ void services::Music::event_worker(int fd) {
 
             std::string line = raw.substr(start, end - start);
             start = end + 1;
-            
+
             if (line.empty()) {
                 continue;
             }
@@ -61,17 +61,12 @@ services::Music::Music(const std::string_view& app_name) {
 
     spdlog::info("Python server starting...");
 
-    fs::path installed = std::string("/usr/share/") + std::string(app_name) + "/python/main.py";
-    fs::path dev = MORODER_DEV_PYTHON_PATH;
+    fs::path python_script_path = std::string(MORODER_PYTHON_PATH) + "/main.py";
 
-    if (fs::exists(installed)) {
-        this->python_server_path = installed.string();
-
-    } else if (fs::exists(dev)) {
-        this->python_server_path = dev.string();
-    
+    if (fs::exists(python_script_path)) {
+    	this->python_server_path = python_script_path.string();
     } else {
-        throw std::runtime_error("Python server not found");
+    	throw std::runtime_error("Python script wasn't found at " + python_script_path.string());
     }
 
     spdlog::info("Python path: " + this->python_server_path);
@@ -88,7 +83,7 @@ services::Music::Music(const std::string_view& app_name) {
     if (this->python_pid == 0) {
         // redirect stdin
         close(pipe_stdin[1]);
-        dup2(pipe_stdin[0], STDIN_FILENO); 
+        dup2(pipe_stdin[0], STDIN_FILENO);
         close(pipe_stdin[0]);
 
         // redirect stdout

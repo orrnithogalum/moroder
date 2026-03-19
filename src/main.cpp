@@ -3,6 +3,7 @@
 
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/spdlog.h>
+#include <iostream>
 
 #include "../include/services/player.hpp"
 
@@ -11,8 +12,21 @@
 
 using namespace ftxui;
 
-int main(int argc, char* argv[]) {
-    auto logger = spdlog::basic_logger_mt(APP_NAME, std::string("logs/") + APP_NAME + ".log", true);
+void ensure_dir(const std::filesystem::path& path) {
+    std::error_code ec;
+
+    if (!std::filesystem::exists(path, ec)) {
+        if (!std::filesystem::create_directories(path, ec)) {
+            std::cerr << "Failed to create: " << path << " (" << ec.message() << ")\n";
+        }
+    }
+}
+
+int main(int argc, char *argv[]) {
+  	ensure_dir(MORODER_PYTHON_PATH);
+  	ensure_dir(MORODER_LOG_PATH);
+
+    auto logger = spdlog::basic_logger_mt(APP_NAME, std::string(MORODER_LOG_PATH) + "/" + APP_NAME + ".log", true);
     logger->flush_on(spdlog::level::info); // flush on every info or higher
     spdlog::set_default_logger(logger);
 
@@ -48,9 +62,9 @@ int main(int argc, char* argv[]) {
                     std::visit([&](auto&& data) {
                         using T = std::decay_t<decltype(data)>;
                         if constexpr (std::is_same_v<T, music::SongRef>) {
-                            
+
                             player.queueSong(data);
-                            
+
                         }
                     }, r.data);
                 }
@@ -60,7 +74,7 @@ int main(int argc, char* argv[]) {
                 selected_index = 0;
             }
             return true;
-        
+
         } else if (event == Event::ArrowDown) {
             if (!results.empty()) {
                 browsing_results = true;
