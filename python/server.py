@@ -19,10 +19,8 @@ class MusicServer:
     # - Handles streaming via mpv over a Unix IPC socket
     # - Provides player control and search / song info
 
-    def __init__(self, event_fd: int = 0, app_name: str = ""):
-        self.ytm_default: YTMusic = YTMusic()
-        self.ytm_user: YTMusic | None = None
-        self.logged_in: bool = False
+    def __init__(self, event_fd: int = 0, app_name: str = "", cookies_path: str = ""):
+        self.login(cookies_path)
 
         # player state
         self.player_process: asyncio.subprocess.Process | None = None
@@ -117,12 +115,12 @@ class MusicServer:
         # - Marks server as logged in if successful
         # - Currently unused
         try:
-            self.ytm_user = YTMusic(credentials_path)
+            self.ytm = YTMusic(credentials_path)
             self.logged_in = True
-            return {"status": "ok"}
 
-        except Exception as e:
-            return {"status": "error", "message": str(e)}
+        except Exception:
+            self.ytm = YTMusic()
+            self.logged_in = False
 
     def search(self, query: str):
         # search

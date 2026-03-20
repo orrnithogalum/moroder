@@ -108,7 +108,25 @@ services::Music::Music(const std::string_view& app_name) {
         std::string fd_str = std::to_string(pipe_event[1]);
         std::string app_name_str(app_name);
 
-        execl("/usr/bin/python", "/usr/bin/python", "-u", this->python_server_path.c_str(), fd_str.c_str(), app_name_str.c_str(), (char*) nullptr);
+        auto cookies_path = (cfg.COOKIES_PATH) / "browser.json";
+
+        if(std::filesystem::exists(cookies_path)) {
+            spdlog::info("Python server found cookies at " + cookies_path.string());
+        } else {
+            spdlog::warn("Python server couldn't find cookies at " + cookies_path.string());
+            cookies_path = "";
+        }
+
+        execl(
+            "/usr/bin/python",
+            "/usr/bin/python",
+            "-u",
+            this->python_server_path.c_str(),
+            fd_str.c_str(),
+            app_name_str.c_str(),
+            cookies_path.c_str(),
+            (char*) nullptr
+        );
 
         // If exec fails
         throw std::runtime_error("Python server could not run");

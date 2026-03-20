@@ -25,6 +25,9 @@ public:
 
     std::string LASTFM_API_KEY;
 
+    fs::path COOKIES_PATH;
+    fs::path CACHE_PATH;
+
     /* Lazy initialization using a lambda:
     - Ensures config is loaded once at first access
     - If the config file does not exist, create it with defaults
@@ -67,6 +70,17 @@ public:
     }
 
 private:
+    // handles ~ in paths
+    inline static fs::path expand_user(const std::string& path) {
+        if (!path.empty() && path[0] == '~') {
+            const char* home = std::getenv("HOME");
+            if (home) {
+                return fs::path(home) / path.substr(2);
+            }
+        }
+        return fs::path(path);
+    }
+
     // Returns path to ~/.config/moroder/moroder.conf or empty string if HOME not set
     inline static std::string getUserConfigPath() {
         const char* home = getenv("HOME");
@@ -138,6 +152,13 @@ private:
             try {
                 if (key == "LASTFM_API_KEY")
                     cfg.LASTFM_API_KEY = value.substr(1, value.size() - 2);
+
+                else if(key == "COOKIES_PATH")
+                    cfg.COOKIES_PATH = expand_user(value.substr(1, value.size() - 2));
+
+                else if(key == "CACHE_PATH")
+                    cfg.CACHE_PATH = value.substr(1, value.size() - 2);
+
 
             } catch (...) {
                 return std::nullopt;
