@@ -9,19 +9,41 @@ if TYPE_CHECKING:
     from server import MusicServer
 
 
-def search(server: MusicServer, query: str):
+def search(server: MusicServer, query: str, limit: int):
     # search
     # - Uses server.ytm to perform a search
-    # - result_limit caps the number of results returned to prevent cpp buffer overflow
+    # - limit caps the number of results returned
     # - Returns a dictionary with status and results
-    result_limit = 10
     try:
-        results = server.ytm.search(query, limit=result_limit)
+        results = server.ytm.search(query, limit=limit)
 
         # slice to ensure we never exceed the limit
-        results = results[:result_limit]
+        results = results[:limit]
 
         return {"status": "ok", "results": results, "authed": server.logged_in}
 
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+
+async def search_stream(server: MusicServer, query: str, limit: int):
+    try:
+        results = server.ytm.search(query, limit=limit)
+
+        for item in results[:limit]:
+            yield {
+                "type": "search-result",
+                "status": "ok",
+                "data": item
+            }
+
+        yield {
+            "type": "search-done",
+            "status": "ok"
+        }
+
+    except Exception as e:
+        yield {
+            "type": "error",
+            "message": str(e)
+        }

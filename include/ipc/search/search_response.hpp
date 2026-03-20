@@ -11,14 +11,8 @@ public:
 
     explicit SearchResponse() : Response() {}
 
-    explicit SearchResponse(const std::string& raw) : Response(raw) {
-        if (!ok() || !json_.contains("results")) {
-            return;
-        }
-
-        for (const auto& item : json_["results"]) {
-            results.push_back(SearchResult::from_json(item));
-        }
+    void addItem(const nlohmann::json& j) {
+        results.push_back(SearchResult::from_json(j));
     }
 };
 

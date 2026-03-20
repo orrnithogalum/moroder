@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "../../config/config.hpp"
 #include "../request.hpp"
 
 namespace ipc {
@@ -14,8 +15,10 @@ public:
     explicit SearchRequest(const std::string& query) : query_(std::move(query)) {}
 
     nlohmann::json to_json() const override {
+        Config cfg = Config::get();
         return {
             {"action", "search"},
+            {"limit", cfg.SEARCH_RESULT_LIMIT},
             {"query", query_}
         };
     }

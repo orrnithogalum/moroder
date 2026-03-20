@@ -28,6 +28,8 @@ public:
     fs::path COOKIES_PATH;
     fs::path CACHE_PATH;
 
+    int SEARCH_RESULT_LIMIT;
+
     /* Lazy initialization using a lambda:
     - Ensures config is loaded once at first access
     - If the config file does not exist, create it with defaults
@@ -159,6 +161,8 @@ private:
                 else if(key == "CACHE_PATH")
                     cfg.CACHE_PATH = value.substr(1, value.size() - 2);
 
+                else if(key == "SEARCH_RESULT_LIMIT")
+                    cfg.SEARCH_RESULT_LIMIT = std::stoi(value);
 
             } catch (...) {
                 return std::nullopt;

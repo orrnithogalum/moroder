@@ -188,13 +188,68 @@ template<typename ResponseType> ResponseType services::Music::send(const ipc::Re
     return ResponseType(buffer);
 }
 
+#include <nlohmann/json.hpp>
+
 ipc::SearchResponse services::Music::search(const std::string& query) {
     ipc::SearchRequest request(query);
 
-    return send<ipc::SearchResponse>(
-        request,
-        "Python server returned empty on query: " + query
-    );
+    std::string request_string = request.serialize();
+    write(pipe_stdin[1], request_string.c_str(), request_string.size());
+
+    std::string buffer;
+    char temp[4096];
+
+    /* Custom reading pipeline
+    - Read until we receive a search_done result type
+    - This is because search results could easily overflow buffer
+    */
+
+    ipc::SearchResponse response = ipc::SearchResponse();
+
+    bool stop = false;
+    while (!stop) {
+        ssize_t n = read(pipe_stdout[0], temp, sizeof(temp));
+        if (n <= 0) {
+            break;
+        }
+
+        buffer.append(temp, n);
+
+        size_t pos;
+        while ((pos = buffer.find('\n')) != std::string::npos) {
+            std::string line = buffer.substr(0, pos);
+            buffer.erase(0, pos + 1);
+
+            if (line.empty()) continue;
+
+            try {
+                auto j = nlohmann::json::parse(line);
+                spdlog::info(j.dump(4));
+
+                std::string type = j["type"].get<std::string>();
+
+                if (type == "search-result") {
+                    response.addItem(j["data"]);
+                }
+
+                else if (type == "search-done") {
+                    stop = true;
+                    break;
+                }
+
+                else if (type == "error") {
+                    spdlog::error("Search stream error: {}", j.dump());
+                    stop = true;
+                    break;
+                }
+
+            } catch (const std::exception& e) {
+                spdlog::warn("Failed to parse stream line: {}", e.what());
+            }
+        }
+    }
+
+    return response;
 }
 
 ipc::StreamResponse services::Music::stream(const music::SongRef& song) {

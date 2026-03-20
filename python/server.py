@@ -5,7 +5,7 @@
 
 from modules.get_song import get_song
 from modules.control import control
-from modules.search import search
+from modules.search import search, search_stream
 from modules.stream import stream
 from ytmusicapi import YTMusic
 
@@ -122,10 +122,10 @@ class MusicServer:
             self.ytm = YTMusic()
             self.logged_in = False
 
-    def search(self, query: str):
+    def search(self, query: str, limit:int):
         # search
         # - Performs a search via YTMusicAPI
-        return search(self, query)
+        return search(self, query, limit)
 
     def get_song(self, song_title: str, song_artist: str):
         #  get_song
@@ -150,8 +150,15 @@ class MusicServer:
         # - Returns JSON response with status and result
         action = req.get("action")
 
+        # if action == "search":
+        #     return self.search(req.get("query", ""), req.get("limit", 5))
+
         if action == "search":
-            return self.search(req.get("query", ""))
+            query = req.get("query", "")
+            limit = req.get("limit", 10)
+
+            async for msg in search_stream(self, query, limit):
+                print((json.dumps(msg) + "\n"), flush=True)
 
         elif action == "login":
             return self.login(req.get("credentials_path", ""))
