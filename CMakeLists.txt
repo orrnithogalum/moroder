@@ -53,7 +53,29 @@ set(SOURCES
     src/main.cpp
 )
 
+# Embed default config
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/gen)
+
+set(GENERATED_HEADER_NAME defaults)
+set(DEFAULT_CONF ${CMAKE_CURRENT_SOURCE_DIR}/res/${PROJECT_NAME}.default.conf)
+set(GENERATED_HEADER ${CMAKE_CURRENT_BINARY_DIR}/gen/${GENERATED_HEADER_NAME}.hpp)
+
+add_custom_command(
+    OUTPUT ${GENERATED_HEADER}
+
+    COMMAND xxd -i -n ${PROJECT_NAME}_default ${DEFAULT_CONF} > ${GENERATED_HEADER}
+    COMMAND sed -i -E "s/^(unsigned )/inline \\1/" ${GENERATED_HEADER}
+
+    DEPENDS ${DEFAULT_CONF}
+    COMMENT "Embedding default config into ${GENERATED_HEADER}"
+    VERBATIM
+)
+
+add_custom_target(generate_${PROJECT_NAME}_conf_header ALL DEPENDS ${GENERATED_HEADER})
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
+
 add_executable(${PROJECT_NAME} ${SOURCES})
+add_dependencies(${PROJECT_NAME} generate_${PROJECT_NAME}_conf_header)
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${DISCORD_SDK_INCLUDE_DIR})
 
@@ -67,7 +89,6 @@ target_link_libraries(${PROJECT_NAME}
     ftxui::screen
     ftxui::dom
     ftxui::component
-
     ${DISCORD_LIB_PATH}
 )
 

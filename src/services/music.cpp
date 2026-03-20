@@ -5,6 +5,7 @@
 #include "../../include/ipc/search/search_request.hpp"
 #include "../../include/ipc/event/event_response.hpp"
 #include "../../include/ipc/browse/song_request.hpp"
+#include "../../include/config/config.hpp"
 #include "../../include/ipc/request.hpp"
 
 #include <spdlog/spdlog.h>
@@ -58,6 +59,18 @@ void services::Music::event_worker(int fd) {
     }
 }
 services::Music::Music(const std::string_view& app_name) {
+
+    const Config& cfg = Config::get();
+
+    if (!cfg.LASTFM_API_KEY.empty()) {
+        if (setenv("LASTFM_API_KEY", cfg.LASTFM_API_KEY.c_str(), 1) != 0) {
+            spdlog::error("setenv failed");
+
+        } else {
+            std::string masked = cfg.LASTFM_API_KEY.substr(0, 4) + "...";
+            spdlog::info("setenv LASTFM_API_KEY to " + masked);
+        }
+    }
 
     spdlog::info("Python server starting...");
 

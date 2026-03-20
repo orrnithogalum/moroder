@@ -6,6 +6,7 @@
 #include <iostream>
 
 #include "../include/services/player.hpp"
+#include "../include/config/config.hpp"
 
 #define APP_NAME_HUMAN "Moroder"
 #define APP_NAME "moroder"
@@ -23,6 +24,8 @@ void ensure_dir(const std::filesystem::path& path) {
 }
 
 int main(int argc, char *argv[]) {
+    Config::app_name = APP_NAME;
+
   	ensure_dir(MORODER_PYTHON_PATH);
   	ensure_dir(MORODER_LOG_PATH);
 

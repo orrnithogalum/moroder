@@ -7,24 +7,50 @@ if TYPE_CHECKING:
     from server import MusicServer
 
 import requests
+import os
 
 
-def get_song(server: MusicServer, song_title: str, song_artist: str):
-    # get_song
-    # - This filtering is necessary because the full iTunes API response can contain many results
-    # - Extracts key fields: album title.
-    # - Returns a simplified JSON dictionary with status and data
+def get_song(server: "MusicServer", song_title: str, song_artist: str):
+    api_key = os.getenv("LASTFM_API_KEY")
+
+    headers = {"User-Agent": "moroder/1.0 (LittleBigOwI@github.com)"}
+
+    if api_key:
+        try:
+            url = "http://ws.audioscrobbler.com/2.0/"
+            params = {
+                "method": "track.getInfo",
+                "api_key": api_key,
+                "artist": song_artist,
+                "track": song_title,
+                "format": "json",
+            }
+
+            response = requests.get(url, params=params, headers=headers)
+            data = response.json()
+
+            if "error" not in data:
+                track = data.get("track")
+                if track:
+                    album = track.get("album")
+                    if album and album.get("title"):
+                        return {
+                            "status": "ok",
+                            "song": {"album": album["title"]},
+                            "source": "lastfm",
+                        }
+
+        except Exception:
+            pass
+
     try:
         url = "https://itunes.apple.com/search"
-
         params = {
-            "term": f"{song_title} {song_artist}",  # search by song and artist
+            "term": f"{song_title} {song_artist}",
             "entity": "song",
             "country": "US",
             "limit": 10,
         }
-
-        headers = {"User-Agent": "moroder/1.0 (LittleBigOwI@github.com)"}
 
         response = requests.get(url, params=params, headers=headers)
         data = response.json()
@@ -32,18 +58,17 @@ def get_song(server: MusicServer, song_title: str, song_artist: str):
         if not data.get("results"):
             raise Exception("Song not found")
 
-        # Extract album title from the first matching result
         first_result = data["results"][0]
         album_title = first_result.get("collectionName")
 
         if not album_title:
-            raise Exception("No valid album found in the first result")
+            raise Exception("No valid album found")
 
-        result = {
-            "album": album_title,
+        return {
+            "status": "ok",
+            "song": {"album": album_title},
+            "source": "itunes",
         }
-
-        return {"status": "ok", "song": result}
 
     except Exception as e:
         return {"status": "error", "message": str(e)}
