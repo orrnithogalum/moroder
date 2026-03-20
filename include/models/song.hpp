@@ -47,6 +47,10 @@ struct SongRef {
 
         if (j.contains("thumbnails") && j["thumbnails"].is_array() && !j["thumbnails"].empty()) {
             s.thumbnail = j["thumbnails"].back().value("url", "");
+
+        } else if (j.contains("thumbnail") && j["thumbnail"].is_array() && !j["thumbnail"].empty()) {
+            s.thumbnail = j["thumbnail"].back().value("url", "");
+
         } else {
             s.thumbnail = "";
         }

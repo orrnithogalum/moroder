@@ -5,8 +5,9 @@
 
 from modules.get_song import get_song
 from modules.control import control
-from modules.search import search, search_stream
+from modules.search import search
 from modules.stream import stream
+from modules.radio import radio
 from ytmusicapi import YTMusic
 
 import asyncio
@@ -122,11 +123,6 @@ class MusicServer:
             self.ytm = YTMusic()
             self.logged_in = False
 
-    def search(self, query: str, limit:int):
-        # search
-        # - Performs a search via YTMusicAPI
-        return search(self, query, limit)
-
     def get_song(self, song_title: str, song_artist: str):
         #  get_song
         # - Fetches detailed song info via MusicBrainz API
@@ -150,15 +146,19 @@ class MusicServer:
         # - Returns JSON response with status and result
         action = req.get("action")
 
-        # if action == "search":
-        #     return self.search(req.get("query", ""), req.get("limit", 5))
-
         if action == "search":
             query = req.get("query", "")
             limit = req.get("limit", 10)
 
-            async for msg in search_stream(self, query, limit):
-                print((json.dumps(msg) + "\n"), flush=True)
+            async for result in search(self, query, limit):
+                print((json.dumps(result) + "\n"), flush=True)
+
+        elif action == "radio":
+            id = req.get("id", "")
+            limit = req.get("limit", "")
+
+            async for result in radio(self, id, limit):
+                print((json.dumps(result) + "\n"), flush=True)
 
         elif action == "login":
             return self.login(req.get("credentials_path", ""))

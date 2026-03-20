@@ -29,6 +29,7 @@ public:
     fs::path CACHE_PATH;
 
     int SEARCH_RESULT_LIMIT;
+    int RADIO_RESULT_LIMIT;
 
     /* Lazy initialization using a lambda:
     - Ensures config is loaded once at first access
@@ -163,6 +164,9 @@ private:
 
                 else if(key == "SEARCH_RESULT_LIMIT")
                     cfg.SEARCH_RESULT_LIMIT = std::stoi(value);
+
+                else if(key == "RADIO_RESULT_LIMIT")
+                    cfg.RADIO_RESULT_LIMIT = std::stoi(value);
 
             } catch (...) {
                 return std::nullopt;

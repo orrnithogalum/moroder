@@ -10,6 +10,7 @@
 #include "../ipc/search/search_response.hpp"
 #include "../ipc/stream/stream_response.hpp"
 #include "../ipc/browse/song_response.hpp"
+#include "../ipc/radio/radio_response.hpp"
 #include "../models/song.hpp"
 #include "../ipc/request.hpp"
 
@@ -27,6 +28,7 @@ public:
 
     ipc::SearchResponse search(const std::string& query);
     ipc::StreamResponse stream(const music::SongRef& song);
+    ipc::RadioResponse radio(const music::SongRef& song);
 
     /* Player controls
     - Basic playback operations
@@ -46,7 +48,7 @@ public:
     - SongResponse contains a Song object
     */
     ipc::SongResponse getSong(const music::SongRef& ref);
-    
+
     /* stop
     - Ends the mpv process
     */
@@ -77,7 +79,7 @@ private:
     /* buffer
     - temporary storage for the python json response
     */
-    char buffer[16384];
+    char buffer[8192];
 
     /* python_pid
     - PID of the python server (ran in a separate process)
@@ -98,6 +100,11 @@ private:
     - serialized any request, send it, return the response
     */
     template<typename ResponseType> ResponseType send(const ipc::Request& request, const std::string& log);
+    template <typename Request, typename Response> Response sendStreamed(
+        const Request& request,
+        const std::function<void(const nlohmann::json&, Response&)>& handleResponse,
+        const std::string& doneType
+    );
 
     /* event_worker
     - Event polling logic

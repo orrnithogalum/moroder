@@ -66,7 +66,8 @@ int main(int argc, char *argv[]) {
                         using T = std::decay_t<decltype(data)>;
                         if constexpr (std::is_same_v<T, music::SongRef>) {
 
-                            player.queueSong(data);
+                            // player.queueSong(data);
+                            player.radio(data);
 
                         }
                     }, r.data);

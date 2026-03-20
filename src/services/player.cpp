@@ -165,8 +165,8 @@ void services::Player::worker_loop() {
         }
 
         case Command::Stream: {
-            music::Song song = music_service->getSong(cmd.song).song;
-            ipc::StreamResponse response = music_service->stream(cmd.song);
+            music::Song song = music_service->getSong(cmd.song_ref).song;
+            ipc::StreamResponse response = music_service->stream(cmd.song_ref);
             song.duration = response.duration;
 
             {
@@ -187,9 +187,38 @@ void services::Player::worker_loop() {
             break;
         }
 
+        case Command::Radio: {
+            ipc::RadioResponse response = music_service->radio(cmd.song_ref);
+
+            bool should_stream = false;
+
+            {
+                std::lock_guard lock(state_mutex);
+
+                if (!state.is_streaming_audio && !state.is_loading_song) {
+                    should_stream = true;
+                }
+            }
+
+            for (const music::SongRef& ref : response.results) {
+                {
+                    std::lock_guard lock(command_mutex);
+                    command_queue.push(Command(ref, should_stream ? Command::Stream : Command::Queue));
+                }
+
+                if(should_stream) {
+                    should_stream = false;
+                }
+            }
+
+            command_cv.notify_one();
+
+            break;
+        }
+
         case Command::Queue: {
-            music::Song song = music_service->getSong(cmd.song).song;
-            ipc::StreamResponse response = music_service->stream(cmd.song);
+            music::Song song = music_service->getSong(cmd.song_ref).song;
+            ipc::StreamResponse response = music_service->stream(cmd.song_ref);
             song.duration = response.duration;
 
             {
@@ -251,6 +280,15 @@ void services::Player::search(const std::string& query) {
     command_cv.notify_one();
 }
 
+void services::Player::radio(const music::SongRef& song) {
+    {
+        std::lock_guard lock(command_mutex);
+        command_queue.push(Command(song, Command::Radio));
+    }
+
+    command_cv.notify_one();
+}
+
 void services::Player::stream(const music::SongRef& song) {
     {
         std::lock_guard lock(command_mutex);
@@ -261,15 +299,6 @@ void services::Player::stream(const music::SongRef& song) {
 }
 
 void services::Player::queue(const music::SongRef& song) {
-    {
-        std::lock_guard lock(command_mutex);
-        command_queue.push(Command(song, Command::Queue));
-    }
-
-    command_cv.notify_one();
-}
-
-void services::Player::queueSong(const music::SongRef& song) {
     bool should_stream = false;
 
     {
@@ -287,7 +316,12 @@ void services::Player::queueSong(const music::SongRef& song) {
         spdlog::info("Stream song: " + song.title + " by " + song.artists[0].name);
 
     } else {
-        queue(song);
+        {
+            std::lock_guard lock(command_mutex);
+            command_queue.push(Command(song, Command::Queue));
+        }
+
+        command_cv.notify_one();
         spdlog::info("Queued song: " + song.title + " by " + song.artists[0].name);
     }
 }

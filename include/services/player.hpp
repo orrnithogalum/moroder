@@ -40,6 +40,7 @@ public:
         enum Type {
             Empty,
             Queue,
+            Radio,
             Search,
             Stream,
 
@@ -56,13 +57,13 @@ public:
         - Problem for future me.
         */
         std::string query;
-        music::SongRef song;
+        music::SongRef song_ref;
 
         explicit Command() : type(Empty) {}
         explicit Command(Type t) : type(t) {}
         explicit Command(const std::string& q) : query(q), type(Search) {}
-        explicit Command(const music::SongRef& s, Type t) : song(s), type(t) {}
-        
+        explicit Command(const music::SongRef& s, Type t) : song_ref(s), type(t) {}
+
     };
 
     PlayerState state;
@@ -79,9 +80,8 @@ public:
 
     void search(const std::string& query);
     void queue(const music::SongRef& song);
+    void radio(const music::SongRef& song);
     void stream(const music::SongRef& song);
-    
-    void queueSong(const music::SongRef& song);
 
     using RequestCompletedCallback = std::function<void(Command::Type)>;
 
@@ -94,7 +94,7 @@ private:
     std::condition_variable command_cv;
     std::mutex command_mutex;
     std::thread worker_thread;
-    
+
     bool running = true;
 
     std::queue<Command> command_queue;
@@ -105,7 +105,7 @@ private:
 
     RequestCompletedCallback on_request_completed;
     std::mutex callback_mutex;
-    
+
     void notifyRequestCompleted(Command::Type type) {
         std::lock_guard lock(callback_mutex);
         if (on_request_completed) {
@@ -114,7 +114,7 @@ private:
     }
 
     void worker_loop();
-    
+
     /* updateMprisControls
     - Updates the mpris buttons (activated / deactivated) based on queue position.
     */

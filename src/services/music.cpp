@@ -4,10 +4,13 @@
 #include "../../include/ipc/stream/stream_request.hpp"
 #include "../../include/ipc/search/search_request.hpp"
 #include "../../include/ipc/event/event_response.hpp"
+#include "../../include/ipc/radio/radio_response.hpp"
+#include "../../include/ipc/radio/radio_request.hpp"
 #include "../../include/ipc/browse/song_request.hpp"
 #include "../../include/config/config.hpp"
 #include "../../include/ipc/request.hpp"
 
+#include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 #include <filesystem>
 #include <sys/wait.h>
@@ -188,25 +191,21 @@ template<typename ResponseType> ResponseType services::Music::send(const ipc::Re
     return ResponseType(buffer);
 }
 
-#include <nlohmann/json.hpp>
-
-ipc::SearchResponse services::Music::search(const std::string& query) {
-    ipc::SearchRequest request(query);
-
+template <typename Request, typename Response> Response services::Music::sendStreamed(
+    const Request& request,
+    const std::function<void(const nlohmann::json&, Response&)>& handleResponse,
+    const std::string& doneType
+) {
     std::string request_string = request.serialize();
     write(pipe_stdin[1], request_string.c_str(), request_string.size());
 
     std::string buffer;
     char temp[4096];
 
-    /* Custom reading pipeline
-    - Read until we receive a search_done result type
-    - This is because search results could easily overflow buffer
-    */
-
-    ipc::SearchResponse response = ipc::SearchResponse();
+    Response response;
 
     bool stop = false;
+    int count = 0;
     while (!stop) {
         ssize_t n = read(pipe_stdout[0], temp, sizeof(temp));
         if (n <= 0) {
@@ -224,32 +223,57 @@ ipc::SearchResponse services::Music::search(const std::string& query) {
 
             try {
                 auto j = nlohmann::json::parse(line);
-                spdlog::info(j.dump(4));
 
                 std::string type = j["type"].get<std::string>();
 
-                if (type == "search-result") {
-                    response.addItem(j["data"]);
-                }
-
-                else if (type == "search-done") {
+                if (type == doneType) {
                     stop = true;
                     break;
-                }
-
-                else if (type == "error") {
-                    spdlog::error("Search stream error: {}", j.dump());
+                } else if (type == "error") {
+                    spdlog::error("Stream error: {}", j.dump());
                     stop = true;
                     break;
+                } else {
+                    handleResponse(j, response);
                 }
 
             } catch (const std::exception& e) {
                 spdlog::warn("Failed to parse stream line: {}", e.what());
             }
         }
+        count++;
     }
 
+    spdlog::info("Received " + std::to_string(count) + " entries from stream.");
     return response;
+}
+
+ipc::SearchResponse services::Music::search(const std::string& query) {
+    ipc::SearchRequest request(query);
+
+    return sendStreamed<ipc::SearchRequest, ipc::SearchResponse>(
+        request,
+        [](const nlohmann::json& j, ipc::SearchResponse& response) {
+            if (j["type"] == "search-result") {
+                response.addItem(j["data"]);
+            }
+        },
+        "search-done"
+    );
+}
+
+ipc::RadioResponse services::Music::radio(const music::SongRef& song) {
+    ipc::RadioRequest request(song);
+
+    return sendStreamed<ipc::RadioRequest, ipc::RadioResponse>(
+        request,
+        [](const nlohmann::json& j, ipc::RadioResponse& response) {
+            if (j["type"] == "radio-track") {
+                response.addItem(j["data"]);
+            }
+        },
+        "radio-done"
+    );
 }
 
 ipc::StreamResponse services::Music::stream(const music::SongRef& song) {
