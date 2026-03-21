@@ -65,6 +65,7 @@ struct Song {
     uint64_t duration = 0;
 
     std::string album_title;
+    std::string url;
 
     static Song from_json(const nlohmann::json& j) {
         Song s;

@@ -5,6 +5,7 @@
 
 services::Player::Player(const std::string_view& app_name, const std::string_view& app_name_human, const uint64_t app_id) {
     mpris_service = Mpris::make(app_name);
+    mpv_service = std::make_unique<MPV>();
     music_service = std::make_unique<Music>(app_name);
     social_service = std::make_unique<Social>(app_id);
 
@@ -24,9 +25,8 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
     mpris_service->onPause([&] {
         state.is_streaming_audio = false;
 
-        ipc::ControlResponse control_response = music_service->pause();
+        mpv_service->pause();
         social_service->pause();
-        mpris_service->setPosition(static_cast<uint64_t>(control_response.position));
 
         mpris_service->setPlaybackStatus(services::PlaybackStatus::Paused);
     });
@@ -35,10 +35,10 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
         state.is_streaming_audio = !state.is_streaming_audio;
 
         if(state.is_streaming_audio) {
-            music_service->pause();
+            mpv_service->pause();
             social_service->pause();
         } else {
-            music_service->resume();
+            mpv_service->resume();
             social_service->resume();
         }
 
@@ -47,7 +47,7 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
 
     mpris_service->onStop([&] {
         state.is_streaming_audio = false;
-        music_service->stop();
+        mpv_service->stop();
         social_service->removeStatus();
 
         mpris_service->setPlaybackStatus(services::PlaybackStatus::Stopped);
@@ -55,7 +55,7 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
 
     mpris_service->onPlay([&] {
         state.is_streaming_audio = true;
-        music_service->resume();
+        mpv_service->resume();
         social_service->resume();
         social_service->setPosition(state.song_position);
 
@@ -66,9 +66,9 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
         state.song_position += p;
 
         if(p < 0) {
-            music_service->seekBackward(p);
+            mpv_service->seekBackward(p);
         } else {
-            music_service->seekForward(p);
+            mpv_service->seekForward(p);
         }
 
         social_service->setPosition(state.song_position);
@@ -78,7 +78,7 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
     mpris_service->onSetPosition([&] (int64_t p) {
         state.song_position = p;
 
-        music_service->setPosition(state.song_position);
+        mpv_service->setPosition(state.song_position);
         social_service->setPosition(state.song_position);
         mpris_service->setPosition(state.song_position);
     });
@@ -99,12 +99,14 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
 
     mpris_service->startLoopAsync();
 
-    music_service->setOnStreamDone([this] {
+    mpv_service->setOnSongEnd([this] {
         bool should_skip = false;
         {
             std::lock_guard lock(state_mutex);
 
             state.is_streaming_audio = false;
+            state.is_loading_song = false;
+            state.is_loading_search = false;
 
             /* Since we use mpv playlist feature for buffering, we need to increment queue position no matter what.
             - This means that queue position can be equal or greater than the queue size
@@ -166,8 +168,10 @@ void services::Player::worker_loop() {
 
         case Command::Stream: {
             music::Song song = music_service->getSong(cmd.song_ref).song;
+
             ipc::StreamResponse response = music_service->stream(cmd.song_ref);
             song.duration = response.duration;
+            song.url = response.url;
 
             {
                 std::lock_guard lock(state_mutex);
@@ -179,8 +183,9 @@ void services::Player::worker_loop() {
                 state.song_position = 0;
             }
 
-            this->updateMprisControls();
+            mpv_service->loadFile(song.url);
 
+            this->updateMprisControls();
             this->updateMprisData();
             this->updateSocialData();
 
@@ -226,25 +231,8 @@ void services::Player::worker_loop() {
                 state.song_queue.push_back(song);
             }
 
+            mpv_service->appendFile("https://www.youtube.com/watch?v=" + song.ref.id);
             this->updateMprisControls();
-
-            break;
-        }
-
-        case Command::SkipBackward: {
-            music_service->skipBackward();
-            this->updateMprisControls();
-            this->updateMprisData();
-            this->updateSocialData();
-
-            break;
-        }
-
-        case Command::SkipForward: {
-            music_service->skipForward();
-            this->updateMprisControls();
-            this->updateMprisData();
-            this->updateSocialData();
 
             break;
         }
@@ -309,8 +297,6 @@ void services::Player::queue(const music::SongRef& song) {
         }
     }
 
-    this->updateMprisControls();
-
     if (should_stream) {
         stream(song);
         spdlog::info("Stream song: " + song.title + " by " + song.artists[0].name);
@@ -338,7 +324,7 @@ void services::Player::skipForward() {
 
             should_skip = false;
 
-            spdlog::warn("Tried to skip to next song, but queue is done.");
+            spdlog::warn("Tried to skip to next song, but queue is done");
 
         } else {
             state.is_streaming_audio = true;
@@ -351,12 +337,12 @@ void services::Player::skipForward() {
     }
 
     if(should_skip) {
-        {
-            std::lock_guard lock(command_mutex);
-            command_queue.push(Command(Command::SkipForward));
-        }
+        spdlog::info("Skipping to next song");
 
-        command_cv.notify_one();
+        mpv_service->skipForward();
+        this->updateMprisControls();
+        this->updateMprisData();
+        this->updateSocialData();
     }
 }
 
@@ -381,12 +367,12 @@ void services::Player::skipBackward() {
     }
 
     if(should_skip) {
-        {
-            std::lock_guard lock(command_mutex);
-            command_queue.push(Command(Command::SkipBackward));
-        }
+        spdlog::warn("Skipping to previous song");
 
-        command_cv.notify_one();
+        mpv_service->skipBackward();
+        this->updateMprisControls();
+        this->updateMprisData();
+        this->updateSocialData();
     }
 }
 

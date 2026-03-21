@@ -1,0 +1,175 @@
+#include "../../include/services/mpv.hpp"
+
+#include <spdlog/spdlog.h>
+#include <stdexcept>
+
+services::MPV::MPV() {
+    mpv = mpv_create();
+
+    mpv_set_option_string(mpv, "video", "no");
+    mpv_set_option_string(mpv, "no-config", "yes");
+    mpv_set_option_string(mpv, "idle", "yes");
+    mpv_set_option_string(mpv, "cache", "yes");
+    mpv_set_option_string(mpv, "cache-secs", "10");
+    mpv_set_option_string(mpv, "prefetch-playlist", "yes");
+    mpv_set_option_string(mpv, "playlist-start", "0");
+
+    if (!mpv) {
+        throw std::runtime_error("Failed to create mpv instance");
+    }
+
+    if (mpv_initialize(mpv) < 0) {
+        throw std::runtime_error("Failed to initialize mpv");
+    }
+
+    event_thread = std::thread(&MPV::eventLoop, this);
+}
+
+services::MPV::~MPV() {
+    running = false;
+    if (event_thread.joinable()) {
+          event_thread.join();
+    }
+
+    if (mpv) {
+        mpv_terminate_destroy(mpv);
+        mpv = nullptr;
+    }
+}
+
+void services::MPV::eventLoop() {
+    while (running) {
+        mpv_event* event = mpv_wait_event(mpv, 0.01);
+
+        if (!event) continue;
+
+        switch (event->event_id) {
+
+        case MPV_EVENT_END_FILE: {
+            auto* ev = (mpv_event_end_file*)event->data;
+
+            if (ev->reason == MPV_END_FILE_REASON_EOF) {
+                spdlog::info("MPV: Song ended");
+
+                if (on_song_end) {
+                    on_song_end();
+                }
+            }
+            break;
+        }
+
+        case MPV_EVENT_SHUTDOWN:
+            spdlog::info("MPV: Shutdown event");
+            return;
+
+        default:
+            break;
+        }
+    }
+}
+
+void services::MPV::setOnSongEnd(std::function<void()> cb) {
+    on_song_end = std::move(cb);
+}
+
+void services::MPV::command(const char** args) {
+    std::lock_guard<std::mutex> lock(mtx);
+
+    if (mpv_command(mpv, args) < 0) {
+        throw std::runtime_error("Mpv command failed");
+    }
+}
+
+void services::MPV::loadFile(const std::string& url) {
+    const char* args[] = {"loadfile", url.c_str(), "replace", nullptr};
+    command(args);
+}
+
+void services::MPV::appendFile(const std::string& url) {
+    const char* args[] = {"loadfile", url.c_str(), "append-play", nullptr};
+    command(args);
+}
+
+void services::MPV::stop() {
+    const char* args[] = {"stop", nullptr};
+    command(args);
+}
+
+void services::MPV::pause() {
+    std::lock_guard<std::mutex> lock(mtx);
+    int pause = 1;
+    mpv_set_property(mpv, "pause", MPV_FORMAT_FLAG, &pause);
+}
+
+void services::MPV::resume() {
+    std::lock_guard<std::mutex> lock(mtx);
+    int pause = 0;
+    mpv_set_property(mpv, "pause", MPV_FORMAT_FLAG, &pause);
+}
+
+void services::MPV::seekForward(uint64_t microseconds) {
+    double seconds = static_cast<double>(microseconds) / 1000000.0;
+
+    const std::string val = std::to_string(seconds);
+
+    const char* args[] = {
+        "seek",
+        val.c_str(),
+        "relative",
+        nullptr
+    };
+
+    command(args);
+}
+
+void services::MPV::seekBackward(uint64_t microseconds) {
+    double seconds = -static_cast<double>(microseconds) / 1000000.0;
+
+    const std::string val = std::to_string(seconds);
+
+    const char* args[] = {
+        "seek",
+        val.c_str(),
+        "relative",
+        nullptr
+    };
+
+    command(args);
+}
+
+void services::MPV::setPosition(uint64_t microseconds) {
+    double seconds = static_cast<double>(microseconds) / 1000000.0;
+
+    const std::string val = std::to_string(seconds);
+
+    const char* args[] = {
+        "seek",
+        val.c_str(),
+        "absolute",
+        nullptr
+    };
+
+    command(args);
+}
+
+void services::MPV::skipForward() {
+    const char* args[] = {"playlist-next", "force", nullptr};
+    command(args);
+}
+
+void services::MPV::skipBackward() {
+    const char* args[] = {"playlist-prev", "force", nullptr};
+    command(args);
+}
+
+uint64_t services::MPV::getPosition() {
+    std::lock_guard<std::mutex> lock(mtx);
+
+    double pos = 0.0;
+
+    if (mpv_get_property(mpv, "playback-time", MPV_FORMAT_DOUBLE, &pos) < 0) {
+        return 0;
+    }
+
+    return static_cast<uint64_t>(pos * 1000000.0);
+}

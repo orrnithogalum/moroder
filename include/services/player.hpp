@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "mpv.hpp"
 #include "mpris.hpp"
 #include "music.hpp"
 #include "social.hpp"
@@ -43,9 +44,6 @@ public:
             Radio,
             Search,
             Stream,
-
-            SkipBackward,
-            SkipForward,
 
             // SeekForward,
             // SeekBackward
@@ -102,6 +100,8 @@ private:
     std::unique_ptr<Mpris> mpris_service;
     std::unique_ptr<Music> music_service;
     std::unique_ptr<Social> social_service;
+    std::unique_ptr<MPV> mpv_service;
+
 
     RequestCompletedCallback on_request_completed;
     std::mutex callback_mutex;

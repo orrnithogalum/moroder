@@ -46,6 +46,7 @@ find_package(sdbus-c++ REQUIRED)
 
 set(SOURCES
     src/services/mpris.cpp
+    src/services/mpv.cpp
     src/services/music.cpp
     src/services/player.cpp
     src/services/social.cpp
@@ -89,6 +90,9 @@ target_link_libraries(${PROJECT_NAME}
     ftxui::screen
     ftxui::dom
     ftxui::component
+
+    mpv
+
     ${DISCORD_LIB_PATH}
 )
 

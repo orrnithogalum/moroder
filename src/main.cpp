@@ -1,3 +1,4 @@
+#include <ftxui/component/event.hpp>
 #include <ftxui/component/screen_interactive.hpp>
 #include <ftxui/component/component.hpp>
 
@@ -33,6 +34,23 @@ int main(int argc, char *argv[]) {
     logger->flush_on(spdlog::level::info); // flush on every info or higher
     spdlog::set_default_logger(logger);
 
+    // services::MPV mpv_service = services::MPV();
+    // std::cout << "load file" << std::endl;
+    // mpv_service.loadFile("https://www.youtube.com/watch?v=56ch8U1zvtU");
+    // std::this_thread::sleep_for(std::chrono::seconds(15));
+    // std::cout << "append file" << std::endl;
+    // mpv_service.appendFile("https://www.youtube.com/watch?v=56ch8U1zvtU");
+    // std::this_thread::sleep_for(std::chrono::seconds(1));
+    // // mpv_service.resume();
+    // std::cout << "skip" << std::endl;
+    // mpv_service.skipForward();
+    // std::this_thread::sleep_for(std::chrono::seconds(10));
+    // std::cout << "pause" << std::endl;
+    // mpv_service.pause();
+    // std::this_thread::sleep_for(std::chrono::seconds(5));
+
+    // return 0;
+
     auto screen = ScreenInteractive::Fullscreen();
 
     services::Player player(APP_NAME, APP_NAME_HUMAN, 1481401025964540125);
@@ -57,7 +75,11 @@ int main(int argc, char *argv[]) {
 
         auto& results = state_copy.search_results;
 
-        if(event == Event::Return) {
+        if(event == Event::Return || event == Event::r) {
+            if(event == Event::r && !browsing_results) {
+                return false;
+            }
+
             if (browsing_results) {
                 // Log selected song if browsing results
                 if (!results.empty() && selected_index >= 0 && selected_index < (int)results.size()) {
@@ -66,8 +88,11 @@ int main(int argc, char *argv[]) {
                         using T = std::decay_t<decltype(data)>;
                         if constexpr (std::is_same_v<T, music::SongRef>) {
 
-                            // player.queueSong(data);
-                            player.radio(data);
+                            if(event == Event::r) {
+                                player.radio(data);
+                            } else {
+                                player.queue(data);
+                            }
 
                         }
                     }, r.data);

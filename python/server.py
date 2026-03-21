@@ -4,7 +4,6 @@
 # - Maintains player state and optionally a logged-in user instance
 
 from modules.get_song import get_song
-from modules.control import control
 from modules.search import search
 from modules.stream import stream
 from modules.radio import radio
@@ -20,7 +19,7 @@ class MusicServer:
     # - Handles streaming via mpv over a Unix IPC socket
     # - Provides player control and search / song info
 
-    def __init__(self, event_fd: int = 0, app_name: str = "", cookies_path: str = ""):
+    def __init__(self, app_name: str = "", cookies_path: str = ""):
         self.login(cookies_path)
 
         # player state
@@ -37,50 +36,6 @@ class MusicServer:
         self.mpv_pending: dict[int, asyncio.Future] = {}
         self.mpv_reader_task: asyncio.Task | None = None
         self.mpv_request_id = 0
-
-        # events
-        self.event_pipe = (
-            os.fdopen(event_fd, "wb", buffering=0) if event_fd is not None else None
-        )
-
-    async def mpv_reader_loop(self):
-        reader = self.player_reader
-
-        # Parse line by line, command or event
-        try:
-            while True:
-                if not reader:
-                    continue
-
-                line = await reader.readline()
-                if not line:
-                    break
-
-                try:
-                    data = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-
-                if "request_id" in data:
-                    rid = data["request_id"]
-                    fut = self.mpv_pending.pop(rid, None)
-                    if fut and not fut.done():
-                        fut.set_result(data)
-
-                elif "event" in data:
-                    if data["event"] == "end-file":
-                        reason = data.get("reason")
-
-                        if reason == "eof":
-                            self.send_event("song-end")
-
-        except asyncio.CancelledError:
-            pass
-
-        finally:
-            # Cleanup in case of mpv instance killed
-            self.player_reader = None
-            self.player_writer = None
 
     async def send_cmd(self, cmd: list):
         # Send a command to mpv
@@ -99,16 +54,6 @@ class MusicServer:
         await self.player_writer.drain()
 
         return await fut
-
-    def send_event(self, name: str):
-        # Send an event to cpp as JSON. cpp parses this in a seperate thread.
-        if not self.event_pipe:
-            return
-
-        payload = json.dumps({"status": "ok", "name": name})
-
-        self.event_pipe.write(payload.encode("utf-8") + b"\n")
-        self.event_pipe.flush()
 
     def login(self, credentials_path: str):
         # login
@@ -134,11 +79,6 @@ class MusicServer:
         # - Stops any existing playback
         return await stream(self, song_id)
 
-    async def control(self, command: str):
-        # control
-        # - Executes playback commands (pause, resume, seek, stop, etc.)
-        return await control(self, command)
-
     async def handle_request(self, req: dict):
         # handle_request
         # - Main entrypoint for JSON commands from cpp side
@@ -160,14 +100,8 @@ class MusicServer:
             async for result in radio(self, id, limit):
                 print((json.dumps(result) + "\n"), flush=True)
 
-        elif action == "login":
-            return self.login(req.get("credentials_path", ""))
-
         elif action == "stream":
             return await self.stream(req.get("id", ""))
-
-        elif action == "control":
-            return await self.control(req.get("command", ""))
 
         elif action == "get_song":
             return self.get_song(req.get("song_title", ""), req.get("song_artist", ""))

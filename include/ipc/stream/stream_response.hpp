@@ -7,6 +7,7 @@ namespace ipc {
 class StreamResponse : public Response {
 public:
     std::string id = "";
+    std::string url = "";
     uint64_t duration = 0;
 
     explicit StreamResponse() : Response() {}
@@ -17,6 +18,7 @@ public:
         }
 
         id = json_["id"].get<std::string>();
+        url = json_["url"].get<std::string>();
         duration = json_["duration"].get<uint64_t>();
     }
 };
