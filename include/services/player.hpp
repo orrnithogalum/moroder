@@ -30,7 +30,6 @@ public:
 
         bool is_loading_search = false;
         bool is_streaming_audio = false;
-        bool is_loading_song = false;
     };
 
     /* Command
@@ -44,9 +43,6 @@ public:
             Radio,
             Search,
             Stream,
-
-            // SeekForward,
-            // SeekBackward
         };
 
         Type type;

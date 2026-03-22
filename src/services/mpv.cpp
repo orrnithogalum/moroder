@@ -10,7 +10,6 @@ services::MPV::MPV() {
     mpv_set_option_string(mpv, "no-config", "yes");
     mpv_set_option_string(mpv, "idle", "yes");
     mpv_set_option_string(mpv, "cache", "yes");
-    mpv_set_option_string(mpv, "cache-secs", "10");
     mpv_set_option_string(mpv, "prefetch-playlist", "yes");
     mpv_set_option_string(mpv, "playlist-start", "0");
 
@@ -80,12 +79,7 @@ void services::MPV::command(const char** args) {
     }
 }
 
-void services::MPV::loadFile(const std::string& url) {
-    const char* args[] = {"loadfile", url.c_str(), "replace", nullptr};
-    command(args);
-}
-
-void services::MPV::appendFile(const std::string& url) {
+void services::MPV::load(const std::string& url) {
     const char* args[] = {"loadfile", url.c_str(), "append-play", nullptr};
     command(args);
 }

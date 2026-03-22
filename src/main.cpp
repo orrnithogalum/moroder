@@ -1,6 +1,6 @@
-#include <ftxui/component/event.hpp>
 #include <ftxui/component/screen_interactive.hpp>
 #include <ftxui/component/component.hpp>
+#include <ftxui/component/event.hpp>
 
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/spdlog.h>
@@ -31,25 +31,8 @@ int main(int argc, char *argv[]) {
   	ensure_dir(MORODER_LOG_PATH);
 
     auto logger = spdlog::basic_logger_mt(APP_NAME, std::string(MORODER_LOG_PATH) + "/" + APP_NAME + ".log", true);
-    logger->flush_on(spdlog::level::info); // flush on every info or higher
+    logger->flush_on(spdlog::level::info);  // flush on every info or higher
     spdlog::set_default_logger(logger);
-
-    // services::MPV mpv_service = services::MPV();
-    // std::cout << "load file" << std::endl;
-    // mpv_service.loadFile("https://www.youtube.com/watch?v=56ch8U1zvtU");
-    // std::this_thread::sleep_for(std::chrono::seconds(15));
-    // std::cout << "append file" << std::endl;
-    // mpv_service.appendFile("https://www.youtube.com/watch?v=56ch8U1zvtU");
-    // std::this_thread::sleep_for(std::chrono::seconds(1));
-    // // mpv_service.resume();
-    // std::cout << "skip" << std::endl;
-    // mpv_service.skipForward();
-    // std::this_thread::sleep_for(std::chrono::seconds(10));
-    // std::cout << "pause" << std::endl;
-    // mpv_service.pause();
-    // std::this_thread::sleep_for(std::chrono::seconds(5));
-
-    // return 0;
 
     auto screen = ScreenInteractive::Fullscreen();
 
@@ -61,8 +44,8 @@ int main(int argc, char *argv[]) {
     });
 
     std::string query;
-    int selected_index = 0; // track selected search result
-    bool browsing_results = false; // true if navigating results
+    int selected_index = 0;                 // track selected search result
+    bool browsing_results = false;          // true if navigating results
 
     auto input = Input(&query, "Search");
 

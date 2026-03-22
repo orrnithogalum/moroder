@@ -105,8 +105,6 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
             std::lock_guard lock(state_mutex);
 
             state.is_streaming_audio = false;
-            state.is_loading_song = false;
-            state.is_loading_search = false;
 
             /* Since we use mpv playlist feature for buffering, we need to increment queue position no matter what.
             - This means that queue position can be equal or greater than the queue size
@@ -120,6 +118,9 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
             }
         }
 
+        /* If should skip:
+        - We don't actually call the skip method because mpv will autoplay by itself
+        */
         if(should_skip) {
             this->updateMprisControls();
             this->updateMprisData();
@@ -168,22 +169,24 @@ void services::Player::worker_loop() {
 
         case Command::Stream: {
             music::Song song = music_service->getSong(cmd.song_ref).song;
-
             ipc::StreamResponse response = music_service->stream(cmd.song_ref);
+
             song.duration = response.duration;
             song.url = response.url;
 
             {
                 std::lock_guard lock(state_mutex);
+
                 state.song_queue.push_back(song);
                 state.queue_position = state.song_queue.size() - 1;
+
                 state.is_streaming_audio = true;
-                state.is_loading_song = false;
                 state.current_song = song;
+
                 state.song_position = 0;
             }
 
-            mpv_service->loadFile(song.url);
+            mpv_service->load(song.url);
 
             this->updateMprisControls();
             this->updateMprisData();
@@ -200,7 +203,7 @@ void services::Player::worker_loop() {
             {
                 std::lock_guard lock(state_mutex);
 
-                if (!state.is_streaming_audio && !state.is_loading_song) {
+                if (!state.is_streaming_audio) {
                     should_stream = true;
                 }
             }
@@ -224,14 +227,16 @@ void services::Player::worker_loop() {
         case Command::Queue: {
             music::Song song = music_service->getSong(cmd.song_ref).song;
             ipc::StreamResponse response = music_service->stream(cmd.song_ref);
+
             song.duration = response.duration;
+            song.url = response.url;
 
             {
                 std::lock_guard lock(state_mutex);
                 state.song_queue.push_back(song);
             }
 
-            mpv_service->appendFile("https://www.youtube.com/watch?v=" + song.ref.id);
+            mpv_service->load(song.url);
             this->updateMprisControls();
 
             break;
@@ -292,7 +297,7 @@ void services::Player::queue(const music::SongRef& song) {
     {
         std::lock_guard lock(state_mutex);
 
-        if (!state.is_streaming_audio && !state.is_loading_song) {
+        if (!state.is_streaming_audio) {
             should_stream = true;
         }
     }
@@ -320,7 +325,6 @@ void services::Player::skipForward() {
         std::lock_guard lock(state_mutex);
         if (state.queue_position + 1 >= state.song_queue.size()) {
             state.is_streaming_audio = false;
-            state.is_loading_song = false;
 
             should_skip = false;
 
@@ -328,7 +332,6 @@ void services::Player::skipForward() {
 
         } else {
             state.is_streaming_audio = true;
-            state.is_loading_song = false;
 
             state.queue_position++;
             state.current_song = state.song_queue[state.queue_position];
@@ -367,7 +370,7 @@ void services::Player::skipBackward() {
     }
 
     if(should_skip) {
-        spdlog::warn("Skipping to previous song");
+        spdlog::info("Skipping to previous song");
 
         mpv_service->skipBackward();
         this->updateMprisControls();

@@ -1,3 +1,10 @@
+/* MPV
+- Service responsible for interacting with the MPV media player.
+- Provides methods to control playback, load files, and handle events.
+- Uses a separate thread to listen for MPV events.
+- Thread-safe operations are ensured using a mutex.
+*/
+
 #pragma once
 
 #include <mpv/client.h>
@@ -14,10 +21,16 @@ public:
     MPV();
     ~MPV();
 
-    void loadFile(const std::string& url);
-    void appendFile(const std::string& url);
+    /* load
+    - Loads a media file into MPV and starts playback.
+    - If no song is playing it starts automatically
+    */
+    void load(const std::string& url);
     void stop();
 
+    /* Player controls
+    - Basic playback operations
+    */
     void pause();
     void resume();
 
@@ -34,6 +47,9 @@ public:
     void setOnSongEnd(std::function<void()> cb);
 
 private:
+    /* mpv
+    - Handle to the MPV player instance.
+    */
     mpv_handle* mpv = nullptr;
     std::mutex mtx;
 
@@ -42,8 +58,14 @@ private:
 
     std::function<void()> on_song_end;
 
+    /* command
+    - Sends a command to MPV.
+    */
     void command(const char** args);
 
+    /* eventLoop
+    - The main loop that listens for and processes MPV events.
+    */
     void eventLoop();
 };
 
