@@ -31,6 +31,8 @@ public:
     int SEARCH_RESULT_LIMIT;
     int RADIO_RESULT_LIMIT;
 
+    bool FETCH_ALBUMS;
+
     /* Lazy initialization using a lambda:
     - Ensures config is loaded once at first access
     - If the config file does not exist, create it with defaults
@@ -48,27 +50,65 @@ public:
         return instance;
     }
 
-    /* Save the config file:
-    - If user resizes the sidebar, then it's saved here
-    - That is the only thing that can change programmatically
-    - In case any other variables change programmatically in the future, rewrite everything.
-    */
+    /* Save the config file */
     bool writeToFile() const {
         std::string path = getUserConfigPath();
         if (path.empty()) return false;
 
-        fs::path config_dir = fs::path(path).parent_path();
-        if (!fs::exists(config_dir)) {
-            if (!fs::create_directories(config_dir))
-                return false;
+        std::ifstream in(path);
+        if (!in.is_open()) return false;
+
+        std::string line;
+        std::ostringstream new_config;
+
+        // Read the existing file line by line
+        while (std::getline(in, line)) {
+            std::string trimmed_line = line;
+            trimmed_line.erase(0, trimmed_line.find_first_not_of(" \t"));
+
+            // Skip comments and empty lines
+            if (trimmed_line.empty() || trimmed_line[0] == '#') {
+                new_config << line << "\n";
+                continue;
+            }
+
+            size_t eq = trimmed_line.find('=');
+            if (eq != std::string::npos) {
+                std::string key = trimmed_line.substr(0, eq);
+                key.erase(key.find_last_not_of(" \t") + 1);
+
+                if (key == "LASTFM_API_KEY") {
+                    new_config << "LASTFM_API_KEY=\"" << LASTFM_API_KEY << "\"\n";
+
+                } else if (key == "FETCH_ALBUMS") {
+                    new_config << "FETCH_ALBUMS=" << (FETCH_ALBUMS ? "true" : "false") << "\n";
+
+                } else if (key == "CACHE_PATH") {
+                    new_config << "CACHE_PATH=\"" << CACHE_PATH.string() << "\"\n";
+
+                } else if (key == "COOKIES_PATH") {
+                    new_config << "COOKIES_PATH=\"" << COOKIES_PATH.string() << "\"\n";
+
+                } else if (key == "SEARCH_RESULT_LIMIT") {
+                    new_config << "SEARCH_RESULT_LIMIT=" << SEARCH_RESULT_LIMIT << "\n";
+
+                } else if (key == "RADIO_RESULT_LIMIT") {
+                    new_config << "RADIO_RESULT_LIMIT=" << RADIO_RESULT_LIMIT << "\n";
+
+                } else {
+                    new_config << line << "\n";
+                }
+            } else {
+                new_config << line << "\n";
+            }
         }
+
+        in.close();
 
         std::ofstream out(path, std::ios::trunc);
         if (!out.is_open()) return false;
 
-        out << "LASTFM_API_KEY=\""
-            << LASTFM_API_KEY << "\"\n";
-
+        out << new_config.str();
         return true;
     }
 
@@ -160,13 +200,16 @@ private:
                     cfg.COOKIES_PATH = expand_user(value.substr(1, value.size() - 2));
 
                 else if(key == "CACHE_PATH")
-                    cfg.CACHE_PATH = value.substr(1, value.size() - 2);
+                    cfg.CACHE_PATH = expand_user(value.substr(1, value.size() - 2));
 
                 else if(key == "SEARCH_RESULT_LIMIT")
                     cfg.SEARCH_RESULT_LIMIT = std::stoi(value);
 
                 else if(key == "RADIO_RESULT_LIMIT")
                     cfg.RADIO_RESULT_LIMIT = std::stoi(value);
+
+                else if(key == "FETCH_ALBUMS")
+                    cfg.FETCH_ALBUMS = (value == "true");
 
             } catch (...) {
                 return std::nullopt;

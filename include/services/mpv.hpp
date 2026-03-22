@@ -44,7 +44,21 @@ public:
 
     uint64_t getPosition();
 
-    void setOnSongEnd(std::function<void()> cb);
+    /* getStreamDuration
+    - Retrieves the duration of the currently loaded stream in microseconds.
+    - Returns 0 if the duration property cannot be retrieved from MPV.
+    */
+    uint64_t getStreamDuration();
+
+    /* getStreamPosition
+    - Retrieves the position of the currently loaded stream in microseconds.
+    - Returns 0 if the position property cannot be retrieved from MPV.
+    */
+    uint64_t getStreamPosition();
+
+    void setOnStreamStart(std::function<void()> cb);
+    void setOnStreamLoad(std::function<void()> cb);
+    void setOnStreamEnd(std::function<void()> cb);
 
 private:
     /* mpv
@@ -56,7 +70,9 @@ private:
     std::thread event_thread;
     std::atomic<bool> running{true};
 
-    std::function<void()> on_song_end;
+    std::function<void()> on_stream_start;
+    std::function<void()> on_stream_load;
+    std::function<void()> on_stream_end;
 
     /* command
     - Sends a command to MPV.

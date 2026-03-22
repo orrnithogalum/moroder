@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "album.hpp"
 #include "artist.hpp"
 
 #include <cstdint>
@@ -20,7 +21,10 @@ struct SongRef {
     std::string title;
     std::string views;
     std::string thumbnail;
+
     std::vector<ArtistRef> artists;
+
+    music::AlbumRef album;
 
     static SongRef from_json(const nlohmann::json& j) {
         SongRef s;
@@ -45,6 +49,11 @@ struct SongRef {
             }
         }
 
+        /* Formats:
+        - Search result: thumbnails
+        - Radio result: thumbnail
+        - Don't ask me why that is
+        */
         if (j.contains("thumbnails") && j["thumbnails"].is_array() && !j["thumbnails"].empty()) {
             s.thumbnail = j["thumbnails"].back().value("url", "");
 
@@ -53,6 +62,30 @@ struct SongRef {
 
         } else {
             s.thumbnail = "";
+        }
+
+        /* Formats:
+        - Search result: album: {id, title}
+        - Radio result: album: [{id, title}]
+        - Don't ask me why that is
+        */
+        if (j.contains("album")) {
+            if (j["album"].is_object()) {
+                const auto& album_json = j["album"];
+                s.album.title = album_json.value("name", "");
+                s.album.id = album_json.value("id", "");
+
+            } else if (j["album"].is_array() && !j["album"].empty()) {
+                const auto& album_json = j["album"].front();
+                s.album.title = album_json.value("name", "");
+                s.album.id = album_json.value("id", "");
+
+            } else {
+                s.album = music::AlbumRef{};
+            }
+
+        } else {
+            s.album = music::AlbumRef{};
         }
 
         return s;

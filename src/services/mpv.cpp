@@ -44,16 +44,35 @@ void services::MPV::eventLoop() {
 
         switch (event->event_id) {
 
+        case MPV_EVENT_START_FILE: {
+            spdlog::info("MPV: Starting to load file");
+
+            if (on_stream_load) {
+                on_stream_load();
+            }
+            break;
+        }
+
+        case MPV_EVENT_FILE_LOADED: {
+            spdlog::info("MPV: File loaded, playback started");
+
+            if (on_stream_start) {
+                on_stream_start();
+            }
+            break;
+        }
+
         case MPV_EVENT_END_FILE: {
             auto* ev = (mpv_event_end_file*)event->data;
 
-            if (ev->reason == MPV_END_FILE_REASON_EOF) {
-                spdlog::info("MPV: Song ended");
+            if (ev->reason != MPV_END_FILE_REASON_EOF) { break; }
 
-                if (on_song_end) {
-                    on_song_end();
-                }
+            spdlog::info("MPV: Song ended");
+
+            if (on_stream_end) {
+                on_stream_end();
             }
+
             break;
         }
 
@@ -67,8 +86,16 @@ void services::MPV::eventLoop() {
     }
 }
 
-void services::MPV::setOnSongEnd(std::function<void()> cb) {
-    on_song_end = std::move(cb);
+void services::MPV::setOnStreamStart(std::function<void()> cb) {
+    on_stream_start = std::move(cb);
+}
+
+void services::MPV::setOnStreamLoad(std::function<void()> cb) {
+    on_stream_load = std::move(cb);
+}
+
+void services::MPV::setOnStreamEnd(std::function<void()> cb) {
+    on_stream_end = std::move(cb);
 }
 
 void services::MPV::command(const char** args) {
@@ -166,4 +193,28 @@ uint64_t services::MPV::getPosition() {
     }
 
     return static_cast<uint64_t>(pos * 1000000.0);
+}
+
+uint64_t services::MPV::getStreamPosition() {
+    std::lock_guard<std::mutex> lock(mtx);
+
+    double position = 0.0;
+
+    if (mpv_get_property(mpv, "playback-time", MPV_FORMAT_DOUBLE, &position) < 0) {
+        return 0;
+    }
+
+    return static_cast<uint64_t>(position * 1000000.0);
+}
+
+uint64_t services::MPV::getStreamDuration() {
+    std::lock_guard<std::mutex> lock(mtx);
+
+    double duration = 0.0;
+
+    if (mpv_get_property(mpv, "duration", MPV_FORMAT_DOUBLE, &duration) < 0) {
+        return 0;
+    }
+
+    return static_cast<uint64_t>(duration * 1000000.0);
 }

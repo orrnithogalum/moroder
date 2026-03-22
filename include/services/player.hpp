@@ -85,6 +85,8 @@ public:
     }
 
 private:
+    std::string app_name;
+
     std::condition_variable command_cv;
     std::mutex command_mutex;
     std::thread worker_thread;
@@ -93,11 +95,10 @@ private:
 
     std::queue<Command> command_queue;
 
+    std::unique_ptr<MPV> mpv_service;
     std::unique_ptr<Mpris> mpris_service;
     std::unique_ptr<Music> music_service;
     std::unique_ptr<Social> social_service;
-    std::unique_ptr<MPV> mpv_service;
-
 
     RequestCompletedCallback on_request_completed;
     std::mutex callback_mutex;

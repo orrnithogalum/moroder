@@ -1,12 +1,17 @@
 #include "../../include/services/player.hpp"
 
+#include "../../include/config/config.hpp"
+
 #include <spdlog/spdlog.h>
 #include <string>
+#include <mutex>
 
 services::Player::Player(const std::string_view& app_name, const std::string_view& app_name_human, const uint64_t app_id) {
-    mpris_service = Mpris::make(app_name);
+    this->app_name = app_name;
+
+    mpris_service = Mpris::make(this->app_name);
     mpv_service = std::make_unique<MPV>();
-    music_service = std::make_unique<Music>(app_name);
+    music_service = std::make_unique<Music>(this->app_name);
     social_service = std::make_unique<Social>(app_id);
 
     if (!mpris_service) {
@@ -23,16 +28,23 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
     mpris_service->onQuit([&] {});
 
     mpris_service->onPause([&] {
-        state.is_streaming_audio = false;
+        {
+            std::lock_guard lock(state_mutex);
+            state.is_streaming_audio = false;
+        }
 
         mpv_service->pause();
         social_service->pause();
 
+        mpris_service->setPosition(mpv_service->getStreamPosition());
         mpris_service->setPlaybackStatus(services::PlaybackStatus::Paused);
     });
 
     mpris_service->onToggle([&] {
-        state.is_streaming_audio = !state.is_streaming_audio;
+        {
+            std::lock_guard lock(state_mutex);
+            state.is_streaming_audio = !state.is_streaming_audio;
+        }
 
         if(state.is_streaming_audio) {
             mpv_service->pause();
@@ -46,41 +58,45 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
     });
 
     mpris_service->onStop([&] {
-        state.is_streaming_audio = false;
+        {
+            std::lock_guard lock(state_mutex);
+            state.is_streaming_audio = false;
+        }
+
         mpv_service->stop();
         social_service->removeStatus();
-
         mpris_service->setPlaybackStatus(services::PlaybackStatus::Stopped);
     });
 
     mpris_service->onPlay([&] {
-        state.is_streaming_audio = true;
+        {
+            std::lock_guard lock(state_mutex);
+            state.is_streaming_audio = true;
+        }
+
         mpv_service->resume();
         social_service->resume();
-        social_service->setPosition(state.song_position);
+        social_service->setPosition(mpv_service->getStreamPosition());
 
         mpris_service->setPlaybackStatus(services::PlaybackStatus::Playing);
     });
 
     mpris_service->onSeek([&] (int64_t p) {
-        state.song_position += p;
-
         if(p < 0) {
             mpv_service->seekBackward(p);
         } else {
             mpv_service->seekForward(p);
         }
 
-        social_service->setPosition(state.song_position);
-        mpris_service->setPosition(state.song_position);
+        social_service->setPosition(mpv_service->getStreamPosition());
+        mpris_service->setPosition(mpv_service->getStreamPosition());
     });
 
     mpris_service->onSetPosition([&] (int64_t p) {
-        state.song_position = p;
+        mpv_service->setPosition(p);
 
-        mpv_service->setPosition(state.song_position);
-        social_service->setPosition(state.song_position);
-        mpris_service->setPosition(state.song_position);
+        social_service->setPosition(mpv_service->getStreamPosition());
+        mpris_service->setPosition(mpv_service->getStreamPosition());
     });
 
     mpris_service->onLoopStatusChanged([&] (services::LoopStatus status) { });
@@ -99,7 +115,7 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
 
     mpris_service->startLoopAsync();
 
-    mpv_service->setOnSongEnd([this] {
+    mpv_service->setOnStreamEnd([this] {
         bool should_skip = false;
         {
             std::lock_guard lock(state_mutex);
@@ -122,10 +138,23 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
         - We don't actually call the skip method because mpv will autoplay by itself
         */
         if(should_skip) {
+            mpris_service->setPlaybackStatus(services::PlaybackStatus::Stopped);
             this->updateMprisControls();
             this->updateMprisData();
             this->updateSocialData();
         }
+    });
+
+    mpv_service->setOnStreamStart([this] {
+        {
+            std::lock_guard lock(state_mutex);
+            state.current_song.duration = mpv_service->getStreamDuration();
+        }
+
+        mpris_service->setPlaybackStatus(services::PlaybackStatus::Playing);
+        this->updateMprisControls();
+        this->updateMprisData();
+        this->updateSocialData();
     });
 }
 
@@ -168,11 +197,20 @@ void services::Player::worker_loop() {
         }
 
         case Command::Stream: {
-            music::Song song = music_service->getSong(cmd.song_ref).song;
-            ipc::StreamResponse response = music_service->stream(cmd.song_ref);
+            music::Song song;
 
-            song.duration = response.duration;
-            song.url = response.url;
+            // If the album isn't found, fetch one from network.
+            Config cfg = Config::get();
+            if ((cmd.song_ref.album.id.empty() || cmd.song_ref.album.title.empty()) && cfg.FETCH_ALBUMS) {
+                song = music_service->getSong(cmd.song_ref).song;
+
+            } else {
+                song.ref = cmd.song_ref;
+                song.album_title = song.ref.album.title;
+            }
+
+            song.url = "https://www.youtube.com/watch?v=" + song.ref.id;
+            song.duration = 0;
 
             {
                 std::lock_guard lock(state_mutex);
@@ -187,10 +225,6 @@ void services::Player::worker_loop() {
             }
 
             mpv_service->load(song.url);
-
-            this->updateMprisControls();
-            this->updateMprisData();
-            this->updateSocialData();
 
             break;
         }
@@ -225,11 +259,20 @@ void services::Player::worker_loop() {
         }
 
         case Command::Queue: {
-            music::Song song = music_service->getSong(cmd.song_ref).song;
-            ipc::StreamResponse response = music_service->stream(cmd.song_ref);
+            music::Song song;
 
-            song.duration = response.duration;
-            song.url = response.url;
+            // If the album isn't found, fetch one from network.
+            Config cfg = Config::get();
+            if ((cmd.song_ref.album.id.empty() || cmd.song_ref.album.title.empty()) && cfg.FETCH_ALBUMS) {
+                song = music_service->getSong(cmd.song_ref).song;
+
+            } else {
+                song.ref = cmd.song_ref;
+                song.album_title = song.ref.album.title;
+            }
+
+            song.url = "https://www.youtube.com/watch?v=" + song.ref.id;
+            song.duration = 0;
 
             {
                 std::lock_guard lock(state_mutex);
@@ -343,6 +386,12 @@ void services::Player::skipForward() {
         spdlog::info("Skipping to next song");
 
         mpv_service->skipForward();
+
+        /* skipping
+        - We keep these even if onSongStart handles skipping
+        - because they don't wait for file load.
+        */
+        mpris_service->setPlaybackStatus(services::PlaybackStatus::Stopped);
         this->updateMprisControls();
         this->updateMprisData();
         this->updateSocialData();
@@ -372,6 +421,7 @@ void services::Player::skipBackward() {
     if(should_skip) {
         spdlog::info("Skipping to previous song");
 
+        mpris_service->setPlaybackStatus(services::PlaybackStatus::Stopped);
         mpv_service->skipBackward();
         this->updateMprisControls();
         this->updateMprisData();
@@ -397,14 +447,13 @@ void services::Player::updateMprisData() {
     }
 
     mpris_service->setMetadata({
-        { services::Field::TrackId, sdbus::Variant(services::OBJECT_PATH + "/track/" + video.ref.id) },
+        { services::Field::TrackId, sdbus::Variant(services::OBJECT_PATH + "/" + this->app_name + "/track/" + video.ref.id) },
         { services::Field::Album,   sdbus::Variant(video.album_title) },
         { services::Field::Title,   sdbus::Variant(video.ref.title) },
         { services::Field::Artist,  sdbus::Variant(video.ref.artists[0].name) },
         { services::Field::Length,  sdbus::Variant(video.duration) },
         { services::Field::ArtUrl,  sdbus::Variant(video.ref.thumbnail) }
     });
-    mpris_service->setPlaybackStatus(services::PlaybackStatus::Playing);
     mpris_service->setPosition(0);
     mpris_service->sendSeekedSignal(0);
 }
