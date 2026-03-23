@@ -1,6 +1,5 @@
 #include "../../include/services/music.hpp"
 
-#include "../../include/ipc/stream/stream_request.hpp"
 #include "../../include/ipc/search/search_request.hpp"
 #include "../../include/ipc/radio/radio_response.hpp"
 #include "../../include/ipc/radio/radio_request.hpp"
@@ -23,33 +22,33 @@ services::Music::Music(const std::string_view& app_name) {
 
     if (!cfg.LASTFM_API_KEY.empty()) {
         if (setenv("LASTFM_API_KEY", cfg.LASTFM_API_KEY.c_str(), 1) != 0) {
-            spdlog::error("setenv failed");
+            spdlog::error("PYTHON: setenv failed");
 
         } else {
             std::string masked = cfg.LASTFM_API_KEY.substr(0, 4) + "...";
-            spdlog::info("setenv LASTFM_API_KEY to " + masked);
+            spdlog::info("PYTHON: setenv LASTFM_API_KEY to " + masked);
         }
     }
 
-    spdlog::info("Python server starting...");
+    spdlog::info("PYTHON: server starting...");
 
     fs::path python_script_path = std::string(MORODER_PYTHON_PATH) + "/main.py";
 
     if (fs::exists(python_script_path)) {
     	this->python_server_path = python_script_path.string();
     } else {
-    	throw std::runtime_error("Python script wasn't found at " + python_script_path.string());
+    	throw std::runtime_error("PYTHON: script wasn't found at " + python_script_path.string());
     }
 
-    spdlog::info("Python path: " + this->python_server_path);
+    spdlog::info("PYTHON: path, " + this->python_server_path);
 
     if (pipe(this->pipe_stdin) == -1 || pipe(this->pipe_stdout) == -1) {
-        throw std::runtime_error("Python server could not create pipe");
+        throw std::runtime_error("PYTHON: could not create pipe");
     }
 
     this->python_pid = fork();
     if (this->python_pid < 0) {
-        throw std::runtime_error("Python server could not fork process");
+        throw std::runtime_error("PYTHON: could not fork process");
     }
 
     if (this->python_pid == 0) {
@@ -68,9 +67,9 @@ services::Music::Music(const std::string_view& app_name) {
         auto cookies_path = (cfg.COOKIES_PATH) / "browser.json";
 
         if(std::filesystem::exists(cookies_path)) {
-            spdlog::info("Python server found cookies at " + cookies_path.string());
+            spdlog::info("PYTHON: found cookies at " + cookies_path.string());
         } else {
-            spdlog::warn("Python server couldn't find cookies at " + cookies_path.string());
+            spdlog::warn("PYTHON: couldn't find cookies at " + cookies_path.string());
             cookies_path = "";
         }
 
@@ -85,7 +84,7 @@ services::Music::Music(const std::string_view& app_name) {
         );
 
         // If exec fails
-        throw std::runtime_error("Python server could not run");
+        throw std::runtime_error("PYTHON: could not run");
     }
 
     close(pipe_stdin[0]);
@@ -97,25 +96,25 @@ services::Music::~Music() {
         return;
     }
 
-    spdlog::info("Python server stopping...");
+    spdlog::info("PYTHON: stopping...");
 
     close(pipe_stdin[1]);
     close(pipe_stdout[0]);
 
     if (kill(python_pid, SIGTERM) == -1) {
-        spdlog::info("Python server failed to send SIGTERM to python process");
+        spdlog::info("PYTHON: failed to send SIGTERM to python process");
     }
 
     int status = 0;
     pid_t result = waitpid(python_pid, &status, 0);
 
     if (result == -1) {
-        spdlog::error("Python server failed on waitpid");
+        spdlog::error("PYTHON: failed on waitpid");
     } else {
         if (WIFEXITED(status)) {
-            spdlog::info("Python server exited with code {}", WEXITSTATUS(status));
+            spdlog::info("PYTHON: exited with code {}", WEXITSTATUS(status));
         } else if (WIFSIGNALED(status)) {
-            spdlog::warn("Python server killed by signal {}", WTERMSIG(status));
+            spdlog::warn("PYTHON: killed by signal {}", WTERMSIG(status));
         }
     }
 
@@ -177,7 +176,7 @@ template <typename Request, typename Response> Response services::Music::sendStr
                     stop = true;
                     break;
                 } else if (type == "error") {
-                    spdlog::error("Stream error: {}", j.dump());
+                    spdlog::error("PYTHON: stream error, {}", j.dump());
                     stop = true;
                     break;
                 } else {
@@ -185,13 +184,13 @@ template <typename Request, typename Response> Response services::Music::sendStr
                 }
 
             } catch (const std::exception& e) {
-                spdlog::warn("Failed to parse stream line: {}", e.what());
+                spdlog::warn("PYTHON: failed to parse stream line, {}", e.what());
             }
         }
         count++;
     }
 
-    spdlog::info("Received " + std::to_string(count) + " entries from stream.");
+    spdlog::info("PYTHON: received " + std::to_string(count) + " entries from stream");
     return response;
 }
 
@@ -223,21 +222,12 @@ ipc::RadioResponse services::Music::radio(const music::SongRef& song) {
     );
 }
 
-ipc::StreamResponse services::Music::stream(const music::SongRef& song) {
-    ipc::StreamRequest request(song);
-
-    return send<ipc::StreamResponse>(
-        request,
-        "Python server returned empty on song: " + song.id
-    );
-}
-
 ipc::SongResponse services::Music::getSong(const music::SongRef& ref) {
     ipc::SongRequest request(ref);
 
     ipc::SongResponse response = send<ipc::SongResponse>(
         request,
-        "Python server returned empty on song request: " + ref.id
+        "PYTHON: returned empty on song request, " + ref.id
     );
 
     response.song.ref = ref;

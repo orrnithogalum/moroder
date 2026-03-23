@@ -2,6 +2,7 @@
 
 #include "../../include/config/config.hpp"
 
+#include <cstdint>
 #include <spdlog/spdlog.h>
 #include <string>
 #include <mutex>
@@ -15,11 +16,11 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
     social_service = std::make_unique<Social>(app_id);
 
     if (!mpris_service) {
-        spdlog::error("Mpris service initialisation failed.");
+        spdlog::error("PLAYER: mpris service initialisation failed.");
     } else if (!music_service) {
-        spdlog::error("Music service initialisation failed.");
+        spdlog::error("PLAYER: music service initialisation failed.");
     } else if (!social_service) {
-        spdlog::error("Social service initialisation failed.");
+        spdlog::error("PLAYER: social service initialisation failed.");
     }
 
     worker_thread = std::thread(&Player::worker_loop, this);
@@ -146,9 +147,11 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
     });
 
     mpv_service->setOnStreamStart([this] {
+        uint64_t song_duration = mpv_service->getStreamDuration();
         {
             std::lock_guard lock(state_mutex);
-            state.current_song.duration = mpv_service->getStreamDuration();
+            state.current_song.duration = song_duration;
+            state.is_streaming_audio = true;
         }
 
         mpris_service->setPlaybackStatus(services::PlaybackStatus::Playing);
@@ -220,8 +223,6 @@ void services::Player::worker_loop() {
 
                 state.is_streaming_audio = true;
                 state.current_song = song;
-
-                state.song_position = 0;
             }
 
             mpv_service->load(song.url);
@@ -347,7 +348,7 @@ void services::Player::queue(const music::SongRef& song) {
 
     if (should_stream) {
         stream(song);
-        spdlog::info("Stream song: " + song.title + " by " + song.artists[0].name);
+        spdlog::info("PLAYER: streaming, " + song.title + " by " + song.artists[0].name);
 
     } else {
         {
@@ -356,7 +357,7 @@ void services::Player::queue(const music::SongRef& song) {
         }
 
         command_cv.notify_one();
-        spdlog::info("Queued song: " + song.title + " by " + song.artists[0].name);
+        spdlog::info("PLAYER: queued, " + song.title + " by " + song.artists[0].name);
     }
 }
 
@@ -368,14 +369,11 @@ void services::Player::skipForward() {
         std::lock_guard lock(state_mutex);
         if (state.queue_position + 1 >= state.song_queue.size()) {
             state.is_streaming_audio = false;
-
             should_skip = false;
 
-            spdlog::warn("Tried to skip to next song, but queue is done");
+            spdlog::warn("PLAYER: tried to skip to next song, but queue is done");
 
         } else {
-            state.is_streaming_audio = true;
-
             state.queue_position++;
             state.current_song = state.song_queue[state.queue_position];
         }
@@ -383,7 +381,7 @@ void services::Player::skipForward() {
     }
 
     if(should_skip) {
-        spdlog::info("Skipping to next song");
+        spdlog::info("PLAYER: skipping to next song");
 
         mpv_service->skipForward();
 
@@ -409,17 +407,16 @@ void services::Player::skipBackward() {
             state.is_streaming_audio = false;
             should_skip = false;
 
-            spdlog::warn("Tried to skip to previous song, but already at start of queue.");
+            spdlog::warn("PLAYER: tried to skip to previous song, but already at start of queue.");
 
         } else {
             state.queue_position--;
-            previous_song = state.song_queue[state.queue_position];
-            state.current_song = previous_song;
+            state.current_song = state.song_queue[state.queue_position];
         }
     }
 
     if(should_skip) {
-        spdlog::info("Skipping to previous song");
+        spdlog::info("PLAYER: skipping to previous song");
 
         mpris_service->setPlaybackStatus(services::PlaybackStatus::Stopped);
         mpv_service->skipBackward();
@@ -446,8 +443,14 @@ void services::Player::updateMprisData() {
         video = state.current_song;
     }
 
+    /* Hash the id
+    - We hash the id to remove invalid characters such as "-" from the trackId
+    - If we don't do this some MPRIS features don't work, like seeking.
+    */
+    std::string hash_id = std::to_string(std::hash<std::string>{}(video.ref.id));
+
     mpris_service->setMetadata({
-        { services::Field::TrackId, sdbus::Variant(services::OBJECT_PATH + "/" + this->app_name + "/track/" + video.ref.id) },
+        { services::Field::TrackId, sdbus::Variant(services::OBJECT_PATH + "/track/" + hash_id) },
         { services::Field::Album,   sdbus::Variant(video.album_title) },
         { services::Field::Title,   sdbus::Variant(video.ref.title) },
         { services::Field::Artist,  sdbus::Variant(video.ref.artists[0].name) },

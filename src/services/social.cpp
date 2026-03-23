@@ -14,26 +14,26 @@ services::Social::Social(const uint64_t application_id) : app_id(application_id)
             // Remove trailing line returns
             std::string clean = message;
             std::replace(clean.begin(), clean.end(), '\n', ' ');
-            std::replace(clean.begin(), clean.end(), '\r', ' ');        
-            
+            std::replace(clean.begin(), clean.end(), '\r', ' ');
+
             switch (severity) {
                 case discordpp::LoggingSeverity::Verbose:
-                    spdlog::debug("{}", clean);
+                    spdlog::debug("SOCIAL: {}", clean);
                     break;
                 case discordpp::LoggingSeverity::Info:
-                    spdlog::info("{}", clean);
+                    spdlog::info("SOCIAL: {}", clean);
                     break;
                 case discordpp::LoggingSeverity::Warning:
-                    spdlog::warn("{}", clean);
+                    spdlog::warn("SOCIAL: {}", clean);
                     break;
                 case discordpp::LoggingSeverity::Error:
-                    spdlog::error("{}", clean);
+                    spdlog::error("SOCIAL: {}", clean);
                     break;
                 case discordpp::LoggingSeverity::None:
-                    spdlog::trace("{}", clean);
+                    spdlog::trace("SOCIAL: {}", clean);
                     break;
                 default:
-                    spdlog::info("{}", clean);
+                    spdlog::info("SOCIAL: {}", clean);
                     break;
             }
         },
@@ -41,10 +41,10 @@ services::Social::Social(const uint64_t application_id) : app_id(application_id)
     );
 
     client->SetStatusChangedCallback([](discordpp::Client::Status status, discordpp::Client::Error error, int32_t detail) {
-        spdlog::info("Social server: {}", discordpp::Client::StatusToString(status));
+        spdlog::info("SOCIAL: {}", discordpp::Client::StatusToString(status));
 
         if (error != discordpp::Client::Error::None) {
-            spdlog::error("Social server error: {} ({})", discordpp::Client::ErrorToString(error), detail);
+            spdlog::error("SOCIAL error: {} ({})", discordpp::Client::ErrorToString(error), detail);
         }
     });
 
@@ -128,7 +128,7 @@ void services::Social::updatePresence() {
         timestamps.SetStart(start_time);
         timestamps.SetEnd(start_time + duration);
         activity.SetTimestamps(timestamps);
-    
+
     } else {
         activity.Timestamps().reset();
     }
@@ -145,7 +145,7 @@ void services::Social::updatePresence() {
 
     client->UpdateRichPresence(activity, [](discordpp::ClientResult result) {
         if (!result.Successful()) {
-            spdlog::warn("Social server wasn't able to update status.");
+            spdlog::warn("SOCIAL: couldn't update status.");
         }
     });
 }

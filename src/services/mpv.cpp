@@ -9,9 +9,16 @@ services::MPV::MPV() {
     mpv_set_option_string(mpv, "video", "no");
     mpv_set_option_string(mpv, "no-config", "yes");
     mpv_set_option_string(mpv, "idle", "yes");
+
     mpv_set_option_string(mpv, "cache", "yes");
+
     mpv_set_option_string(mpv, "prefetch-playlist", "yes");
     mpv_set_option_string(mpv, "playlist-start", "0");
+
+    mpv_set_option_string(mpv, "ytdl", "yes");
+    mpv_set_option_string(mpv, "ytdl-format", "bestaudio");
+
+    mpv_set_option_string(mpv, "log-file", MORODER_LOG_PATH "/mpv.log");
 
     if (!mpv) {
         throw std::runtime_error("Failed to create mpv instance");
@@ -45,7 +52,7 @@ void services::MPV::eventLoop() {
         switch (event->event_id) {
 
         case MPV_EVENT_START_FILE: {
-            spdlog::info("MPV: Starting to load file");
+            spdlog::info("MPV: starting to load file");
 
             if (on_stream_load) {
                 on_stream_load();
@@ -54,7 +61,7 @@ void services::MPV::eventLoop() {
         }
 
         case MPV_EVENT_FILE_LOADED: {
-            spdlog::info("MPV: File loaded, playback started");
+            spdlog::info("MPV: file loaded, playback started");
 
             if (on_stream_start) {
                 on_stream_start();
@@ -67,7 +74,7 @@ void services::MPV::eventLoop() {
 
             if (ev->reason != MPV_END_FILE_REASON_EOF) { break; }
 
-            spdlog::info("MPV: Song ended");
+            spdlog::info("MPV: song ended");
 
             if (on_stream_end) {
                 on_stream_end();
@@ -77,7 +84,7 @@ void services::MPV::eventLoop() {
         }
 
         case MPV_EVENT_SHUTDOWN:
-            spdlog::info("MPV: Shutdown event");
+            spdlog::info("MPV: shutdown event");
             return;
 
         default:
@@ -102,7 +109,7 @@ void services::MPV::command(const char** args) {
     std::lock_guard<std::mutex> lock(mtx);
 
     if (mpv_command(mpv, args) < 0) {
-        throw std::runtime_error("Mpv command failed");
+        spdlog::error("MPV: command failed");
     }
 }
 
@@ -162,6 +169,7 @@ void services::MPV::setPosition(uint64_t microseconds) {
     double seconds = static_cast<double>(microseconds) / 1000000.0;
 
     const std::string val = std::to_string(seconds);
+    spdlog::info("here2: " + val);
 
     const char* args[] = {
         "seek",
@@ -183,24 +191,13 @@ void services::MPV::skipBackward() {
     command(args);
 }
 
-uint64_t services::MPV::getPosition() {
-    std::lock_guard<std::mutex> lock(mtx);
-
-    double pos = 0.0;
-
-    if (mpv_get_property(mpv, "playback-time", MPV_FORMAT_DOUBLE, &pos) < 0) {
-        return 0;
-    }
-
-    return static_cast<uint64_t>(pos * 1000000.0);
-}
-
 uint64_t services::MPV::getStreamPosition() {
     std::lock_guard<std::mutex> lock(mtx);
 
     double position = 0.0;
 
     if (mpv_get_property(mpv, "playback-time", MPV_FORMAT_DOUBLE, &position) < 0) {
+        spdlog::warn("MPV: get property playback-time failed");
         return 0;
     }
 
@@ -213,6 +210,7 @@ uint64_t services::MPV::getStreamDuration() {
     double duration = 0.0;
 
     if (mpv_get_property(mpv, "duration", MPV_FORMAT_DOUBLE, &duration) < 0) {
+        spdlog::warn("MPV: get property duration failed");
         return 0;
     }
 

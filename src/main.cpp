@@ -1,6 +1,7 @@
 #include <ftxui/component/screen_interactive.hpp>
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/event.hpp>
+#include <ftxui/dom/elements.hpp>
 
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/spdlog.h>
@@ -146,6 +147,7 @@ int main(int argc, char *argv[]) {
         }
 
         return vbox({
+            text(state_copy.is_streaming_audio ? "streaming" : "stopped"),
             text("Search") | bold,
             input->Render(),
             separator(),

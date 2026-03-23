@@ -7,7 +7,6 @@
 #pragma once
 
 #include "../ipc/search/search_response.hpp"
-#include "../ipc/stream/stream_response.hpp"
 #include "../ipc/browse/song_response.hpp"
 #include "../ipc/radio/radio_response.hpp"
 #include "../models/song.hpp"
@@ -25,7 +24,6 @@ public:
     ~Music();
 
     ipc::SearchResponse search(const std::string& query);
-    ipc::StreamResponse stream(const music::SongRef& song);
     ipc::RadioResponse radio(const music::SongRef& song);
 
     /* getSong

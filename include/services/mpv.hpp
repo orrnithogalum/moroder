@@ -42,8 +42,6 @@ public:
     void skipForward();
     void skipBackward();
 
-    uint64_t getPosition();
-
     /* getStreamDuration
     - Retrieves the duration of the currently loaded stream in microseconds.
     - Returns 0 if the duration property cannot be retrieved from MPV.

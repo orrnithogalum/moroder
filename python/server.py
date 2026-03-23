@@ -5,7 +5,6 @@
 
 from modules.get_song import get_song
 from modules.search import search
-from modules.stream import stream
 from modules.radio import radio
 from ytmusicapi import YTMusic
 
@@ -73,12 +72,6 @@ class MusicServer:
         # - Fetches detailed song info via MusicBrainz API
         return get_song(self, song_title, song_artist)
 
-    async def stream(self, song_id: str):
-        # stream
-        # - Starts playback of a song via mpv
-        # - Stops any existing playback
-        return await stream(self, song_id)
-
     async def handle_request(self, req: dict):
         # handle_request
         # - Main entrypoint for JSON commands from cpp side
@@ -99,9 +92,6 @@ class MusicServer:
 
             async for result in radio(self, id, limit):
                 print((json.dumps(result) + "\n"), flush=True)
-
-        elif action == "stream":
-            return await self.stream(req.get("id", ""))
 
         elif action == "get_song":
             return self.get_song(req.get("song_title", ""), req.get("song_artist", ""))

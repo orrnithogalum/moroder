@@ -25,7 +25,6 @@ public:
         std::vector<ipc::SearchResult> search_results;
         music::Song current_song;
 
-        int64_t song_position = 0;
         int queue_position = 0;
 
         bool is_loading_search = false;
