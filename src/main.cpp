@@ -5,39 +5,34 @@
 
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/spdlog.h>
-#include <iostream>
 
 #include "../include/services/player.hpp"
 #include "../include/config/config.hpp"
+#include "../include/utils/utils.hpp"
 
 #define APP_NAME_HUMAN "Moroder"
 #define APP_NAME "moroder"
 
 using namespace ftxui;
 
-void ensure_dir(const std::filesystem::path& path) {
-    std::error_code ec;
-
-    if (!std::filesystem::exists(path, ec)) {
-        if (!std::filesystem::create_directories(path, ec)) {
-            std::cerr << "Failed to create: " << path << " (" << ec.message() << ")\n";
-        }
-    }
-}
-
 int main(int argc, char *argv[]) {
     Config::app_name = APP_NAME;
 
-  	ensure_dir(MORODER_PYTHON_PATH);
-  	ensure_dir(MORODER_LOG_PATH);
+    utils::ensure_dir(utils::resolve_path(MORODER_PYTHON_PATH));
+    utils::ensure_dir(utils::resolve_path(MORODER_LOG_PATH));
 
-    auto logger = spdlog::basic_logger_mt(APP_NAME, std::string(MORODER_LOG_PATH) + "/" + APP_NAME + ".log", true);
-    logger->flush_on(spdlog::level::info);  // flush on every info or higher
+    auto logger = spdlog::basic_logger_mt(
+        APP_NAME,
+        utils::resolve_path(MORODER_LOG_PATH).string() + "/" + APP_NAME + ".log",
+        true
+    );
+
+    logger->flush_on(spdlog::level::info);
     spdlog::set_default_logger(logger);
 
-    auto screen = ScreenInteractive::Fullscreen();
-
     services::Player player(APP_NAME, APP_NAME_HUMAN, 1481401025964540125);
+
+    auto screen = ScreenInteractive::Fullscreen();
 
     // Trigger UI update when request completes
     player.setOnRequestCompletedCallback([&](services::Player::Command::Type type) {
@@ -78,6 +73,8 @@ int main(int argc, char *argv[]) {
                                 player.queue(data);
                             }
 
+                        } else if constexpr (std::is_same_v<T, music::AlbumRef>) {
+                            player.queue(data);
                         }
                     }, r.data);
                 }

@@ -42,6 +42,7 @@ public:
             Radio,
             Search,
             Stream,
+            Album
         };
 
         Type type;
@@ -51,11 +52,13 @@ public:
         */
         std::string query;
         music::SongRef song_ref;
+        music::AlbumRef album_ref;
 
         explicit Command() : type(Empty) {}
         explicit Command(Type t) : type(t) {}
         explicit Command(const std::string& q) : query(q), type(Search) {}
         explicit Command(const music::SongRef& s, Type t) : song_ref(s), type(t) {}
+        explicit Command(const music::AlbumRef& a) : album_ref(a), type(Album) {}
 
     };
 
@@ -71,8 +74,10 @@ public:
     void skipForward();
     void skipBackward();
 
-    void search(const std::string& query);
     void queue(const music::SongRef& song);
+    void queue(const music::AlbumRef& song);
+
+    void search(const std::string& query);
     void radio(const music::SongRef& song);
     void stream(const music::SongRef& song);
 

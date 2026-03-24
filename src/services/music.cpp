@@ -2,9 +2,12 @@
 
 #include "../../include/ipc/search/search_request.hpp"
 #include "../../include/ipc/radio/radio_response.hpp"
+#include "../../include/ipc/album/album_response.hpp"
 #include "../../include/ipc/radio/radio_request.hpp"
 #include "../../include/ipc/browse/song_request.hpp"
+#include "../../include/ipc/album/album_request.hpp"
 #include "../../include/config/config.hpp"
+#include "../../include/utils/utils.hpp"
 #include "../../include/ipc/request.hpp"
 
 #include <nlohmann/json.hpp>
@@ -32,7 +35,7 @@ services::Music::Music(const std::string_view& app_name) {
 
     spdlog::info("PYTHON: server starting...");
 
-    fs::path python_script_path = std::string(MORODER_PYTHON_PATH) + "/main.py";
+    fs::path python_script_path = utils::resolve_path(MORODER_PYTHON_PATH).string() + "/main.py";
 
     if (fs::exists(python_script_path)) {
     	this->python_server_path = python_script_path.string();
@@ -52,12 +55,10 @@ services::Music::Music(const std::string_view& app_name) {
     }
 
     if (this->python_pid == 0) {
-        // redirect stdin
         close(pipe_stdin[1]);
         dup2(pipe_stdin[0], STDIN_FILENO);
         close(pipe_stdin[0]);
 
-        // redirect stdout
         close(pipe_stdout[0]);
         dup2(pipe_stdout[1], STDOUT_FILENO);
         close(pipe_stdout[1]);
@@ -83,7 +84,6 @@ services::Music::Music(const std::string_view& app_name) {
             (char*) nullptr
         );
 
-        // If exec fails
         throw std::runtime_error("PYTHON: could not run");
     }
 
@@ -137,7 +137,7 @@ template<typename ResponseType> ResponseType services::Music::send(const ipc::Re
 
 template <typename Request, typename Response> Response services::Music::sendStreamed(
     const Request& request,
-    const std::function<void(const nlohmann::json&, Response&)>& handleResponse,
+    const std::function<void(nlohmann::json&, Response&)>& handleResponse,
     const std::string& doneType
 ) {
     std::string request_string = request.serialize();
@@ -222,14 +222,28 @@ ipc::RadioResponse services::Music::radio(const music::SongRef& song) {
     );
 }
 
-ipc::SongResponse services::Music::getSong(const music::SongRef& ref) {
-    ipc::SongRequest request(ref);
+ipc::SongResponse services::Music::getSong(const music::SongRef& song) {
+    ipc::SongRequest request(song);
 
     ipc::SongResponse response = send<ipc::SongResponse>(
         request,
-        "PYTHON: returned empty on song request, " + ref.id
+        "PYTHON: returned empty on song request, " + song.id
     );
 
-    response.song.ref = ref;
+    response.song.ref = song;
     return response;
+}
+
+ipc::AlbumResponse services::Music::getAlbum(const music::AlbumRef& album) {
+    ipc::AlbumRequest request(album);
+
+    return sendStreamed<ipc::AlbumRequest, ipc::AlbumResponse>(
+        request,
+        [album](nlohmann::json& j, ipc::AlbumResponse& response) {
+            if (j["type"] == "album-track") {
+                response.addItem(j["data"], album);
+            }
+        },
+        "album-done"
+    );
 }

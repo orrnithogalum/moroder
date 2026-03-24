@@ -108,8 +108,8 @@ if(MORODER_DEV)
 else()
     target_compile_definitions(${PROJECT_NAME}
         PRIVATE
-        MORODER_PYTHON_PATH="$ENV{HOME}/.local/share/moroder/python"
-        MORODER_LOG_PATH="$ENV{HOME}/.local/share/moroder/logs"
+        MORODER_PYTHON_PATH=".local/share/moroder/python"
+        MORODER_LOG_PATH=".local/share/moroder/logs"
     )
 endif()
 

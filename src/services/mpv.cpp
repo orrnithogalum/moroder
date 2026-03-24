@@ -1,5 +1,7 @@
 #include "../../include/services/mpv.hpp"
 
+#include "../../include/utils/utils.hpp"
+
 #include <spdlog/spdlog.h>
 #include <stdexcept>
 
@@ -18,7 +20,7 @@ services::MPV::MPV() {
     mpv_set_option_string(mpv, "ytdl", "yes");
     mpv_set_option_string(mpv, "ytdl-format", "bestaudio");
 
-    mpv_set_option_string(mpv, "log-file", MORODER_LOG_PATH "/mpv.log");
+    mpv_set_option_string(mpv, "log-file", std::string(utils::resolve_path(MORODER_LOG_PATH).string() + "/mpv.log").c_str());
 
     if (!mpv) {
         throw std::runtime_error("Failed to create mpv instance");
@@ -169,7 +171,6 @@ void services::MPV::setPosition(uint64_t microseconds) {
     double seconds = static_cast<double>(microseconds) / 1000000.0;
 
     const std::string val = std::to_string(seconds);
-    spdlog::info("here2: " + val);
 
     const char* args[] = {
         "seek",

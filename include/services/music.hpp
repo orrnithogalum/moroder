@@ -8,6 +8,7 @@
 
 #include "../ipc/search/search_response.hpp"
 #include "../ipc/browse/song_response.hpp"
+#include "../ipc/album/album_response.hpp"
 #include "../ipc/radio/radio_response.hpp"
 #include "../models/song.hpp"
 #include "../ipc/request.hpp"
@@ -31,6 +32,7 @@ public:
     - SongResponse contains a Song object
     */
     ipc::SongResponse getSong(const music::SongRef& ref);
+    ipc::AlbumResponse getAlbum(const music::AlbumRef& album);
 
 private:
     /* python_server_path
@@ -64,7 +66,7 @@ private:
     template<typename ResponseType> ResponseType send(const ipc::Request& request, const std::string& log);
     template <typename Request, typename Response> Response sendStreamed(
         const Request& request,
-        const std::function<void(const nlohmann::json&, Response&)>& handleResponse,
+        const std::function<void(nlohmann::json&, Response&)>& handleResponse,
         const std::string& doneType
     );
 };

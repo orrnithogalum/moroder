@@ -3,9 +3,10 @@
 # - Handles search, streaming, playback control, and fetching detailed song info
 # - Maintains player state and optionally a logged-in user instance
 
-from modules.get_song import get_song
 from modules.search import search
+from modules.song import get_song
 from modules.radio import radio
+from modules.album import album
 from ytmusicapi import YTMusic
 
 import asyncio
@@ -91,6 +92,12 @@ class MusicServer:
             limit = req.get("limit", "")
 
             async for result in radio(self, id, limit):
+                print((json.dumps(result) + "\n"), flush=True)
+
+        elif action == "get_album":
+            id = req.get("id", "")
+
+            async for result in album(self, id):
                 print((json.dumps(result) + "\n"), flush=True)
 
         elif action == "get_song":

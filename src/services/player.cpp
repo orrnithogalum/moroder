@@ -259,6 +259,35 @@ void services::Player::worker_loop() {
             break;
         }
 
+        case Command::Album: {
+            ipc::AlbumResponse response = music_service->getAlbum(cmd.album_ref);
+
+            bool should_stream = false;
+
+            {
+                std::lock_guard lock(state_mutex);
+
+                if (!state.is_streaming_audio) {
+                    should_stream = true;
+                }
+            }
+
+            for (const music::SongRef& ref : response.results) {
+                {
+                    std::lock_guard lock(command_mutex);
+                    command_queue.push(Command(ref, should_stream ? Command::Stream : Command::Queue));
+                }
+
+                if(should_stream) {
+                    should_stream = false;
+                }
+            }
+
+            command_cv.notify_one();
+
+            break;
+        }
+
         case Command::Queue: {
             music::Song song;
 
@@ -361,6 +390,15 @@ void services::Player::queue(const music::SongRef& song) {
     }
 }
 
+void services::Player::queue(const music::AlbumRef& album) {
+    {
+        std::lock_guard lock(command_mutex);
+        command_queue.push(Command(album));
+    }
+
+    command_cv.notify_one();
+}
+
 void services::Player::skipForward() {
     music::Song next_song;
     bool should_skip = true;
@@ -448,6 +486,7 @@ void services::Player::updateMprisData() {
     - If we don't do this some MPRIS features don't work, like seeking.
     */
     std::string hash_id = std::to_string(std::hash<std::string>{}(video.ref.id));
+    spdlog::info("PLAYER: hashed id, " + hash_id);
 
     mpris_service->setMetadata({
         { services::Field::TrackId, sdbus::Variant(services::OBJECT_PATH + "/track/" + hash_id) },
