@@ -20,18 +20,25 @@ struct SongRef {
     std::string id;
     std::string title;
     std::string views;
-    std::string thumbnail;
 
-    std::vector<ArtistRef> artists;
+    std::string thumbnail_large;
+    std::string thumbnail_small;
 
     music::AlbumRef album;
+
+    std::vector<ArtistRef> artists;
 
     static SongRef from_json(const nlohmann::json& j) {
         SongRef s;
 
         s.id = j.value("videoId", "");
         s.title = j.value("title", "");
-        s.views = j.value("views", "");
+
+        if (j.contains("views") && j["views"].is_string()) {
+            s.views = j["views"].get<std::string>();
+        } else {
+            s.views = "";
+        }
 
         if (j.contains("artists") && j["artists"].is_array()) {
             for (const auto& a : j["artists"]) {
@@ -54,14 +61,15 @@ struct SongRef {
         - Radio result: thumbnail
         - Don't ask me why that is
         */
-        if (j.contains("thumbnails") && j["thumbnails"].is_array() && !j["thumbnails"].empty()) {
-            s.thumbnail = j["thumbnails"].back().value("url", "");
-
-        } else if (j.contains("thumbnail") && j["thumbnail"].is_array() && !j["thumbnail"].empty()) {
-            s.thumbnail = j["thumbnail"].back().value("url", "");
+        if ((j.contains("thumbnails") && j["thumbnails"].is_array() && !j["thumbnails"].empty()) ||
+             j.contains("thumbnail")  && j["thumbnail"].is_array()  && !j["thumbnail"].empty()
+        ) {
+            s.thumbnail_large = j["thumbnails"].back().value("url", "");
+            s.thumbnail_small = j["thumbnails"].front().value("url", "");
 
         } else {
-            s.thumbnail = "";
+            s.thumbnail_large = "";
+            s.thumbnail_small = "";
         }
 
         /* Formats:

@@ -10,7 +10,7 @@ import requests
 import os
 
 
-def get_song(server: "MusicServer", song_title: str, song_artist: str):
+def song(server: "MusicServer", song_title: str, song_artist: str):
     api_key = os.getenv("LASTFM_API_KEY")
 
     headers = {"User-Agent": "moroder/1.0 (LittleBigOwI@github.com)"}

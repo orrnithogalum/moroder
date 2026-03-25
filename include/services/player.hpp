@@ -36,13 +36,16 @@ public:
     - A threads loops over queued commands and executes them
     */
     struct Command {
+        bool fetch_album = true;
+
         enum Type {
             Empty,
             Queue,
             Radio,
             Search,
             Stream,
-            Album
+            Album,
+            Playlist
         };
 
         Type type;
@@ -53,13 +56,17 @@ public:
         std::string query;
         music::SongRef song_ref;
         music::AlbumRef album_ref;
+        music::PlaylistRef playlist_ref;
 
         explicit Command() : type(Empty) {}
         explicit Command(Type t) : type(t) {}
         explicit Command(const std::string& q) : query(q), type(Search) {}
-        explicit Command(const music::SongRef& s, Type t) : song_ref(s), type(t) {}
-        explicit Command(const music::AlbumRef& a) : album_ref(a), type(Album) {}
 
+        explicit Command(const music::SongRef& s, Type t) : song_ref(s), type(t), fetch_album(true) {}
+        explicit Command(const music::SongRef& s, Type t, bool a) : song_ref(s), type(t), fetch_album(a) {}
+
+        explicit Command(const music::AlbumRef& a) : album_ref(a), type(Album), fetch_album(false) {}
+        explicit Command(const music::PlaylistRef& p) : playlist_ref(p), type(Playlist), fetch_album(false) {}
     };
 
     PlayerState state;
@@ -75,7 +82,8 @@ public:
     void skipBackward();
 
     void queue(const music::SongRef& song);
-    void queue(const music::AlbumRef& song);
+    void queue(const music::AlbumRef& album);
+    void queue(const music::PlaylistRef& playlist);
 
     void search(const std::string& query);
     void radio(const music::SongRef& song);

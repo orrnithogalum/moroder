@@ -288,12 +288,41 @@ void services::Player::worker_loop() {
             break;
         }
 
+        case Command::Playlist: {
+            ipc::PlaylistResponse response = music_service->getPlaylist(cmd.playlist_ref);
+
+            bool should_stream = false;
+
+            {
+                std::lock_guard lock(state_mutex);
+
+                if (!state.is_streaming_audio) {
+                    should_stream = true;
+                }
+            }
+
+            for (const music::SongRef& ref : response.results) {
+                {
+                    std::lock_guard lock(command_mutex);
+                    command_queue.push(Command(ref, should_stream ? Command::Stream : Command::Queue, cmd.fetch_album));
+                }
+
+                if(should_stream) {
+                    should_stream = false;
+                }
+            }
+
+            command_cv.notify_one();
+
+            break;
+        }
+
         case Command::Queue: {
             music::Song song;
 
             // If the album isn't found, fetch one from network.
             Config cfg = Config::get();
-            if ((cmd.song_ref.album.id.empty() || cmd.song_ref.album.title.empty()) && cfg.FETCH_ALBUMS) {
+            if ((cmd.song_ref.album.id.empty() || cmd.song_ref.album.title.empty()) && cfg.FETCH_ALBUMS && cmd.fetch_album) {
                 song = music_service->getSong(cmd.song_ref).song;
 
             } else {
@@ -399,6 +428,15 @@ void services::Player::queue(const music::AlbumRef& album) {
     command_cv.notify_one();
 }
 
+void services::Player::queue(const music::PlaylistRef& playlist) {
+    {
+        std::lock_guard lock(command_mutex);
+        command_queue.push(Command(playlist));
+    }
+
+    command_cv.notify_one();
+}
+
 void services::Player::skipForward() {
     music::Song next_song;
     bool should_skip = true;
@@ -494,7 +532,7 @@ void services::Player::updateMprisData() {
         { services::Field::Title,   sdbus::Variant(video.ref.title) },
         { services::Field::Artist,  sdbus::Variant(video.ref.artists[0].name) },
         { services::Field::Length,  sdbus::Variant(video.duration) },
-        { services::Field::ArtUrl,  sdbus::Variant(video.ref.thumbnail) }
+        { services::Field::ArtUrl,  sdbus::Variant(video.ref.thumbnail_large) }
     });
     mpris_service->setPosition(0);
     mpris_service->sendSeekedSignal(0);
@@ -512,7 +550,7 @@ void services::Player::updateSocialData() {
         video.ref.title,
         video.ref.artists[0].name,
         video.album_title,
-        video.ref.thumbnail,
+        video.ref.thumbnail_large,
         video.duration
     );
 }

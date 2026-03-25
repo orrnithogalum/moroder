@@ -14,7 +14,9 @@ struct PlaylistRef {
     std::string id;
     std::string title;
     std::string author;
-    std::string thumbnail;
+
+    std::string thumbnail_large;
+    std::string thumbnail_small;
 
     static PlaylistRef from_json(const nlohmann::json& j) {
         PlaylistRef p;
@@ -52,9 +54,11 @@ struct PlaylistRef {
         }
 
         if (j.contains("thumbnails") && j["thumbnails"].is_array() && !j["thumbnails"].empty()) {
-            p.thumbnail = j["thumbnails"].back().value("url", "");
+            p.thumbnail_large = j["thumbnails"].back().value("url", "");
+            p.thumbnail_small = j["thumbnails"].front().value("url", "");
         } else {
-            p.thumbnail = "";
+            p.thumbnail_large = "";
+            p.thumbnail_small = "";
         }
 
         return p;

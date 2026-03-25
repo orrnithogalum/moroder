@@ -40,8 +40,6 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(ftxui)
 
-find_package(spdlog REQUIRED)
-find_package(nlohmann_json REQUIRED)
 find_package(sdbus-c++ REQUIRED)
 
 set(SOURCES
@@ -103,13 +101,19 @@ if(MORODER_DEV)
     target_compile_definitions(${PROJECT_NAME}
         PRIVATE
         MORODER_PYTHON_PATH="${CMAKE_SOURCE_DIR}/python"
+        MORODER_ASSET_PATH="${CMAKE_SOURCE_DIR}/assets"
         MORODER_LOG_PATH="${CMAKE_SOURCE_DIR}/logs"
+
+        MORODER_CACHE_PATH=".cache/moroder"
     )
 else()
     target_compile_definitions(${PROJECT_NAME}
         PRIVATE
         MORODER_PYTHON_PATH=".local/share/moroder/python"
-        MORODER_LOG_PATH=".local/share/moroder/logs"
+        MORODER_ASSET_PATH="$.local/share/moroder/assets"
+        MORODER_LOG_PATH=".local/state/moroder/logs"
+
+        MORODER_CACHE_PATH=".cache/moroder"
     )
 endif()
 

@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../ipc/playlist/playlist_response.hpp"
 #include "../ipc/search/search_response.hpp"
 #include "../ipc/browse/song_response.hpp"
 #include "../ipc/album/album_response.hpp"
@@ -33,6 +34,7 @@ public:
     */
     ipc::SongResponse getSong(const music::SongRef& ref);
     ipc::AlbumResponse getAlbum(const music::AlbumRef& album);
+    ipc::PlaylistResponse getPlaylist(const music::PlaylistRef& playlist);
 
 private:
     /* python_server_path

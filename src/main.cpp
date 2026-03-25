@@ -75,6 +75,10 @@ int main(int argc, char *argv[]) {
 
                         } else if constexpr (std::is_same_v<T, music::AlbumRef>) {
                             player.queue(data);
+
+                        } else if constexpr (std::is_same_v<T, music::PlaylistRef>) {
+                            player.queue(data);
+
                         }
                     }, r.data);
                 }

@@ -26,7 +26,6 @@ public:
     std::string LASTFM_API_KEY;
 
     fs::path COOKIES_PATH;
-    fs::path CACHE_PATH;
 
     int SEARCH_RESULT_LIMIT;
     int RADIO_RESULT_LIMIT;
@@ -82,9 +81,6 @@ public:
 
                 } else if (key == "FETCH_ALBUMS") {
                     new_config << "FETCH_ALBUMS=" << (FETCH_ALBUMS ? "true" : "false") << "\n";
-
-                } else if (key == "CACHE_PATH") {
-                    new_config << "CACHE_PATH=\"" << CACHE_PATH.string() << "\"\n";
 
                 } else if (key == "COOKIES_PATH") {
                     new_config << "COOKIES_PATH=\"" << COOKIES_PATH.string() << "\"\n";
@@ -198,9 +194,6 @@ private:
 
                 else if(key == "COOKIES_PATH")
                     cfg.COOKIES_PATH = expand_user(value.substr(1, value.size() - 2));
-
-                else if(key == "CACHE_PATH")
-                    cfg.CACHE_PATH = expand_user(value.substr(1, value.size() - 2));
 
                 else if(key == "SEARCH_RESULT_LIMIT")
                     cfg.SEARCH_RESULT_LIMIT = std::stoi(value);

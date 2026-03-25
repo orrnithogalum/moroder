@@ -18,11 +18,12 @@ public:
         };
         j["album"] = album_json;
 
-        nlohmann::json thumbnail = {
-            {"url", album.thumbnail}
+        nlohmann::json thumbnails = {
+            {"url", album.thumbnail_small},
+            {"url", album.thumbnail_large},
         };
 
-        j["thumbnails"] = { thumbnail };
+        j["thumbnails"] = { thumbnails };
 
         results.push_back(music::SongRef::from_json(j));
     }

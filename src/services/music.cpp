@@ -1,5 +1,6 @@
 #include "../../include/services/music.hpp"
 
+#include "../../include/ipc/playlist/playlist_request.hpp"
 #include "../../include/ipc/search/search_request.hpp"
 #include "../../include/ipc/radio/radio_response.hpp"
 #include "../../include/ipc/album/album_response.hpp"
@@ -181,13 +182,13 @@ template <typename Request, typename Response> Response services::Music::sendStr
                     break;
                 } else {
                     handleResponse(j, response);
+                    count++;
                 }
 
             } catch (const std::exception& e) {
                 spdlog::warn("PYTHON: failed to parse stream line, {}", e.what());
             }
         }
-        count++;
     }
 
     spdlog::info("PYTHON: received " + std::to_string(count) + " entries from stream");
@@ -245,5 +246,19 @@ ipc::AlbumResponse services::Music::getAlbum(const music::AlbumRef& album) {
             }
         },
         "album-done"
+    );
+}
+
+ipc::PlaylistResponse services::Music::getPlaylist(const music::PlaylistRef& playlist) {
+    ipc::PlaylistRequest request(playlist);
+
+    return sendStreamed<ipc::PlaylistRequest, ipc::PlaylistResponse>(
+        request,
+        [](nlohmann::json& j, ipc::PlaylistResponse& response) {
+            if (j["type"] == "playlist-track") {
+                response.addItem(j["data"]);
+            }
+        },
+        "playlist-done"
     );
 }

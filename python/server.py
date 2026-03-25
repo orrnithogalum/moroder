@@ -3,10 +3,12 @@
 # - Handles search, streaming, playback control, and fetching detailed song info
 # - Maintains player state and optionally a logged-in user instance
 
+from modules.playlist import playlist
 from modules.search import search
-from modules.song import get_song
-from modules.radio import radio
 from modules.album import album
+from modules.radio import radio
+from modules.song import song
+
 from ytmusicapi import YTMusic
 
 import asyncio
@@ -68,11 +70,6 @@ class MusicServer:
             self.ytm = YTMusic()
             self.logged_in = False
 
-    def get_song(self, song_title: str, song_artist: str):
-        #  get_song
-        # - Fetches detailed song info via MusicBrainz API
-        return get_song(self, song_title, song_artist)
-
     async def handle_request(self, req: dict):
         # handle_request
         # - Main entrypoint for JSON commands from cpp side
@@ -100,8 +97,14 @@ class MusicServer:
             async for result in album(self, id):
                 print((json.dumps(result) + "\n"), flush=True)
 
+        elif action == "get_playlist":
+            id = req.get("id", "")
+
+            async for result in playlist(self, id):
+                print((json.dumps(result) + "\n"), flush=True)
+
         elif action == "get_song":
-            return self.get_song(req.get("song_title", ""), req.get("song_artist", ""))
+            return song(self, req.get("song_title", ""), req.get("song_artist", ""))
 
         else:
             return {"status": "error", "message": f"Unknown action: {action}"}
