@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "podcast.hpp"
 #include <nlohmann/json.hpp>
 #include <string>
 
@@ -14,7 +15,11 @@ namespace music {
 struct EpisodeRef {
     std::string id;
     std::string title;
-    std::string podcastId;
+
+    std::string thumbnail_large;
+    std::string thumbnail_small;
+
+    music::PodcastRef podcast;
 
     static EpisodeRef from_json(const nlohmann::json& j) {
         EpisodeRef e;
@@ -23,9 +28,19 @@ struct EpisodeRef {
         e.title = j.value("title", "");
 
         if (j.contains("podcast") && j["podcast"].is_object()) {
-            e.podcastId = j["podcast"].value("id", "");
+            e.podcast.id = j["podcast"].value("id", "");
+            e.podcast.name = j["podcast"].value("name", "");
         } else {
-            e.podcastId = "";
+            e.podcast.id = "";
+            e.podcast.name = "";
+        }
+
+        if (j.contains("thumbnails") && j["thumbnails"].is_array() && !j["thumbnails"].empty()) {
+            e.thumbnail_large = j["thumbnails"].back().value("url", "");
+            e.thumbnail_small = j["thumbnails"].front().value("url", "");
+        } else {
+            e.thumbnail_large = "";
+            e.thumbnail_small = "";
         }
 
         return e;

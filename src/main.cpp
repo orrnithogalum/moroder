@@ -132,19 +132,33 @@ int main(int argc, char *argv[]) {
 
                 std::visit([&](auto&& data) {
                     using T = std::decay_t<decltype(data)>;
+
                     if constexpr (std::is_same_v<T, music::SongRef>) {
                         top_label = "󰎇 " + data.title;
                         bottom_label = data.artists[0].name;
                         thumb = data.thumbnail_small;
+
                     } else if constexpr (std::is_same_v<T, music::AlbumRef>) {
                         top_label = "󰀥 " + data.title;
                         bottom_label = data.artists[0].name;
                         thumb = data.thumbnail_small;
+
                     } else if constexpr (std::is_same_v<T, music::ArtistRef>) {
                         top_label = "󰠃 " + data.name;
+                        thumb = data.thumbnail_small;
+
                     } else if constexpr (std::is_same_v<T, music::PlaylistRef>) {
                         top_label = "󰲸 " + data.title;
                         bottom_label = data.author;
+                        thumb = data.thumbnail_small;
+
+                    } else if constexpr (std::is_same_v<T, music::PodcastRef>) {
+                        top_label = " " + data.name;
+                        thumb = data.thumbnail_small;
+
+                    } else if constexpr (std::is_same_v<T, music::EpisodeRef>) {
+                        top_label = " " + data.title;
+                        bottom_label = data.podcast.name;
                         thumb = data.thumbnail_small;
                     }
                 }, r.data);

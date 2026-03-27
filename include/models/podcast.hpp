@@ -14,10 +14,22 @@ struct PodcastRef {
     std::string id;
     std::string name;
 
+    std::string thumbnail_large;
+    std::string thumbnail_small;
+
     static PodcastRef from_json(const nlohmann::json& j) {
         PodcastRef a;
         a.id = j.value("browseId", "");
-        a.name = j.value("artist", "");
+        a.name = j.value("title", "");
+
+        if (j.contains("thumbnails") && j["thumbnails"].is_array() && !j["thumbnails"].empty()) {
+            a.thumbnail_large = j["thumbnails"].back().value("url", "");
+            a.thumbnail_small = j["thumbnails"].front().value("url", "");
+        } else {
+            a.thumbnail_large = "";
+            a.thumbnail_small = "";
+        }
+
         return a;
     }
 };

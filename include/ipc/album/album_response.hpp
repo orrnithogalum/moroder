@@ -2,6 +2,7 @@
 
 #include "../../models/song.hpp"
 #include "../response.hpp"
+#include "spdlog/spdlog.h"
 
 namespace ipc {
 
@@ -19,11 +20,13 @@ public:
         j["album"] = album_json;
 
         nlohmann::json thumbnails = {
-            {"url", album.thumbnail_small},
-            {"url", album.thumbnail_large},
+            { {"url", album.thumbnail_small} },
+            { {"url", album.thumbnail_large} }
         };
 
-        j["thumbnails"] = { thumbnails };
+        j["thumbnails"] = thumbnails;
+
+        spdlog::info(j.dump(4));
 
         results.push_back(music::SongRef::from_json(j));
     }
