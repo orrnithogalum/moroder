@@ -132,6 +132,12 @@ template<typename ResponseType> ResponseType services::Music::send(const ipc::Re
         return ResponseType();
     }
 
+    auto j = nlohmann::json::parse(buffer, nullptr, false);
+    if (j.is_discarded()) {
+        spdlog::warn(log + " (invalid JSON): {}", buffer);
+        return ResponseType();
+    }
+
     buffer[n] = '\0';
     return ResponseType(buffer);
 }

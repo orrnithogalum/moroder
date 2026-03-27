@@ -150,6 +150,11 @@ int main(int argc, char *argv[]) {
                 }, r.data);
 
                 ftxui::Element thumb_box;
+
+                /* IMPORTANT:
+                - image_view can cause a variety of crashed: (unsupported format, can't reach network if given a url, etc.)
+                - keeping it like this for testing
+                */
                 auto cell = [](const std::string& path){ return ftxui::image_view(path); };
 
                 if (!thumb.empty() && thumb.rfind("https://", 0) == 0) {
