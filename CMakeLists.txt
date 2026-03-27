@@ -40,6 +40,13 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(ftxui)
 
+FetchContent_Declare(
+  ftxui-image-view
+  GIT_REPOSITORY https://github.com/orrnithogalum/ftxui-image-view-async.git
+  GIT_TAG main
+)
+FetchContent_MakeAvailable(ftxui-image-view)
+
 find_package(sdbus-c++ REQUIRED)
 
 set(SOURCES
@@ -88,6 +95,7 @@ target_link_libraries(${PROJECT_NAME}
     ftxui::screen
     ftxui::dom
     ftxui::component
+    ftxui-image-view
 
     mpv
 
