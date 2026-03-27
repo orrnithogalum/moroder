@@ -10,6 +10,8 @@
 #include "../include/config/config.hpp"
 #include "../include/utils/utils.hpp"
 
+#include "image_view.hpp"
+
 #define APP_NAME_HUMAN "Moroder"
 #define APP_NAME "moroder"
 
@@ -123,26 +125,72 @@ int main(int argc, char *argv[]) {
         } else {
             for (size_t i = 0; i < state_copy.search_results.size(); ++i) {
                 auto& r = state_copy.search_results[i];
-                std::string label = r.resultType;
+
+                std::string top_label = r.resultType;
+                std::string bottom_label = "";
+                std::string thumb = "";
 
                 std::visit([&](auto&& data) {
                     using T = std::decay_t<decltype(data)>;
                     if constexpr (std::is_same_v<T, music::SongRef>) {
-                        label = "[SONG] " + data.title;
+                        top_label = "󰎇 " + data.title;
+                        bottom_label = data.artists[0].name;
+                        thumb = data.thumbnail_small;
                     } else if constexpr (std::is_same_v<T, music::AlbumRef>) {
-                        label = "[ALBUM] " + data.title;
+                        top_label = "󰀥 " + data.title;
+                        bottom_label = data.artists[0].name;
+                        thumb = data.thumbnail_small;
                     } else if constexpr (std::is_same_v<T, music::ArtistRef>) {
-                        label = "[ARTIST] " + data.name;
+                        top_label = "󰠃 " + data.name;
                     } else if constexpr (std::is_same_v<T, music::PlaylistRef>) {
-                        label = "[PLAYLIST] " + data.title;
+                        top_label = "󰲸 " + data.title;
+                        bottom_label = data.author;
+                        thumb = data.thumbnail_small;
                     }
                 }, r.data);
 
+                ftxui::Element thumb_box;
+                auto cell = [](const std::string& path){ return ftxui::image_view(path); };
+
+                if (!thumb.empty() && thumb.rfind("https://", 0) == 0) {
+                    thumb_box = cell(thumb) | flex | size(WIDTH, EQUAL, 4) | size(HEIGHT, EQUAL, 2);
+                } else {
+                    thumb_box = ftxui::filler() | flex | size(WIDTH, EQUAL, 4) | size(HEIGHT, EQUAL, 2);
+                }
+
                 // Highlight the selected element
                 if ((int)i == selected_index) {
-                    result_elements.push_back(text("> " + label) | inverted);
+                    result_elements.push_back(
+                        vbox(
+                            hbox(
+                                thumb_box | size(WIDTH, EQUAL, 4) | size(HEIGHT, EQUAL, 2),
+                                text(" "),
+                                separator(),
+                                text(" "),
+                                vbox(
+                                    text(top_label) | bold,
+                                    text(bottom_label) | dim
+                                )
+                            ) | inverted,
+                            text("")
+                        )
+                    );
                 } else {
-                    result_elements.push_back(text("  " + label));
+                    result_elements.push_back(
+                        vbox(
+                            hbox(
+                                thumb_box | size(WIDTH, EQUAL, 4) | size(HEIGHT, EQUAL, 2),
+                                text(" "),
+                                separator(),
+                                text(" "),
+                                vbox(
+                                    text(top_label) | bold,
+                                    text(bottom_label) | dim
+                                )
+                            ),
+                            text("")
+                        )
+                    );
                 }
             }
         }
@@ -152,8 +200,13 @@ int main(int argc, char *argv[]) {
             text("Search") | bold,
             input->Render(),
             separator(),
+            text(""),
             vbox(std::move(result_elements)) | frame
         });
+    });
+
+    ftxui::setOnImageLoadedCallback([&](){
+        screen.PostEvent(Event::Custom);
     });
 
     auto main_component = Container::Vertical({

@@ -16,8 +16,16 @@ struct ArtistRef {
 
     static ArtistRef from_json(const nlohmann::json& j) {
         ArtistRef a;
-        a.id = j.value("browseId", "");
-        a.name = j.value("artist", "");
+
+        if (j.contains("artists") && j["artists"].is_array() && !j["artists"].empty()) {
+            const auto& first_artist = j["artists"].front();
+            a.id = first_artist.value("id", "");
+            a.name = first_artist.value("name", "");
+        } else {
+            a.id = j.value("browseId", "");
+            a.name = j.value("artist", "");
+        }
+
         return a;
     }
 };
