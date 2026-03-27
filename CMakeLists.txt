@@ -14,9 +14,6 @@ set(DISCORD_SDK_INCLUDE_DIR "${DISCORD_SDK_ROOT}/include")
 set(DISCORD_LIB_PATH "${DISCORD_SDK_LIB_DIR}/libdiscord_partner_sdk.so")
 set(DISCORD_SHARED_LIB "${DISCORD_SDK_LIB_DIR}/libdiscord_partner_sdk.so")
 
-# Compile with cmake -DMORODER_DEV=OFF .. for release builds
-option(MORODER_DEV "Enable dev build" ON)
-
 include(FetchContent)
 
 FetchContent_Declare(
@@ -105,7 +102,7 @@ target_link_libraries(${PROJECT_NAME}
 set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 set(CMAKE_INSTALL_RPATH "$ORIGIN")
 
-if(MORODER_DEV)
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(${PROJECT_NAME}
         PRIVATE
         MORODER_PYTHON_PATH="${CMAKE_SOURCE_DIR}/python"
