@@ -7,12 +7,12 @@ namespace ipc {
 
 class PlaylistResponse : public Response {
 public:
-    std::vector<music::SongRef> results;
+    std::vector<music::IStreamable> results;
 
     explicit PlaylistResponse() : Response() {}
 
     void addItem(nlohmann::json& j) {
-        results.push_back(music::SongRef::from_json(j));
+        results.push_back(music::Song::from_json(j));
     }
 };
 

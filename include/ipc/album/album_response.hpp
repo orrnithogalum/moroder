@@ -2,13 +2,12 @@
 
 #include "../../models/song.hpp"
 #include "../response.hpp"
-#include "spdlog/spdlog.h"
 
 namespace ipc {
 
 class AlbumResponse : public Response {
 public:
-    std::vector<music::SongRef> results;
+    std::vector<music::IStreamable> results;
 
     explicit AlbumResponse() : Response() {}
 
@@ -26,9 +25,7 @@ public:
 
         j["thumbnails"] = thumbnails;
 
-        spdlog::info(j.dump(4));
-
-        results.push_back(music::SongRef::from_json(j));
+        results.push_back(music::Song::from_json(j));
     }
 };
 

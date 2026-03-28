@@ -1,22 +1,34 @@
 #include "../../include/services/music.hpp"
 
+#include "../../include/ipc/playlist/playlist_response.hpp"
 #include "../../include/ipc/playlist/playlist_request.hpp"
+
+#include "../../include/ipc/search/search_response.hpp"
 #include "../../include/ipc/search/search_request.hpp"
+
 #include "../../include/ipc/radio/radio_response.hpp"
-#include "../../include/ipc/album/album_response.hpp"
 #include "../../include/ipc/radio/radio_request.hpp"
-#include "../../include/ipc/browse/song_request.hpp"
+
+#include "../../include/ipc/album/album_response.hpp"
 #include "../../include/ipc/album/album_request.hpp"
+
+#include "../../include/ipc/browse/song_response.hpp"
+#include "../../include/ipc/browse/song_request.hpp"
+
+#include "../../include/models/radio.hpp"
+
 #include "../../include/config/config.hpp"
 #include "../../include/utils/utils.hpp"
 #include "../../include/ipc/request.hpp"
 
+#include <memory>
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 #include <filesystem>
 #include <sys/wait.h>
 #include <unistd.h>
 #include <string>
+#include <vector>
 
 namespace fs = std::filesystem;
 
@@ -132,7 +144,7 @@ template<typename ResponseType> ResponseType services::Music::send(const ipc::Re
         return ResponseType();
     }
 
-    auto j = nlohmann::json::parse(buffer, nullptr, false);
+    auto j = nlohmann::json::parse(std::string(this->buffer, n), nullptr, false);
     if (j.is_discarded()) {
         spdlog::warn(log + " (invalid JSON): {}", buffer);
         return ResponseType();
@@ -201,10 +213,10 @@ template <typename Request, typename Response> Response services::Music::sendStr
     return response;
 }
 
-ipc::SearchResponse services::Music::search(const std::string& query) {
+std::vector<music::SearchResult> services::Music::getSearch(const std::string& query) {
     ipc::SearchRequest request(query);
 
-    return sendStreamed<ipc::SearchRequest, ipc::SearchResponse>(
+    ipc::SearchResponse response = this->sendStreamed<ipc::SearchRequest, ipc::SearchResponse>(
         request,
         [](const nlohmann::json& j, ipc::SearchResponse& response) {
             if (j["type"] == "search-result") {
@@ -213,12 +225,14 @@ ipc::SearchResponse services::Music::search(const std::string& query) {
         },
         "search-done"
     );
+
+    return response.results;
 }
 
-ipc::RadioResponse services::Music::radio(const music::SongRef& song) {
+music::Radio services::Music::getRadio(const music::SongRef& song) {
     ipc::RadioRequest request(song);
 
-    return sendStreamed<ipc::RadioRequest, ipc::RadioResponse>(
+    ipc::RadioResponse response = this->sendStreamed<ipc::RadioRequest, ipc::RadioResponse>(
         request,
         [](const nlohmann::json& j, ipc::RadioResponse& response) {
             if (j["type"] == "radio-track") {
@@ -227,9 +241,16 @@ ipc::RadioResponse services::Music::radio(const music::SongRef& song) {
         },
         "radio-done"
     );
+
+    music::Radio r;
+    for (const auto& s : response.results) {
+        r.addStreamable(s);
+    }
+
+    return r;
 }
 
-ipc::SongResponse services::Music::getSong(const music::SongRef& song) {
+music::Song services::Music::getSong(const music::SongRef& song) {
     ipc::SongRequest request(song);
 
     ipc::SongResponse response = send<ipc::SongResponse>(
@@ -237,14 +258,14 @@ ipc::SongResponse services::Music::getSong(const music::SongRef& song) {
         "PYTHON: returned empty on song request, " + song.id
     );
 
-    response.song.ref = song;
-    return response;
+    response.song.setRef(song);
+    return response.song;
 }
 
-ipc::AlbumResponse services::Music::getAlbum(const music::AlbumRef& album) {
+music::Album services::Music::getAlbum(const music::AlbumRef& album) {
     ipc::AlbumRequest request(album);
 
-    return sendStreamed<ipc::AlbumRequest, ipc::AlbumResponse>(
+    ipc::AlbumResponse response = this->sendStreamed<ipc::AlbumRequest, ipc::AlbumResponse>(
         request,
         [album](nlohmann::json& j, ipc::AlbumResponse& response) {
             if (j["type"] == "album-track") {
@@ -253,12 +274,19 @@ ipc::AlbumResponse services::Music::getAlbum(const music::AlbumRef& album) {
         },
         "album-done"
     );
+
+    music::Album a;
+    for (const music::IStreamable& s : response.results) {
+        a.addStreamable(std::make_shared<music::IStreamable>(s));
+    }
+
+    return a;
 }
 
-ipc::PlaylistResponse services::Music::getPlaylist(const music::PlaylistRef& playlist) {
+music::Playlist services::Music::getPlaylist(const music::PlaylistRef& playlist) {
     ipc::PlaylistRequest request(playlist);
 
-    return sendStreamed<ipc::PlaylistRequest, ipc::PlaylistResponse>(
+    ipc::PlaylistResponse response = this->sendStreamed<ipc::PlaylistRequest, ipc::PlaylistResponse>(
         request,
         [](nlohmann::json& j, ipc::PlaylistResponse& response) {
             if (j["type"] == "playlist-track") {
@@ -267,4 +295,11 @@ ipc::PlaylistResponse services::Music::getPlaylist(const music::PlaylistRef& pla
         },
         "playlist-done"
     );
+
+    music::Playlist p;
+    for (const music::IStreamable& s : response.results) {
+        p.addStreamable(std::make_shared<music::IStreamable>(s));
+    }
+
+    return p;
 }

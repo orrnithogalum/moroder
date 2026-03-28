@@ -22,7 +22,7 @@ public:
     struct PlayerState {
         std::deque<music::Song> song_queue;
 
-        std::vector<ipc::SearchResult> search_results;
+        std::vector<music::SearchResult> search_results;
         music::Song current_song;
 
         int queue_position = 0;

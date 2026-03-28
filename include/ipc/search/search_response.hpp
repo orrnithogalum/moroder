@@ -7,12 +7,12 @@ namespace ipc {
 
 class SearchResponse : public Response {
 public:
-    std::vector<SearchResult> results;
+    std::vector<music::SearchResult> results;
 
     explicit SearchResponse() : Response() {}
 
     void addItem(const nlohmann::json& j) {
-        results.push_back(SearchResult::from_json(j));
+        results.push_back(music::SearchResult::from_json(j));
     }
 };
 

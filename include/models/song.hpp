@@ -59,11 +59,13 @@ struct SongRef {
         - Radio result: thumbnail
         - Don't ask me why that is
         */
-        if ((j.contains("thumbnails") && j["thumbnails"].is_array() && !j["thumbnails"].empty()) ||
-             j.contains("thumbnail")  && j["thumbnail"].is_array()  && !j["thumbnail"].empty()
-        ) {
+        if ((j.contains("thumbnails") && j["thumbnails"].is_array() && !j["thumbnails"].empty())) {
             s.thumbnail_large = j["thumbnails"].back().value("url", "");
             s.thumbnail_small = j["thumbnails"].front().value("url", "");
+
+        } else if (j.contains("thumbnail")  && j["thumbnail"].is_array() && !j["thumbnail"].empty()) {
+            s.thumbnail_large = j["thumbnail"].back().value("url", "");
+            s.thumbnail_small = j["thumbnail"].front().value("url", "");
 
         } else {
             s.thumbnail_large = "";
@@ -111,6 +113,11 @@ struct Song : IStreamable {
         }
 
         return s;
+    }
+
+    void setRef(const music::SongRef& ref) {
+        this->ref = ref;
+        this->url = "https://www.youtube.com/watch?v=" + ref.id;
     }
 };
 

@@ -6,12 +6,8 @@
 
 #pragma once
 
-#include "../ipc/playlist/playlist_response.hpp"
-#include "../ipc/search/search_response.hpp"
-#include "../ipc/browse/song_response.hpp"
-#include "../ipc/album/album_response.hpp"
-#include "../ipc/radio/radio_response.hpp"
-#include "../models/song.hpp"
+#include "../models/search_result.hpp"
+#include "../models/radio.hpp"
 #include "../ipc/request.hpp"
 
 #include <sys/types.h>
@@ -25,16 +21,12 @@ public:
     Music(const std::string_view& app_name);
     ~Music();
 
-    ipc::SearchResponse search(const std::string& query);
-    ipc::RadioResponse radio(const music::SongRef& song);
+    std::vector<music::SearchResult> getSearch(const std::string& query);
 
-    /* getSong
-    - Fetches extra song details for a given SongRef.
-    - SongResponse contains a Song object
-    */
-    ipc::SongResponse getSong(const music::SongRef& ref);
-    ipc::AlbumResponse getAlbum(const music::AlbumRef& album);
-    ipc::PlaylistResponse getPlaylist(const music::PlaylistRef& playlist);
+    music::Song     getSong(const music::SongRef& ref);
+    music::Radio    getRadio(const music::SongRef& song);
+    music::Album    getAlbum(const music::AlbumRef& album);
+    music::Playlist getPlaylist(const music::PlaylistRef& playlist);
 
 private:
     /* python_server_path

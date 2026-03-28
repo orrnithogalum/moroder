@@ -16,7 +16,7 @@
 #include <variant>
 #include <string>
 
-namespace ipc {
+namespace music {
 
 using ResultData = std::variant<
     std::monostate,
@@ -53,10 +53,10 @@ struct SearchResult {
 
         } else if (res.resultType == "episode") {
             res.data = music::EpisodeRef::from_json(j);
-        
+
         } else if(res.resultType == "podcast") {
             res.data = music::PodcastRef::from_json(j);
-        
+
         } else {
             res.data = std::monostate{};
         }

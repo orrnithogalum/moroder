@@ -50,7 +50,7 @@ set(SOURCES
     src/services/mpris.cpp
     src/services/mpv.cpp
     src/services/music.cpp
-    src/services/player.cpp
+    # src/services/player.cpp
     src/services/social.cpp
 
     src/main.cpp
