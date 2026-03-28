@@ -6,7 +6,9 @@
 
 #pragma once
 
+#include "../interfaces/streamable.hpp"
 #include "podcast.hpp"
+
 #include <nlohmann/json.hpp>
 #include <string>
 
@@ -44,6 +46,27 @@ struct EpisodeRef {
         }
 
         return e;
+    }
+};
+
+struct Episode : IStreamable {
+    uint64_t duration;
+    EpisodeRef ref;
+
+    std::string url;
+
+    static Episode from_json(const nlohmann::json& j) {
+        Episode e;
+
+        e.duration = 0;
+        e.ref = EpisodeRef::from_json(j);
+        e.url = "https://www.youtube.com/watch?v=" + e.ref.id;
+
+        return e;
+    }
+
+    std::string getStreamUrl() const override {
+        return this->url;
     }
 };
 

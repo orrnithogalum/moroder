@@ -6,11 +6,12 @@
 
 #pragma once
 
-#include "album.hpp"
+#include "../interfaces/streamable.hpp"
 #include "artist.hpp"
+#include "album.hpp"
 
-#include <cstdint>
 #include <nlohmann/json.hpp>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -23,8 +24,6 @@ struct SongRef {
 
     std::string thumbnail_large;
     std::string thumbnail_small;
-
-    music::AlbumRef album;
 
     std::vector<ArtistRef> artists;
 
@@ -72,6 +71,24 @@ struct SongRef {
             s.thumbnail_small = "";
         }
 
+        return s;
+    }
+};
+
+struct Song : IStreamable {
+    uint64_t duration;
+    SongRef ref;
+
+    music::AlbumRef album;
+    std::string url;
+
+    static Song from_json(const nlohmann::json& j) {
+        Song s;
+
+        s.duration = 0;
+        s.ref = SongRef::from_json(j);
+        s.url = "https://www.youtube.com/watch?v=" + s.ref.id;
+
         /* Formats:
         - Search result: album: {id, title}
         - Radio result: album: [{id, title}]
@@ -89,7 +106,7 @@ struct SongRef {
                 s.album.id = album_json.value("id", "");
 
             } else {
-                s.album = music::AlbumRef{};
+                s.album.title = j.value("album", "");
             }
 
         } else {
@@ -98,22 +115,9 @@ struct SongRef {
 
         return s;
     }
-};
 
-struct Song {
-    SongRef ref;
-
-    uint64_t duration = 0;
-
-    std::string album_title;
-    std::string url;
-
-    static Song from_json(const nlohmann::json& j) {
-        Song s;
-
-        s.album_title = j.value("album", "");
-
-        return s;
+    std::string getStreamUrl() const override {
+        return this->url;
     }
 };
 
