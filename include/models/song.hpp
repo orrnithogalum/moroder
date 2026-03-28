@@ -11,7 +11,6 @@
 #include "album.hpp"
 
 #include <nlohmann/json.hpp>
-#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -76,11 +75,9 @@ struct SongRef {
 };
 
 struct Song : IStreamable {
-    uint64_t duration;
     SongRef ref;
 
     music::AlbumRef album;
-    std::string url;
 
     static Song from_json(const nlohmann::json& j) {
         Song s;
@@ -114,10 +111,6 @@ struct Song : IStreamable {
         }
 
         return s;
-    }
-
-    std::string getStreamUrl() const override {
-        return this->url;
     }
 };
 

@@ -50,10 +50,7 @@ struct EpisodeRef {
 };
 
 struct Episode : IStreamable {
-    uint64_t duration;
     EpisodeRef ref;
-
-    std::string url;
 
     static Episode from_json(const nlohmann::json& j) {
         Episode e;
@@ -63,10 +60,6 @@ struct Episode : IStreamable {
         e.url = "https://www.youtube.com/watch?v=" + e.ref.id;
 
         return e;
-    }
-
-    std::string getStreamUrl() const override {
-        return this->url;
     }
 };
 

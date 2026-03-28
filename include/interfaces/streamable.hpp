@@ -1,14 +1,27 @@
 /* STREAMABLE
 - Interface for any class that can be streamed (audio).
-- Songs and podcasts can be streamed
+- Songs and Podcast episodes can be streamed
 */
 
 #pragma once
 
+#include <cstdint>
 #include <string>
+
+namespace music {
 
 class IStreamable {
 public:
     virtual ~IStreamable() = default;
-    virtual std::string getStreamUrl() const = 0;
+
+protected:
+    uint64_t duration;
+    std::string url;
+
+public:
+    std::string getStreamUrl() const {
+        return this->url;
+    }
 };
+
+}

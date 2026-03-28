@@ -5,7 +5,11 @@
 
 #pragma once
 
+#include "../interfaces/container.hpp"
+#include "../interfaces/streamable.hpp"
 #include "artist.hpp"
+
+#include <memory>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
@@ -51,6 +55,19 @@ struct AlbumRef {
             a.thumbnail_large = "";
             a.thumbnail_small = "";
         }
+
+        return a;
+    }
+};
+
+struct Album : IStreamableContainer {
+    AlbumRef ref;
+
+    std::vector<std::shared_ptr<music::IStreamable>> tracks;
+
+    static Album from_json(const nlohmann::json& j) {
+        Album a;
+        a.ref = AlbumRef::from_json(j);
 
         return a;
     }

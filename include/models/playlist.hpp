@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include "../interfaces/container.hpp"
+
 #include <nlohmann/json.hpp>
 #include <string>
 
@@ -62,6 +64,19 @@ struct PlaylistRef {
         }
 
         return p;
+    }
+};
+
+struct Playlist : IStreamableContainer {
+    PlaylistRef ref;
+
+    std::vector<std::shared_ptr<music::IStreamable>> tracks;
+
+    static Playlist from_json(const nlohmann::json& j) {
+        Playlist a;
+        a.ref = PlaylistRef::from_json(j);
+
+        return a;
     }
 };
 
