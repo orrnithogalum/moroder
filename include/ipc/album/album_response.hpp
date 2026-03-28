@@ -7,7 +7,7 @@ namespace ipc {
 
 class AlbumResponse : public Response {
 public:
-    std::vector<music::IStreamable> results;
+    std::vector<std::shared_ptr<music::IStreamable>> results;
 
     explicit AlbumResponse() : Response() {}
 
@@ -25,7 +25,7 @@ public:
 
         j["thumbnails"] = thumbnails;
 
-        results.push_back(music::Song::from_json(j));
+        results.push_back(std::make_shared<music::Song>(music::Song::from_json(j)));
     }
 };
 

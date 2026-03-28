@@ -19,7 +19,6 @@ namespace music {
 struct SongRef {
     std::string id;
     std::string title;
-    std::string views;
 
     std::string thumbnail_large;
     std::string thumbnail_small;
@@ -31,12 +30,6 @@ struct SongRef {
 
         s.id = j.value("videoId", "");
         s.title = j.value("title", "");
-
-        if (j.contains("views") && j["views"].is_string()) {
-            s.views = j["views"].get<std::string>();
-        } else {
-            s.views = "";
-        }
 
         if (j.contains("artists") && j["artists"].is_array()) {
             for (const auto& a : j["artists"]) {

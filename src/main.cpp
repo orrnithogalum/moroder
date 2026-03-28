@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
 
     std::unique_ptr<services::Music> music_service = std::make_unique<services::Music>(APP_NAME);
 
-    std::vector<music::SearchResult> results = music_service->getSearch("moroder");
+    std::vector<music::SearchResult> results = music_service->getSearch("hand picked str-23");
 
     for (const auto& result : results) {
         std::visit([&](auto&& value) {
@@ -48,29 +48,85 @@ int main(int argc, char *argv[]) {
                 std::cout << "Empty result\n";
 
             } else if constexpr (std::is_same_v<T, music::SongRef>) {
-                std::cout << "Song: " << value.title << "\n";
+                // std::cout << "Song: " << value.title << "\n";
 
-                music::Song song = music_service->getSong(value);
+                // music::Song song = music_service->getSong(value);
 
-                std::cout << song.ref.id << std::endl;
-                std::cout << song.ref.artists[0].name << std::endl;
-                std::cout << song.ref.thumbnail_small << std::endl;
-                std::cout << song.ref.title << std::endl;
-                std::cout << song.ref.views << std::endl;
-                std::cout << song.album.title << std::endl;
-                std::cout << song.getStreamUrl() << std::endl;
-                std::cout << song.album.id << std::endl;
-                std::cout << "-------"<< std::endl;
+                // std::cout << song.ref.id << std::endl;
+                // std::cout << song.ref.artists[0].name << std::endl;
+                // std::cout << song.ref.thumbnail_small << std::endl;
+                // std::cout << song.ref.title << std::endl;
+                // std::cout << song.album.title << std::endl;
+                // std::cout << song.getStreamUrl() << std::endl;
+                // std::cout << song.album.id << std::endl;
+                // std::cout << "-------"<< std::endl;
 
-                music::Radio radio = music_service->getRadio(value);
-                for (const auto& streamable : radio.getStreamables()) {
+                // music::Radio radio = music_service->getRadio(value);
+                // for (const auto& streamable : radio.getStreamables()) {
+                //     if (auto song = std::dynamic_pointer_cast<music::Song>(streamable)) {
+                //         std::cout << "This is a Song: " << song->ref.title << "\n";
+                //         std::cout << song->ref.id << std::endl;
+                //         std::cout << song->ref.artists[0].name << std::endl;
+                //         std::cout << song->ref.thumbnail_small << std::endl;
+                //         std::cout << song->ref.title << std::endl;
+                //         std::cout << song->album.id << std::endl;
+                //         std::cout << song->album.title << std::endl;
+                //         std::cout << song->getStreamUrl() << std::endl;
+                //         std::cout << "-------"<< std::endl;
+
+                //     } else if (auto episode = std::dynamic_pointer_cast<music::Episode>(streamable)) {
+                //         std::cout << "This is an Episode: " << episode->ref.title << "\n";
+
+                //     } else {
+                //         std::cout << "Unknown streamable type\n";
+                //     }
+                // }
+
+
+                // exit(0);
+
+            } else if constexpr (std::is_same_v<T, music::AlbumRef>) {
+                // std::cout << "Album: " << value.title << "\n";
+
+                // music::Album album = music_service->getAlbum(value);
+
+                // for(const auto& streamable : album.getStreamables()) {
+                //     if (auto song = std::dynamic_pointer_cast<music::Song>(streamable)) {
+                //         std::cout << "This is a Song: " << song->ref.title << "\n";
+                //         std::cout << song->ref.id << std::endl;
+                //         std::cout << song->ref.artists[0].name << std::endl;
+                //         std::cout << song->ref.thumbnail_small << std::endl;
+                //         std::cout << song->ref.title << std::endl;
+                //         std::cout << song->album.id << std::endl;
+                //         std::cout << song->album.title << std::endl;
+                //         std::cout << song->getStreamUrl() << std::endl;
+                //         std::cout << "-------"<< std::endl;
+
+                //     } else if (auto episode = std::dynamic_pointer_cast<music::Episode>(streamable)) {
+                //         std::cout << "This is an Episode: " << episode->ref.title << "\n";
+
+                //     } else {
+                //         std::cout << "Unknown streamable type\n";
+                //     }
+                // }
+
+                // exit(0);
+
+            } else if constexpr (std::is_same_v<T, music::ArtistRef>) {
+                std::cout << "Artist: " << value.name << "\n";
+
+            } else if constexpr (std::is_same_v<T, music::PlaylistRef>) {
+                std::cout << "Playlist: " << value.title << "\n";
+
+                music::Playlist playlist = music_service->getPlaylist(value);
+
+                for(const auto& streamable : playlist.getStreamables()) {
                     if (auto song = std::dynamic_pointer_cast<music::Song>(streamable)) {
                         std::cout << "This is a Song: " << song->ref.title << "\n";
                         std::cout << song->ref.id << std::endl;
                         std::cout << song->ref.artists[0].name << std::endl;
                         std::cout << song->ref.thumbnail_small << std::endl;
                         std::cout << song->ref.title << std::endl;
-                        std::cout << song->ref.views << std::endl;
                         std::cout << song->album.id << std::endl;
                         std::cout << song->album.title << std::endl;
                         std::cout << song->getStreamUrl() << std::endl;
@@ -84,17 +140,7 @@ int main(int argc, char *argv[]) {
                     }
                 }
 
-
                 exit(0);
-
-            } else if constexpr (std::is_same_v<T, music::AlbumRef>) {
-                std::cout << "Album: " << value.title << "\n";
-
-            } else if constexpr (std::is_same_v<T, music::ArtistRef>) {
-                std::cout << "Artist: " << value.name << "\n";
-
-            } else if constexpr (std::is_same_v<T, music::PlaylistRef>) {
-                std::cout << "Playlist: " << value.title << "\n";
 
             } else if constexpr (std::is_same_v<T, music::EpisodeRef>) {
                 std::cout << "Episode: " << value.title << "\n";

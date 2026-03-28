@@ -276,8 +276,8 @@ music::Album services::Music::getAlbum(const music::AlbumRef& album) {
     );
 
     music::Album a;
-    for (const music::IStreamable& s : response.results) {
-        a.addStreamable(std::make_shared<music::IStreamable>(s));
+    for (const auto& s : response.results) {
+        a.addStreamable(s);
     }
 
     return a;
@@ -297,8 +297,8 @@ music::Playlist services::Music::getPlaylist(const music::PlaylistRef& playlist)
     );
 
     music::Playlist p;
-    for (const music::IStreamable& s : response.results) {
-        p.addStreamable(std::make_shared<music::IStreamable>(s));
+    for (const auto& s : response.results) {
+        p.addStreamable(s);
     }
 
     return p;
