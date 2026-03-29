@@ -14,7 +14,7 @@
 #include "../include/config/config.hpp"
 #include "../include/utils/utils.hpp"
 
-#include "image_view.hpp"
+// #include "image_view.hpp"
 
 #define APP_NAME_HUMAN "Moroder"
 #define APP_NAME "moroder"
