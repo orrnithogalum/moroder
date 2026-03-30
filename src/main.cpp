@@ -39,7 +39,8 @@ int main(int argc, char *argv[]) {
     std::unique_ptr<services::Music> music_service = std::make_unique<services::Music>(APP_NAME);
 
     // std::vector<music::SearchResult> results = music_service->getSearch("hand picked str-23");
-    std::vector<music::SearchResult> results = music_service->getSearch("giorgio by moroder daft punk");
+    // std::vector<music::SearchResult> results = music_service->getSearch("giorgio by moroder daft punk");
+    std::vector<music::SearchResult> results = music_service->getSearch("wan show");
 
     for (const auto& result : results) {
         std::visit([&](auto&& value) {
@@ -189,7 +190,19 @@ int main(int argc, char *argv[]) {
                 // exit(0);
 
             } else if constexpr (std::is_same_v<T, music::EpisodeRef>) {
-                std::cout << "Episode: " << value.title << "\n";
+                // std::cout << "Episode: " << value.title << "\n";
+
+                // music::Episode episode = music_service->getEpisode(value);
+
+                // std::cout << episode.ref.id << std::endl;
+                // std::cout << episode.ref.thumbnail_small << std::endl;
+                // std::cout << episode.ref.title << std::endl;
+                // std::cout << episode.getStreamUrl() << std::endl;
+                // std::cout << episode.ref.podcast.id << std::endl;
+                // std::cout << episode.ref.podcast.name << std::endl;
+                // std::cout << "-------"<< std::endl;
+
+                // exit(0);
 
             } else if constexpr (std::is_same_v<T, music::PodcastRef>) {
                 std::cout << "Podcast: " << value.name << "\n";

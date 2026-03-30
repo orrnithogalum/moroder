@@ -111,6 +111,7 @@ struct Song : IStreamable {
     void setRef(const music::SongRef& ref) {
         this->ref = ref;
         this->url = "https://www.youtube.com/watch?v=" + ref.id;
+        this->duration = 0;
     }
 };
 

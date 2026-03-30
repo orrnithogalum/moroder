@@ -301,6 +301,13 @@ music::Song services::Music::getSong(const music::SongRef& song) {
     return response.song;
 }
 
+music::Episode services::Music::getEpisode(const music::EpisodeRef& episode) {
+    // No need to make requests, we have the data we need
+    music::Episode e;
+    e.setRef(episode);
+    return e;
+}
+
 music::Album services::Music::getAlbum(const music::AlbumRef& album) {
     ipc::AlbumRequest request(album);
 

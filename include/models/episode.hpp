@@ -61,6 +61,12 @@ struct Episode : IStreamable {
 
         return e;
     }
+
+    void setRef(const music::EpisodeRef& ref) {
+        this->ref = ref;
+        this->url = "https://www.youtube.com/watch?v=" + ref.id;
+        this->duration = 0;
+    }
 };
 
 }
