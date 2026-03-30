@@ -62,74 +62,74 @@ int main(int argc, char *argv[]) {
                 // std::cout << song.album.id << std::endl;
                 // std::cout << "-------"<< std::endl;
 
-                music::Radio radio = music_service->getRadio(value);
-                for (const auto& streamable : radio.getStreamables()) {
-                    if (auto song = std::dynamic_pointer_cast<music::Song>(streamable)) {
-                        std::cout << "This is a Song: " << song->ref.title << "\n";
-                        // std::cout << song->ref.id << std::endl;
-                        // std::cout << song->ref.artists[0].name << std::endl;
-                        // std::cout << song->ref.thumbnail_small << std::endl;
-                        // std::cout << song->ref.title << std::endl;
-                        // std::cout << song->album.id << std::endl;
-                        // std::cout << song->album.title << std::endl;
-                        // std::cout << song->getStreamUrl() << std::endl;
-                        // std::cout << "-------"<< std::endl;
+                // music::Radio radio = music_service->getRadio(value);
+                // for (const auto& streamable : radio.getStreamables()) {
+                //     if (auto song = std::dynamic_pointer_cast<music::Song>(streamable)) {
+                //         std::cout << "This is a Song: " << song->ref.title << "\n";
+                //         std::cout << song->ref.id << std::endl;
+                //         std::cout << song->ref.artists[0].name << std::endl;
+                //         std::cout << song->ref.thumbnail_small << std::endl;
+                //         std::cout << song->ref.title << std::endl;
+                //         std::cout << song->album.id << std::endl;
+                //         std::cout << song->album.title << std::endl;
+                //         std::cout << song->getStreamUrl() << std::endl;
+                //         std::cout << "-------"<< std::endl;
 
-                    } else if (auto episode = std::dynamic_pointer_cast<music::Episode>(streamable)) {
-                        std::cout << "This is an Episode: " << episode->ref.title << "\n";
+                //     } else if (auto episode = std::dynamic_pointer_cast<music::Episode>(streamable)) {
+                //         std::cout << "This is an Episode: " << episode->ref.title << "\n";
 
-                    } else {
-                        std::cout << "Unknown streamable type\n";
-                    }
-                }
+                //     } else {
+                //         std::cout << "Unknown streamable type\n";
+                //     }
+                // }
 
-                std::cout << radio.continuation << std::endl;
+                // std::cout << radio.continuation << std::endl;
 
-                music::Radio radio_cont = music_service->getRadioNext(radio);
-                for (const auto& streamable : radio_cont.getStreamables()) {
-                    if (auto song = std::dynamic_pointer_cast<music::Song>(streamable)) {
-                        std::cout << "This is a Song: " << song->ref.title << "\n";
-                        // std::cout << song->ref.id << std::endl;
-                        // std::cout << song->ref.artists[0].name << std::endl;
-                        // std::cout << song->ref.thumbnail_small << std::endl;
-                        // std::cout << song->ref.title << std::endl;
-                        // std::cout << song->album.id << std::endl;
-                        // std::cout << song->album.title << std::endl;
-                        // std::cout << song->getStreamUrl() << std::endl;
-                        // std::cout << "-------"<< std::endl;
+                // music::Radio radio_cont = music_service->getRadioNext(radio);
+                // for (const auto& streamable : radio_cont.getStreamables()) {
+                //     if (auto song = std::dynamic_pointer_cast<music::Song>(streamable)) {
+                //         std::cout << "This is a Song: " << song->ref.title << "\n";
+                //         std::cout << song->ref.id << std::endl;
+                //         std::cout << song->ref.artists[0].name << std::endl;
+                //         std::cout << song->ref.thumbnail_small << std::endl;
+                //         std::cout << song->ref.title << std::endl;
+                //         std::cout << song->album.id << std::endl;
+                //         std::cout << song->album.title << std::endl;
+                //         std::cout << song->getStreamUrl() << std::endl;
+                //         std::cout << "-------"<< std::endl;
 
-                    } else if (auto episode = std::dynamic_pointer_cast<music::Episode>(streamable)) {
-                        std::cout << "This is an Episode: " << episode->ref.title << "\n";
+                //     } else if (auto episode = std::dynamic_pointer_cast<music::Episode>(streamable)) {
+                //         std::cout << "This is an Episode: " << episode->ref.title << "\n";
 
-                    } else {
-                        std::cout << "Unknown streamable type\n";
-                    }
-                }
+                //     } else {
+                //         std::cout << "Unknown streamable type\n";
+                //     }
+                // }
 
-                std::cout << radio.continuation << std::endl;
+                // std::cout << radio.continuation << std::endl;
 
-                radio_cont = music_service->getRadioNext(radio_cont);
-                for (const auto& streamable : radio_cont.getStreamables()) {
-                    if (auto song = std::dynamic_pointer_cast<music::Song>(streamable)) {
-                        std::cout << "This is a Song: " << song->ref.title << "\n";
-                        // std::cout << song->ref.id << std::endl;
-                        // std::cout << song->ref.artists[0].name << std::endl;
-                        // std::cout << song->ref.thumbnail_small << std::endl;
-                        // std::cout << song->ref.title << std::endl;
-                        // std::cout << song->album.id << std::endl;
-                        // std::cout << song->album.title << std::endl;
-                        // std::cout << song->getStreamUrl() << std::endl;
-                        // std::cout << "-------"<< std::endl;
+                // radio_cont = music_service->getRadioNext(radio_cont);
+                // for (const auto& streamable : radio_cont.getStreamables()) {
+                //     if (auto song = std::dynamic_pointer_cast<music::Song>(streamable)) {
+                //         std::cout << "This is a Song: " << song->ref.title << "\n";
+                //         std::cout << song->ref.id << std::endl;
+                //         std::cout << song->ref.artists[0].name << std::endl;
+                //         std::cout << song->ref.thumbnail_small << std::endl;
+                //         std::cout << song->ref.title << std::endl;
+                //         std::cout << song->album.id << std::endl;
+                //         std::cout << song->album.title << std::endl;
+                //         std::cout << song->getStreamUrl() << std::endl;
+                //         std::cout << "-------"<< std::endl;
 
-                    } else if (auto episode = std::dynamic_pointer_cast<music::Episode>(streamable)) {
-                        std::cout << "This is an Episode: " << episode->ref.title << "\n";
+                //     } else if (auto episode = std::dynamic_pointer_cast<music::Episode>(streamable)) {
+                //         std::cout << "This is an Episode: " << episode->ref.title << "\n";
 
-                    } else {
-                        std::cout << "Unknown streamable type\n";
-                    }
-                }
+                //     } else {
+                //         std::cout << "Unknown streamable type\n";
+                //     }
+                // }
 
-                exit(0);
+                // exit(0);
 
             } else if constexpr (std::is_same_v<T, music::AlbumRef>) {
                 // std::cout << "Album: " << value.title << "\n";
