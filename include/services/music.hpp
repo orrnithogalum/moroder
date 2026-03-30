@@ -24,7 +24,10 @@ public:
     std::vector<music::SearchResult> getSearch(const std::string& query);
 
     music::Song     getSong(const music::SongRef& ref);
+
     music::Radio    getRadio(const music::SongRef& song);
+    music::Radio    getRadioNext(const music::Radio& radio);
+
     music::Album    getAlbum(const music::AlbumRef& album);
     music::Playlist getPlaylist(const music::PlaylistRef& playlist);
 

@@ -6,6 +6,9 @@
 #include "../../include/ipc/search/search_response.hpp"
 #include "../../include/ipc/search/search_request.hpp"
 
+
+#include "../../include/ipc/radio/radio_next_response.hpp"
+#include "../../include/ipc/radio/radio_next_request.hpp"
 #include "../../include/ipc/radio/radio_response.hpp"
 #include "../../include/ipc/radio/radio_request.hpp"
 
@@ -192,6 +195,7 @@ template <typename Request, typename Response> Response services::Music::sendStr
                 std::string type = j["type"].get<std::string>();
 
                 if (type == doneType) {
+                    handleResponse(j, response);
                     stop = true;
                     break;
                 } else if (type == "error") {
@@ -237,12 +241,47 @@ music::Radio services::Music::getRadio(const music::SongRef& song) {
         [](const nlohmann::json& j, ipc::RadioResponse& response) {
             if (j["type"] == "radio-track") {
                 response.addItem(j["data"]);
+
+            } else if(j["type"] == "radio-done") {
+                response.seed_id = j["id"];
+                response.continuation = j["continuation"];
             }
         },
         "radio-done"
     );
 
     music::Radio r;
+    r.seed_id = response.seed_id;
+    r.continuation = response.continuation;
+
+    for (const auto& s : response.results) {
+        r.addStreamable(s);
+    }
+
+    return r;
+}
+
+music::Radio services::Music::getRadioNext(const music::Radio& radio) {
+    ipc::RadioNextRequest request(radio);
+
+    ipc::RadioNextResponse response = this->sendStreamed<ipc::RadioNextRequest, ipc::RadioNextResponse>(
+        request,
+        [](const nlohmann::json& j, ipc::RadioNextResponse& response) {
+            if (j["type"] == "radio-track") {
+                response.addItem(j["data"]);
+
+            } else if(j["type"] == "radio-done") {
+                response.seed_id = j["id"];
+                response.continuation = j["continuation"];
+            }
+        },
+        "radio-done"
+    );
+
+    music::Radio r;
+    r.seed_id = response.seed_id;
+    r.continuation = response.continuation;
+
     for (const auto& s : response.results) {
         r.addStreamable(s);
     }

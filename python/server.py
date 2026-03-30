@@ -3,10 +3,12 @@
 # - Handles search, streaming, playback control, and fetching detailed song info
 # - Maintains player state and optionally a logged-in user instance
 
+from modules.radio import radio_next
+from modules.radio import radio
+
 from modules.playlist import playlist
 from modules.search import search
 from modules.album import album
-from modules.radio import radio
 from modules.song import song
 
 from ytmusicapi import YTMusic
@@ -38,6 +40,9 @@ class MusicServer:
         self.mpv_pending: dict[int, asyncio.Future] = {}
         self.mpv_reader_task: asyncio.Task | None = None
         self.mpv_request_id = 0
+
+        # radio
+        self.radio_sessions = {}
 
     async def send_cmd(self, cmd: list):
         # Send a command to mpv
@@ -89,6 +94,14 @@ class MusicServer:
             limit = req.get("limit", "")
 
             async for result in radio(self, id, limit):
+                print((json.dumps(result) + "\n"), flush=True)
+
+        elif action == "radio_next":
+            id = req.get("id", "")
+            ctoken = req.get("continuation", "")
+            limit = req.get("limit", "")
+
+            async for result in radio_next(self, id, ctoken, limit):
                 print((json.dumps(result) + "\n"), flush=True)
 
         elif action == "get_album":

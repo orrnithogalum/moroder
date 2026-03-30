@@ -5,9 +5,14 @@
 #pragma once
 
 #include "../interfaces/container.hpp"
+#include <string>
 
 namespace music {
 
-struct Radio : IStreamableContainer {};
+struct Radio : IStreamableContainer {
+public:
+    std::string seed_id;
+    std::string continuation;
+};
 
 }
