@@ -43,7 +43,7 @@ struct SongRef {
                     ref.id = "";
                 }
 
-                s.artists.push_back(std::move(ref));
+                s.artists.emplace_back(std::move(ref));
             }
         }
 

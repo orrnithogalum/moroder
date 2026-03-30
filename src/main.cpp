@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
                 std::cout << "Empty result\n";
 
             } else if constexpr (std::is_same_v<T, music::SongRef>) {
-                // std::cout << "Song: " << value.title << "\n";
+                std::cout << "Song: " << value.title << "\n";
 
                 // music::Song song = music_service->getSong(value);
 
@@ -289,7 +289,7 @@ int main(int argc, char *argv[]) {
     //     std::vector<Element> result_elements;
 
     //     if (state_copy.is_loading_search) {
-    //         result_elements.push_back(text("Loading...") | italic | dim);
+    //         result_elements.emplace_back(text("Loading...") | italic | dim);
     //     } else {
     //         for (size_t i = 0; i < state_copy.search_results.size(); ++i) {
     //             auto& r = state_copy.search_results[i];
@@ -347,7 +347,7 @@ int main(int argc, char *argv[]) {
 
     //             // Highlight the selected element
     //             if ((int)i == selected_index) {
-    //                 result_elements.push_back(
+    //                 result_elements.emplace_back(
     //                     vbox(
     //                         hbox(
     //                             thumb_box | size(WIDTH, EQUAL, 4) | size(HEIGHT, EQUAL, 2),
@@ -363,7 +363,7 @@ int main(int argc, char *argv[]) {
     //                     )
     //                 );
     //             } else {
-    //                 result_elements.push_back(
+    //                 result_elements.emplace_back(
     //                     vbox(
     //                         hbox(
     //                             thumb_box | size(WIDTH, EQUAL, 4) | size(HEIGHT, EQUAL, 2),

@@ -12,7 +12,7 @@ public:
     explicit PlaylistResponse() : Response() {}
 
     void addItem(nlohmann::json& j) {
-        results.push_back(std::make_shared<music::Song>(music::Song::from_json(j)));
+        results.emplace_back(std::make_shared<music::Song>(music::Song::from_json(j)));
     }
 };
 

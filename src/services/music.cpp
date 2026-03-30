@@ -24,7 +24,6 @@
 #include "../../include/utils/utils.hpp"
 #include "../../include/ipc/request.hpp"
 
-#include <memory>
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 #include <filesystem>
@@ -32,6 +31,7 @@
 #include <unistd.h>
 #include <string>
 #include <vector>
+#include <memory>
 
 namespace fs = std::filesystem;
 

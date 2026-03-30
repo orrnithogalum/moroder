@@ -14,7 +14,7 @@ public:
     explicit RadioNextResponse() : Response() {}
 
     void addItem(const nlohmann::json& j) {
-        results.push_back(std::make_shared<music::Song>(music::Song::from_json(j)));
+        results.emplace_back(std::make_shared<music::Song>(music::Song::from_json(j)));
     }
 };
 

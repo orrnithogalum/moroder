@@ -218,7 +218,7 @@ void services::Player::worker_loop() {
             {
                 std::lock_guard lock(state_mutex);
 
-                state.song_queue.push_back(song);
+                state.song_queue.emplace_back(song);
                 state.queue_position = state.song_queue.size() - 1;
 
                 state.is_streaming_audio = true;
@@ -335,7 +335,7 @@ void services::Player::worker_loop() {
 
             {
                 std::lock_guard lock(state_mutex);
-                state.song_queue.push_back(song);
+                state.song_queue.emplace_back(song);
             }
 
             mpv_service->load(song.url);

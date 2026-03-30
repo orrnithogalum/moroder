@@ -12,7 +12,7 @@ public:
     explicit SearchResponse() : Response() {}
 
     void addItem(const nlohmann::json& j) {
-        results.push_back(music::SearchResult::from_json(j));
+        results.emplace_back(music::SearchResult::from_json(j));
     }
 };
 

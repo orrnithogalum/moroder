@@ -44,7 +44,7 @@ struct AlbumRef {
                     ref.id = "";
                 }
 
-                a.artists.push_back(std::move(ref));
+                a.artists.emplace_back(std::move(ref));
             }
         }
 
