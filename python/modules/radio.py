@@ -3,33 +3,6 @@
 # - Limits results to prevent large payloads that could overflow the buffer
 # - Returns status and a list of results
 
-# async def radio(server: MusicServer, id: str, limit:int):
-#     try:
-#         data = server.ytm.get_watch_playlist(videoId=id, radio=True, limit=limit)
-
-#         tracks = data.get("tracks", [])
-
-#         if not tracks:
-#             tracks = []
-
-#         for track in tracks[:limit]:
-#             yield {
-#                 "type": "radio-track",
-#                 "status": "ok",
-#                 "data": track
-#             }
-
-#         yield {
-#             "type": "radio-done",
-#             "status": "ok"
-#         }
-
-#     except Exception as e:
-#         yield {
-#             "type": "error",
-#             "message": str(e)
-#         }
-
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -51,7 +24,7 @@ def _build_body(video_id: str, radio: bool = True) -> dict:
         body["params"] = "wAEB"
     return body
 
-async def radio(server: "MusicServer", video_id: str, limit: int = 25):
+async def radio(server: MusicServer, video_id: str, limit: int = 25):
     try:
         body = _build_body(video_id, radio=True)
         server.radio_sessions[video_id] = body
