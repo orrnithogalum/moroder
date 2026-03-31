@@ -19,6 +19,14 @@ protected:
     std::string url;
 
 public:
+    void setDuration(uint64_t d) {
+        this->duration = d;
+    }
+
+    uint64_t getDuration() {
+        return this->duration;
+    }
+
     std::string getStreamUrl() const {
         return this->url;
     }

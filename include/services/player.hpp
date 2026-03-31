@@ -15,58 +15,40 @@
 namespace services {
 
 class Player {
+private:
+    struct SearchCommand {
+        std::string query;
+    };
+
+    struct QueueStreamableCommand {
+        std::shared_ptr<music::IStreamable> streamable;
+        bool fetch_album = true;
+    };
+
+    struct QueueStreamableContainerCommand {
+        std::shared_ptr<music::IStreamableContainer> container;
+        bool fetch_albums = false;
+    };
+
+    enum class CommandType {
+        QueueStreamable,
+        QueueStreamableContainer
+    };
+
 public:
     /* PlayerState
     - Shared player state between all threads
     */
     struct PlayerState {
-        std::deque<music::Song> song_queue;
+        int queue_position;
+        std::deque<std::shared_ptr<music::IStreamable>> user_queue;
+        std::deque<std::shared_ptr<music::IStreamable>> radio_queue;
 
+        std::shared_ptr<music::IStreamable> current;
         std::vector<music::SearchResult> search_results;
-        music::Song current_song;
-
-        int queue_position = 0;
 
         bool is_loading_search = false;
         bool is_streaming_audio = false;
-    };
-
-    /* Command
-    - Player commands to queue
-    - A threads loops over queued commands and executes them
-    */
-    struct Command {
-        bool fetch_album = true;
-
-        enum Type {
-            Empty,
-            Queue,
-            Radio,
-            Search,
-            Stream,
-            Album,
-            Playlist
-        };
-
-        Type type;
-
-        /* We could use std::variant here, but I'm too lazy.
-        - Problem for future me.
-        */
-        std::string query;
-        music::SongRef song_ref;
-        music::AlbumRef album_ref;
-        music::PlaylistRef playlist_ref;
-
-        explicit Command() : type(Empty) {}
-        explicit Command(Type t) : type(t) {}
-        explicit Command(const std::string& q) : query(q), type(Search) {}
-
-        explicit Command(const music::SongRef& s, Type t) : song_ref(s), type(t), fetch_album(true) {}
-        explicit Command(const music::SongRef& s, Type t, bool a) : song_ref(s), type(t), fetch_album(a) {}
-
-        explicit Command(const music::AlbumRef& a) : album_ref(a), type(Album), fetch_album(false) {}
-        explicit Command(const music::PlaylistRef& p) : playlist_ref(p), type(Playlist), fetch_album(false) {}
     };
 
     PlayerState state;
@@ -81,18 +63,13 @@ public:
     void skipForward();
     void skipBackward();
 
-    void queue(const music::SongRef& song);
-    void queue(const music::AlbumRef& album);
-    void queue(const music::PlaylistRef& playlist);
-
     void search(const std::string& query);
-    void radio(const music::SongRef& song);
-    void stream(const music::SongRef& song);
+    void queue(std::shared_ptr<music::IStreamable> streamable);
+    void queue(std::shared_ptr<music::IStreamableContainer> contaienr);
 
-    using RequestCompletedCallback = std::function<void(Command::Type)>;
+    using RequestCompletedCallback = std::function<void()>;
 
     void setOnRequestCompletedCallback(RequestCompletedCallback cb) {
-        std::lock_guard lock(callback_mutex);
         on_request_completed = std::move(cb);
     }
 
@@ -101,9 +78,12 @@ private:
 
     std::condition_variable command_cv;
     std::mutex command_mutex;
-    std::thread worker_thread;
 
-    bool running = true;
+    using Command = std::variant<
+        SearchCommand,
+        QueueStreamableCommand,
+        QueueStreamableContainerCommand
+    >;
 
     std::queue<Command> command_queue;
 
@@ -112,13 +92,15 @@ private:
     std::unique_ptr<Music> music_service;
     std::unique_ptr<Social> social_service;
 
-    RequestCompletedCallback on_request_completed;
-    std::mutex callback_mutex;
+    std::thread worker_thread;
 
-    void notifyRequestCompleted(Command::Type type) {
-        std::lock_guard lock(callback_mutex);
+    RequestCompletedCallback on_request_completed;
+
+    bool running = true;
+
+    void notifyRequestCompleted() {
         if (on_request_completed) {
-            on_request_completed(type);
+            on_request_completed();
         }
     }
 
