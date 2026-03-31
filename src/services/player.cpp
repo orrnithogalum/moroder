@@ -240,7 +240,7 @@ void services::Player::worker_loop() {
                     streamable = std::make_shared<music::Episode>(episode);
 
                 } else {
-                    spdlog::warn("QueueStreamableCommand: unknown streamable type");
+                    spdlog::warn("PLAYER: QueueStreamableCommand, unknown streamable type");
                 }
 
                 {
@@ -280,7 +280,7 @@ void services::Player::worker_loop() {
                     container = std::make_shared<music::Playlist>(playlist);
 
                 } else {
-                    spdlog::warn("QueueStreamableContainerCommand: unknown streamable type");
+                    spdlog::warn("PLAYER: QueueStreamableContainerCommand, unknown streamable type");
                 }
 
                 for(auto streamable : container->getStreamables()) {
