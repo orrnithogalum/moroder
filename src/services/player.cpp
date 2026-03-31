@@ -2,9 +2,9 @@
 
 #include "../../include/config/config.hpp"
 
+#include <spdlog/spdlog.h>
 #include <cstdint>
 #include <memory>
-#include <spdlog/spdlog.h>
 #include <string>
 #include <mutex>
 
@@ -118,9 +118,8 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
     mpris_service->startLoopAsync();
 
     mpv_service->setOnStreamEnd([this] {
-        mpris_service->setPlaybackStatus(services::PlaybackStatus::Stopped);
-
         bool should_skip = false;
+
         {
             std::lock_guard lock(state_mutex);
 
@@ -165,7 +164,6 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
 
 void services::Player::worker_loop() {
     while (true) {
-
         std::unique_lock lock(command_mutex);
 
         command_cv.wait(lock, [this] {
@@ -220,11 +218,16 @@ void services::Player::worker_loop() {
                         spdlog::info("PLAYER: QueueStreamableCommand, fetching album data");
                         song = music_service->getSong(song_ptr->ref);
 
+                    } else if(!song_ptr->album.id.empty() && !song_ptr->album.title.empty()) {
+                        spdlog::info("PLAYER: QueueStreamableCommand, album already provided");
+                        song = *song_ptr;
+
                     } else {
                         spdlog::info("PLAYER: QueueStreamableCommand, skipping album data");
                         song.setRef(song_ptr->ref);
                     }
 
+                    spdlog::info("Song album: " + song.album.title);
                     streamable = std::make_shared<music::Song>(song);
 
                 } else if (auto episode_ptr = std::dynamic_pointer_cast<music::Episode>(c.streamable)) {
@@ -254,198 +257,37 @@ void services::Player::worker_loop() {
             }
 
             else if constexpr (std::is_same_v<T, QueueStreamableContainerCommand>) {
-                // spdlog::info("[Player] QueueStreamableContainerCommand\n");
+                spdlog::info("PLAYER: QueueStreamableContainerCommand");
 
-                // if (c.fetch_albums) {
-                //     spdlog::info("  -> will fetch albums\n");
-                // } else {
-                //     spdlog::info("  -> no album fetch\n");
-                // }
+                if (!c.container) {
+                    spdlog::warn("PLAYER: QueueStreamableContainerCommand, container is nullptr");
+                    return;
+                }
+
+                std::shared_ptr<music::IStreamableContainer> container;
+
+                if (auto album_ptr = std::dynamic_pointer_cast<music::Album>(c.container)) {
+                    music::Album album = music_service->getAlbum(album_ptr->ref);
+                    container = std::make_shared<music::Album>(album);
+
+                } else if (auto playlist_ptr = std::dynamic_pointer_cast<music::Playlist>(c.container)) {
+                    music::Playlist playlist = music_service->getPlaylist(playlist_ptr->ref);
+                    container = std::make_shared<music::Playlist>(playlist);
+
+                } else {
+                    spdlog::warn("QueueStreamableContainerCommand: unknown streamable type");
+                }
+
+                for(auto streamable : container->getStreamables()) {
+                    {
+                        std::lock_guard lock(command_mutex);
+                        command_queue.push(QueueStreamableCommand{streamable, c.fetch_albums});
+                    }
+                }
+                command_cv.notify_one();
             }
 
         }, cmd);
-
-        // Command cmd;
-
-        // {
-        //     std::unique_lock lock(command_mutex);
-
-        //     command_cv.wait(lock, [this] {
-        //         return !command_queue.empty() || !running;
-        //     });
-
-        //     if (!running && command_queue.empty()) {
-        //         return;
-        //     }
-
-        //     cmd = command_queue.front();
-        //     command_queue.pop();
-        // }
-
-        // switch (cmd.type) {
-
-        // case Command::Empty: {
-        //     break;
-        // }
-
-        // case Command::Search: {
-        //     ipc::SearchResponse response = music_service->search(cmd.query);
-
-        //     {
-        //         std::lock_guard lock(state_mutex);
-        //         state.search_results = response.results;
-        //         state.is_loading_search = false;
-        //     }
-
-        //     break;
-        // }
-
-        // case Command::Stream: {
-        //     music::Song song;
-
-        //     // If the album isn't found, fetch one from network.
-        //     Config cfg = Config::get();
-        //     if ((cmd.song_ref.album.id.empty() || cmd.song_ref.album.title.empty()) && cfg.FETCH_ALBUMS) {
-        //         song = music_service->getSong(cmd.song_ref).song;
-
-        //     } else {
-        //         song.ref = cmd.song_ref;
-        //         song.album_title = song.ref.album.title;
-        //     }
-
-        //     song.url = "https://www.youtube.com/watch?v=" + song.ref.id;
-        //     song.duration = 0;
-
-        //     {
-        //         std::lock_guard lock(state_mutex);
-
-        //         state.song_queue.emplace_back(song);
-        //         state.queue_position = state.song_queue.size() - 1;
-
-        //         state.is_streaming_audio = true;
-        //         state.current_song = song;
-        //     }
-
-        //     mpv_service->load(song.url);
-
-        //     break;
-        // }
-
-        // case Command::Radio: {
-        //     ipc::RadioResponse response = music_service->radio(cmd.song_ref);
-
-        //     bool should_stream = false;
-
-        //     {
-        //         std::lock_guard lock(state_mutex);
-
-        //         if (!state.is_streaming_audio) {
-        //             should_stream = true;
-        //         }
-        //     }
-
-        //     for (const music::SongRef& ref : response.results) {
-        //         {
-        //             std::lock_guard lock(command_mutex);
-        //             command_queue.push(Command(ref, should_stream ? Command::Stream : Command::Queue));
-        //         }
-
-        //         if(should_stream) {
-        //             should_stream = false;
-        //         }
-        //     }
-
-        //     command_cv.notify_one();
-
-        //     break;
-        // }
-
-        // case Command::Album: {
-        //     ipc::AlbumResponse response = music_service->getAlbum(cmd.album_ref);
-
-        //     bool should_stream = false;
-
-        //     {
-        //         std::lock_guard lock(state_mutex);
-
-        //         if (!state.is_streaming_audio) {
-        //             should_stream = true;
-        //         }
-        //     }
-
-        //     for (const music::SongRef& ref : response.results) {
-        //         {
-        //             std::lock_guard lock(command_mutex);
-        //             command_queue.push(Command(ref, should_stream ? Command::Stream : Command::Queue));
-        //         }
-
-        //         if(should_stream) {
-        //             should_stream = false;
-        //         }
-        //     }
-
-        //     command_cv.notify_one();
-
-        //     break;
-        // }
-
-        // case Command::Playlist: {
-        //     ipc::PlaylistResponse response = music_service->getPlaylist(cmd.playlist_ref);
-
-        //     bool should_stream = false;
-
-        //     {
-        //         std::lock_guard lock(state_mutex);
-
-        //         if (!state.is_streaming_audio) {
-        //             should_stream = true;
-        //         }
-        //     }
-
-        //     for (const music::SongRef& ref : response.results) {
-        //         {
-        //             std::lock_guard lock(command_mutex);
-        //             command_queue.push(Command(ref, should_stream ? Command::Stream : Command::Queue, cmd.fetch_album));
-        //         }
-
-        //         if(should_stream) {
-        //             should_stream = false;
-        //         }
-        //     }
-
-        //     command_cv.notify_one();
-
-        //     break;
-        // }
-
-        // case Command::Queue: {
-        //     music::Song song;
-
-        //     // If the album isn't found, fetch one from network.
-        //     Config cfg = Config::get();
-        //     if ((cmd.song_ref.album.id.empty() || cmd.song_ref.album.title.empty()) && cfg.FETCH_ALBUMS && cmd.fetch_album) {
-        //         song = music_service->getSong(cmd.song_ref).song;
-
-        //     } else {
-        //         song.ref = cmd.song_ref;
-        //         song.album_title = song.ref.album.title;
-        //     }
-
-        //     song.url = "https://www.youtube.com/watch?v=" + song.ref.id;
-        //     song.duration = 0;
-
-        //     {
-        //         std::lock_guard lock(state_mutex);
-        //         state.song_queue.emplace_back(song);
-        //     }
-
-        //     mpv_service->load(song.url);
-        //     this->updateMprisControls();
-
-        //     break;
-        // }
-
-        // }
 
         notifyRequestCompleted();
     }
@@ -480,15 +322,6 @@ void services::Player::search(const std::string& query) {
     command_cv.notify_one();
 }
 
-// void services::Player::radio(const music::SongRef& song) {
-//     {
-//         std::lock_guard lock(command_mutex);
-//         command_queue.push(Command(song, Command::Radio));
-//     }
-
-//     command_cv.notify_one();
-// }
-
 void services::Player::queue(std::shared_ptr<music::IStreamable> streamable) {
     Config cfg = Config::get();
 
@@ -500,49 +333,16 @@ void services::Player::queue(std::shared_ptr<music::IStreamable> streamable) {
     command_cv.notify_one();
 }
 
-// void services::Player::queue(const music::SongRef& song) {
-//     bool should_stream = false;
+void services::Player::queue(std::shared_ptr<music::IStreamableContainer> container) {
+    Config cfg = Config::get();
 
-//     {
-//         std::lock_guard lock(state_mutex);
+    {
+        std::lock_guard lock(command_mutex);
+        command_queue.push(QueueStreamableContainerCommand{container, false});
+    }
 
-//         if (!state.is_streaming_audio) {
-//             should_stream = true;
-//         }
-//     }
-
-//     if (should_stream) {
-//         stream(song);
-//         spdlog::info("PLAYER: streaming, " + song.title + " by " + song.artists[0].name);
-
-//     } else {
-//         {
-//             std::lock_guard lock(command_mutex);
-//             command_queue.push(Command(song, Command::Queue));
-//         }
-
-//         command_cv.notify_one();
-//         spdlog::info("PLAYER: queued, " + song.title + " by " + song.artists[0].name);
-//     }
-// }
-
-// void services::Player::queue(const music::AlbumRef& album) {
-//     {
-//         std::lock_guard lock(command_mutex);
-//         command_queue.push(Command(album));
-//     }
-
-//     command_cv.notify_one();
-// }
-
-// void services::Player::queue(const music::PlaylistRef& playlist) {
-//     {
-//         std::lock_guard lock(command_mutex);
-//         command_queue.push(Command(playlist));
-//     }
-
-//     command_cv.notify_one();
-// }
+    command_cv.notify_one();
+}
 
 void services::Player::skipForward() {
     bool should_skip = true;
@@ -645,7 +445,6 @@ void services::Player::updateMprisData() {
     else if (auto episode = std::dynamic_pointer_cast<music::Episode>(current)) {
         mpris_service->setMetadata({
             { services::Field::TrackId, sdbus::Variant(services::OBJECT_PATH + "/track/" + hash_id) },
-            { services::Field::Album,   sdbus::Variant("Unknown Album") },
             { services::Field::Title,   sdbus::Variant(episode->ref.title) },
             { services::Field::Artist,  sdbus::Variant(episode->ref.podcast.name) },
             { services::Field::Length,  sdbus::Variant(current->getDuration()) },

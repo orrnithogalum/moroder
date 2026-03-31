@@ -2,6 +2,7 @@
 
 #include "../../models/song.hpp"
 #include "../response.hpp"
+#include "spdlog/spdlog.h"
 
 namespace ipc {
 
@@ -24,6 +25,8 @@ public:
         };
 
         j["thumbnails"] = thumbnails;
+
+        spdlog::info(j.dump(4));
 
         results.emplace_back(std::make_shared<music::Song>(music::Song::from_json(j)));
     }

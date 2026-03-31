@@ -71,6 +71,10 @@ struct Album : IStreamableContainer {
 
         return a;
     }
+
+    void setRef(const music::AlbumRef& ref) {
+        this->ref = ref;
+    }
 };
 
 }

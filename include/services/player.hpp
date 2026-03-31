@@ -64,6 +64,7 @@ public:
     void skipBackward();
 
     void search(const std::string& query);
+
     void queue(std::shared_ptr<music::IStreamable> streamable);
     void queue(std::shared_ptr<music::IStreamableContainer> container);
 

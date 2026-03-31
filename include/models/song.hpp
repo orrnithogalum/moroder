@@ -77,10 +77,6 @@ struct Song : IStreamable {
     static Song from_json(const nlohmann::json& j) {
         Song s;
 
-        s.duration = 0;
-        s.ref = SongRef::from_json(j);
-        s.url = "https://www.youtube.com/watch?v=" + s.ref.id;
-
         /* Formats:
         - Search result: album: {id, title}
         - Radio result: album: [{id, title}]
@@ -104,6 +100,10 @@ struct Song : IStreamable {
         } else {
             s.album = music::AlbumRef{};
         }
+
+        s.duration = 0;
+        s.ref = SongRef::from_json(j);
+        s.url = "https://www.youtube.com/watch?v=" + s.ref.id;
 
         return s;
     }
