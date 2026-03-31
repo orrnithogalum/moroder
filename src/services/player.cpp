@@ -185,6 +185,12 @@ void services::Player::worker_loop() {
             if constexpr (std::is_same_v<T, SearchCommand>) {
                 spdlog::info("PLAYER: SearchCommand\n");
 
+                {
+                    std::lock_guard lock(state_mutex);
+                    state.is_loading_search = true;
+                    state.search_results.clear();
+                }
+
                 std::vector<music::SearchResult> res = music_service->getSearch(c.query);
 
                 {
@@ -307,13 +313,6 @@ services::Player::~Player() {
 }
 
 void services::Player::search(const std::string& query) {
-    {
-        std::lock_guard lock(state_mutex);
-
-        state.is_loading_search = true;
-        state.search_results.clear();
-    }
-
     {
         std::lock_guard lock(command_mutex);
         command_queue.push(SearchCommand{query});
