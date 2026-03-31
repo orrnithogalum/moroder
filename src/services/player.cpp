@@ -645,7 +645,7 @@ void services::Player::updateMprisData() {
     else if (auto episode = std::dynamic_pointer_cast<music::Episode>(current)) {
         mpris_service->setMetadata({
             { services::Field::TrackId, sdbus::Variant(services::OBJECT_PATH + "/track/" + hash_id) },
-            { services::Field::Album,   sdbus::Variant(NULL) },
+            { services::Field::Album,   sdbus::Variant("Unknown Album") },
             { services::Field::Title,   sdbus::Variant(episode->ref.title) },
             { services::Field::Artist,  sdbus::Variant(episode->ref.podcast.name) },
             { services::Field::Length,  sdbus::Variant(current->getDuration()) },

@@ -269,8 +269,15 @@ int main(int argc, char *argv[]) {
                         } else if constexpr (std::is_same_v<T, music::AlbumRef>) {
                             // player.queue(data);
 
-                        } else if constexpr (std::is_same_v<T, music::PlaylistRef>) {
-                            // player.queue(data);
+                        } else if constexpr (std::is_same_v<T, music::EpisodeRef>) {
+                            std::shared_ptr<music::IStreamable> streamable;
+
+                            music::Episode episode;
+                            episode.setRef(data);
+
+                            streamable = std::make_shared<music::Episode>(episode);
+
+                            player.queue(streamable);
 
                         }
                     }, r.data);
