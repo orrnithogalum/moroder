@@ -65,7 +65,7 @@ public:
 
     void search(const std::string& query);
     void queue(std::shared_ptr<music::IStreamable> streamable);
-    void queue(std::shared_ptr<music::IStreamableContainer> contaienr);
+    void queue(std::shared_ptr<music::IStreamableContainer> container);
 
     using RequestCompletedCallback = std::function<void()>;
 

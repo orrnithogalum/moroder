@@ -249,12 +249,22 @@ int main(int argc, char *argv[]) {
                     std::visit([&](auto&& data) {
                         using T = std::decay_t<decltype(data)>;
                         if constexpr (std::is_same_v<T, music::SongRef>) {
+                            std::shared_ptr<music::IStreamable> streamable;
 
-                            if(event == Event::r) {
-                                // player.radio(data);
+                            // Resolve the SongRef to a real (empty) Song object
+                            music::Song song;
+                            song.setRef(data);
+
+                            streamable = std::make_shared<music::Song>(song);
+
+                            // Push to the player queue
+                            if (event == Event::r) {
+                                // player.radio(streamable);  // Assuming radio accepts IStreamable pointer
                             } else {
-                                // player.queue(data);
+                                player.queue(streamable);  // Queue expects IStreamable pointer
                             }
+
+                            // spdlog::info("Queued SongRef as IStreamable: {}", data.ref);
 
                         } else if constexpr (std::is_same_v<T, music::AlbumRef>) {
                             // player.queue(data);
@@ -353,7 +363,7 @@ int main(int argc, char *argv[]) {
                 auto cell = [](const std::string& path){ return ftxui::image_view(path); };
 
                 if (!thumb.empty() && thumb.rfind("https://", 0) == 0) {
-                    thumb_box = cell(thumb) | flex | size(WIDTH, EQUAL, 4) | size(HEIGHT, EQUAL, 2);
+                    thumb_box = ftxui::filler() | flex | size(WIDTH, EQUAL, 4) | size(HEIGHT, EQUAL, 2); // cell(thumb) | flex | size(WIDTH, EQUAL, 4) | size(HEIGHT, EQUAL, 2);
                 } else {
                     thumb_box = ftxui::filler() | flex | size(WIDTH, EQUAL, 4) | size(HEIGHT, EQUAL, 2);
                 }

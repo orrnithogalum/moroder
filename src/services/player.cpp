@@ -1,8 +1,9 @@
 #include "../../include/services/player.hpp"
 
-// #include "../../include/config/config.hpp"
+#include "../../include/config/config.hpp"
 
 #include <cstdint>
+#include <memory>
 #include <spdlog/spdlog.h>
 #include <string>
 #include <mutex>
@@ -104,11 +105,11 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
     mpris_service->onShuffleChanged([&] (bool shuffle) { });
 
     mpris_service->onNext([this](){
-        // skipForward();
+        skipForward();
     });
 
     mpris_service->onPrevious([this](){
-        // skipBackward();
+        skipBackward();
     });
 
     mpris_service->setIsNextPossible(false);
@@ -184,6 +185,8 @@ void services::Player::worker_loop() {
             using T = std::decay_t<decltype(c)>;
 
             if constexpr (std::is_same_v<T, SearchCommand>) {
+                spdlog::info("PLAYER: SearchCommand\n");
+
                 std::vector<music::SearchResult> res = music_service->getSearch(c.query);
 
                 {
@@ -194,23 +197,70 @@ void services::Player::worker_loop() {
             }
 
             else if constexpr (std::is_same_v<T, QueueStreamableCommand>) {
-                spdlog::info("[Player] QueueStreamableCommand\n");
+                spdlog::info("PLAYER: QueueStreamableCommand");
 
-                if (c.fetch_album) {
-                    spdlog::info("  -> will fetch album\n");
+                if (!c.streamable) {
+                    spdlog::warn("PLAYER: QueueStreamableCommand, streamable is nullptr");
+                    return;
+                }
+
+                bool should_queue = false;
+
+                {
+                    std::lock_guard lock(state_mutex);
+                    should_queue = state.is_streaming_audio;
+                }
+
+                std::shared_ptr<music::IStreamable> streamable;
+
+                if (auto song_ptr = std::dynamic_pointer_cast<music::Song>(c.streamable)) {
+                    music::Song song;
+
+                    if (c.fetch_album) {
+                        spdlog::info("PLAYER: QueueStreamableCommand, fetching album data");
+                        song = music_service->getSong(song_ptr->ref);
+
+                    } else {
+                        spdlog::info("PLAYER: QueueStreamableCommand, skipping album data");
+                        song.setRef(song_ptr->ref);
+                    }
+
+                    streamable = std::make_shared<music::Song>(song);
+
+                } else if (auto episode_ptr = std::dynamic_pointer_cast<music::Episode>(c.streamable)) {
+                    music::Episode episode = music_service->getEpisode(episode_ptr->ref);
+                    streamable = std::make_shared<music::Episode>(episode);
+
                 } else {
-                    spdlog::info("  -> no album fetch\n");
+                    spdlog::warn("QueueStreamableCommand: unknown streamable type");
+                }
+
+                {
+                    std::lock_guard lock(state_mutex);
+                    state.user_queue.push_back(streamable);
+
+                    if(!should_queue) {
+                        state.queue_position = state.user_queue.size() - 1;
+                        state.is_streaming_audio = true;
+                        state.current = state.user_queue.back();
+                    }
+                }
+
+                mpv_service->load(streamable->getStreamUrl());
+
+                if(should_queue) {
+                    this->updateMprisControls();
                 }
             }
 
             else if constexpr (std::is_same_v<T, QueueStreamableContainerCommand>) {
-                spdlog::info("[Player] QueueStreamableContainerCommand\n");
+                // spdlog::info("[Player] QueueStreamableContainerCommand\n");
 
-                if (c.fetch_albums) {
-                    spdlog::info("  -> will fetch albums\n");
-                } else {
-                    spdlog::info("  -> no album fetch\n");
-                }
+                // if (c.fetch_albums) {
+                //     spdlog::info("  -> will fetch albums\n");
+                // } else {
+                //     spdlog::info("  -> no album fetch\n");
+                // }
             }
 
         }, cmd);
@@ -439,14 +489,16 @@ void services::Player::search(const std::string& query) {
 //     command_cv.notify_one();
 // }
 
-// void services::Player::stream(const music::SongRef& song) {
-//     {
-//         std::lock_guard lock(command_mutex);
-//         command_queue.push(Command(song, Command::Stream));
-//     }
+void services::Player::queue(std::shared_ptr<music::IStreamable> streamable) {
+    Config cfg = Config::get();
 
-//     command_cv.notify_one();
-// }
+    {
+        std::lock_guard lock(command_mutex);
+        command_queue.push(QueueStreamableCommand{streamable, cfg.FETCH_ALBUMS});
+    }
+
+    command_cv.notify_one();
+}
 
 // void services::Player::queue(const music::SongRef& song) {
 //     bool should_stream = false;
@@ -492,70 +544,69 @@ void services::Player::search(const std::string& query) {
 //     command_cv.notify_one();
 // }
 
-// void services::Player::skipForward() {
-//     music::Song next_song;
-//     bool should_skip = true;
+void services::Player::skipForward() {
+    bool should_skip = true;
 
-//     {
-//         std::lock_guard lock(state_mutex);
-//         if (state.queue_position + 1 >= state.song_queue.size()) {
-//             state.is_streaming_audio = false;
-//             should_skip = false;
+    {
+        std::lock_guard lock(state_mutex);
+        if (state.queue_position + 1 >= state.user_queue.size()) {
+            state.is_streaming_audio = false;
+            should_skip = false;
 
-//             spdlog::warn("PLAYER: tried to skip to next song, but queue is done");
+            spdlog::warn("PLAYER: tried to skip to next song, but queue is done");
 
-//         } else {
-//             state.queue_position++;
-//             state.current_song = state.song_queue[state.queue_position];
-//         }
+        } else {
+            state.queue_position++;
+            state.current = state.user_queue[state.queue_position];
+        }
 
-//     }
+    }
 
-//     if(should_skip) {
-//         spdlog::info("PLAYER: skipping to next song");
+    if(should_skip) {
+        spdlog::info("PLAYER: skipping to next song");
 
-//         mpv_service->skipForward();
+        mpv_service->skipForward();
 
-//         /* skipping
-//         - We keep these even if onSongStart handles skipping
-//         - because they don't wait for file load.
-//         */
-//         mpris_service->setPlaybackStatus(services::PlaybackStatus::Stopped);
-//         this->updateMprisControls();
-//         this->updateMprisData();
-//         this->updateSocialData();
-//     }
-// }
+        /* skipping
+        - We keep these even if onSongStart handles skipping
+        - because they don't wait for file load.
+        */
+        mpris_service->setPlaybackStatus(services::PlaybackStatus::Stopped);
+        this->updateMprisControls();
+        this->updateMprisData();
+        this->updateSocialData();
+    }
+}
 
-// void services::Player::skipBackward() {
-//     music::Song previous_song;
-//     bool should_skip = true;
+void services::Player::skipBackward() {
+    bool should_skip = true;
 
-//     {
-//         std::lock_guard lock(state_mutex);
+    {
+        std::lock_guard lock(state_mutex);
 
-//         if (state.queue_position == 0 || state.song_queue.empty()) {
-//             state.is_streaming_audio = false;
-//             should_skip = false;
+        if (state.queue_position == 0 || state.user_queue.empty()) {
+            state.is_streaming_audio = false;
+            should_skip = false;
 
-//             spdlog::warn("PLAYER: tried to skip to previous song, but already at start of queue.");
+            spdlog::warn("PLAYER: tried to skip to previous song, but already at start of queue.");
 
-//         } else {
-//             state.queue_position--;
-//             state.current_song = state.song_queue[state.queue_position];
-//         }
-//     }
+        } else {
+            state.queue_position--;
+            state.current = state.user_queue[state.queue_position];
+        }
+    }
 
-//     if(should_skip) {
-//         spdlog::info("PLAYER: skipping to previous song");
+    if(should_skip) {
+        spdlog::info("PLAYER: skipping to previous song");
 
-//         mpris_service->setPlaybackStatus(services::PlaybackStatus::Stopped);
-//         mpv_service->skipBackward();
-//         this->updateMprisControls();
-//         this->updateMprisData();
-//         this->updateSocialData();
-//     }
-// }
+        mpv_service->skipBackward();
+
+        mpris_service->setPlaybackStatus(services::PlaybackStatus::Stopped);
+        this->updateMprisControls();
+        this->updateMprisData();
+        this->updateSocialData();
+    }
+}
 
 void services::Player::updateMprisControls() {
     {
