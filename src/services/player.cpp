@@ -233,7 +233,6 @@ void services::Player::worker_loop() {
                         song.setRef(song_ptr->ref);
                     }
 
-                    spdlog::info("Song album: " + song.album.title);
                     streamable = std::make_shared<music::Song>(song);
 
                 } else if (auto episode_ptr = std::dynamic_pointer_cast<music::Episode>(c.streamable)) {

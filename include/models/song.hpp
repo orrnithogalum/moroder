@@ -93,8 +93,8 @@ struct Song : IStreamable {
                 s.album.title = album_json.value("name", "");
                 s.album.id = album_json.value("id", "");
 
-            } else {
-                s.album.title = j.value("album", "");
+            } else if (j["album"].is_string()) {
+                s.album.title = j["album"].get<std::string>();
             }
 
         } else {

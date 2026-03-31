@@ -105,6 +105,15 @@ int main(int argc, char *argv[]) {
                             streamable = std::make_shared<music::Episode>(episode);
                             player.queue(streamable);
 
+                        } else if constexpr (std::is_same_v<T, music::PlaylistRef>) {
+                            std::shared_ptr<music::IStreamableContainer> streamable;
+
+                            music::Playlist playlist;
+                            playlist.setRef(data);
+
+                            streamable = std::make_shared<music::Playlist>(playlist);
+                            player.queue(streamable);
+
                         }
                     }, r.data);
                 }
@@ -196,7 +205,7 @@ int main(int argc, char *argv[]) {
                 auto cell = [](const std::string& path){ return ftxui::image_view(path); };
 
                 if (!thumb.empty() && thumb.rfind("https://", 0) == 0) {
-                    thumb_box = ftxui::filler() | flex | size(WIDTH, EQUAL, 4) | size(HEIGHT, EQUAL, 2); // cell(thumb) | flex | size(WIDTH, EQUAL, 4) | size(HEIGHT, EQUAL, 2);
+                    thumb_box = cell(thumb) | flex | size(WIDTH, EQUAL, 4) | size(HEIGHT, EQUAL, 2);
                 } else {
                     thumb_box = ftxui::filler() | flex | size(WIDTH, EQUAL, 4) | size(HEIGHT, EQUAL, 2);
                 }
