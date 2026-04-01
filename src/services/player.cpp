@@ -122,6 +122,8 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
     mpris_service->startLoopAsync();
 
     mpv_service->setOnStreamEnd([this] {
+        mpris_service->setPlaybackStatus(services::PlaybackStatus::Stopped);
+
         bool should_skip = false;
 
         {
@@ -148,6 +150,9 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
             this->updateMprisControls();
             this->updateMprisData();
             this->updateSocialData();
+
+        } else {
+            this->resetMprisData();
         }
     });
 
@@ -453,6 +458,13 @@ void services::Player::updateMprisData() {
             { services::Field::ArtUrl,  sdbus::Variant(episode->ref.thumbnail_large) }
         });
     }
+
+    mpris_service->setPosition(0);
+    mpris_service->sendSeekedSignal(0);
+}
+
+void services::Player::resetMprisData() {
+    mpris_service->setMetadata({});
 
     mpris_service->setPosition(0);
     mpris_service->sendSeekedSignal(0);

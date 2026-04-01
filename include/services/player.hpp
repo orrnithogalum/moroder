@@ -117,6 +117,8 @@ private:
     */
     void updateMprisData();
     void updateSocialData();
+
+    void resetMprisData();
 };
 
 }
