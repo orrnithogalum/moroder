@@ -84,21 +84,25 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
     });
 
     mpris_service->onSeek([&] (int64_t p) {
+        uint64_t new_position = mpv_service->getStreamPosition();
+
         if(p < 0) {
             mpv_service->seekBackward(p);
+            new_position -= p;
         } else {
             mpv_service->seekForward(p);
+            new_position += p;
         }
 
-        social_service->setPosition(mpv_service->getStreamPosition());
-        mpris_service->setPosition(mpv_service->getStreamPosition());
+        social_service->setPosition(new_position);
+        mpris_service->setPosition(new_position);
     });
 
     mpris_service->onSetPosition([&] (int64_t p) {
         mpv_service->setPosition(p);
 
-        social_service->setPosition(mpv_service->getStreamPosition());
-        mpris_service->setPosition(mpv_service->getStreamPosition());
+        social_service->setPosition(p);
+        mpris_service->setPosition(p);
     });
 
     mpris_service->onLoopStatusChanged([&] (services::LoopStatus status) { });
