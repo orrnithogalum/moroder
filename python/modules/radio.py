@@ -8,93 +8,114 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from server import MusicServer
 
+from ytmusicapi.exceptions import YTMusicServerError
 from ytmusicapi.parsers.playlists import validate_playlist_id
-from ytmusicapi.parsers.watch import parse_watch_playlist
-from ytmusicapi.parsers.watch import TAB_CONTENT
-from ytmusicapi.parsers.watch import nav
+from ytmusicapi.parsers.watch import (
+    NAVIGATION_PLAYLIST_ID,
+    TAB_CONTENT,
+    nav,
+    parse_watch_playlist,
+)
 
-def _build_body(radio: bool = True) -> dict:
-    body = {
-        "enablePersistentPlaylistPanel": True,
-        "isAudioOnly": True,
-        "tunerSettingValue": "AUTOMIX_SETTING_NORMAL",
-    }
 
-    if radio:
-        body["params"] = "wAEB"
-
-    return body
-
-async def radio(server: MusicServer, video_id: str | None, playlist_id: str | None, limit: int = 25):
+async def radio(
+    server: MusicServer, videoId: str | None, playlistId: str | None, limit: int = 25
+):
     try:
-        if not video_id and not playlist_id:
-            raise Exception("Invalid arguments")
+        body = {
+            "enablePersistentPlaylistPanel": True,
+            "isAudioOnly": True,
+            "tunerSettingValue": "AUTOMIX_SETTING_NORMAL",
+        }
 
-        body = _build_body(radio=True)
+        if videoId:
+            body["videoId"] = videoId
+            if not playlistId:
+                playlistId = "RDAMVM" + videoId
 
-        if video_id:
-            body["videoId"] = video_id
-            body["playlistId"] = "RDAMVM" + video_id
+            body["watchEndpointMusicSupportedConfigs"] = {
+                "watchEndpointMusicConfig": {
+                    "hasPersistentPlaylistPanel": True,
+                    "musicVideoType": "MUSIC_VIDEO_TYPE_ATV",
+                }
+            }
+            body["params"] = "wAEB"
 
-        elif playlist_id:
-            validated_playlist_id = validate_playlist_id(playlist_id)
-            body["playlistId"] = validated_playlist_id
+        if playlistId:
+            playlist_id = validate_playlist_id(playlistId)
+            body["playlistId"] = playlist_id
 
-        server.radio_sessions[video_id if video_id else playlist_id] = body
+        endpoint = "next"
+        response = server.ytm._send_request(endpoint, body)
 
-        response = server.ytm._send_request("next", body)
+        watchNextRenderer = nav(
+            response,
+            [
+                "contents",
+                "singleColumnMusicWatchNextResultsRenderer",
+                "tabbedRenderer",
+                "watchNextTabbedResultsRenderer",
+            ],
+        )
 
-        watch_next = nav(response, [
-            "contents",
-            "singleColumnMusicWatchNextResultsRenderer",
-            "tabbedRenderer",
-            "watchNextTabbedResultsRenderer",
-        ])
+        results = nav(
+            watchNextRenderer,
+            [*TAB_CONTENT, "musicQueueRenderer", "content", "playlistPanelRenderer"],
+            True,
+        )
+        if not results:
+            msg = "No content returned by the server."
+            if playlistId:
+                msg += f"\nEnsure you have access to {playlistId} - a private playlist may cause this."
+            raise YTMusicServerError(msg)
 
-        results = nav(watch_next, [
-            *TAB_CONTENT,
-            "musicQueueRenderer",
-            "content",
-            "playlistPanelRenderer"
-        ], False)
-
-        tracks = parse_watch_playlist(results["contents"]) or []
+        playlist = next(
+            filter(
+                bool,
+                map(
+                    lambda x: nav(
+                        x, ["playlistPanelVideoRenderer", *NAVIGATION_PLAYLIST_ID], True
+                    ),
+                    results["contents"],
+                ),
+            ),
+            None,
+        )
+        tracks = parse_watch_playlist(results["contents"])
 
         # Extract continuation token
         ctoken = None
         if "continuations" in results:
             cont_key = (
                 "nextRadioContinuationData"
-                if not body.get("playlistId", "").startswith("PL")
+                if not body.get("playlistId", "").startswith(("PL", "OLA"))
                 else "nextContinuationData"
             )
             ctoken = results["continuations"][0].get(cont_key, {}).get("continuation")
 
         # Stream tracks
-        start = 1 if video_id else 0
-        for track in tracks[start:limit+start]:
-            yield {
-                "type": "radio-track",
-                "status": "ok",
-                "data": track
-            }
+        for track in tracks:
+            yield {"type": "radio-track", "status": "ok", "data": track}
 
         # Final message with continuation
         yield {
             "type": "radio-done",
             "status": "ok",
             "continuation": ctoken,
-            "id": video_id if video_id else playlist_id
+            "id": videoId if videoId else playlist,
         }
 
     except Exception as e:
-        yield {
-            "type": "error",
-            "message": str(e)
-        }
+        yield {"type": "error", "message": str(e)}
 
 
-async def radio_next(server: MusicServer, video_id: str | None, playlist_id: str | None, ctoken: str, limit: int = 25):
+async def radio_next(
+    server: MusicServer,
+    video_id: str | None,
+    playlist_id: str | None,
+    ctoken: str,
+    limit: int = 25,
+):
     try:
         body = server.radio_sessions.get(video_id if video_id else playlist_id) or {}
 
@@ -106,15 +127,16 @@ async def radio_next(server: MusicServer, video_id: str | None, playlist_id: str
                 "type": "radio-done",
                 "status": "ok",
                 "continuation": None,
-                "id": video_id
+                "id": video_id,
             }
             return
 
         results = response["continuationContents"]["playlistPanelContinuation"]
 
-        tracks = parse_watch_playlist(
-            results.get("contents", results.get("items", []))
-        ) or []
+        tracks = (
+            parse_watch_playlist(results.get("contents", results.get("items", [])))
+            or []
+        )
 
         # Extract next continuation token
         next_ctoken = None
@@ -126,22 +148,15 @@ async def radio_next(server: MusicServer, video_id: str | None, playlist_id: str
 
         # Stream tracks
         for track in tracks[:limit]:
-            yield {
-                "type": "radio-track",
-                "status": "ok",
-                "data": track
-            }
+            yield {"type": "radio-track", "status": "ok", "data": track}
 
         # Final message with next continuation
         yield {
             "type": "radio-done",
             "status": "ok",
             "continuation": next_ctoken,
-            "id": video_id
+            "id": video_id,
         }
 
     except Exception as e:
-        yield {
-            "type": "error",
-            "message": str(e)
-        }
+        yield {"type": "error", "message": str(e)}

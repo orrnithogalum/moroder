@@ -9,14 +9,14 @@
 #include <nlohmann/json.hpp>
 #include <string>
 
-#include "spdlog/spdlog.h"
+#include <spdlog/spdlog.h>
 
 namespace ipc {
 
 class Request {
 public:
     virtual ~Request() = default;
-    
+
     virtual nlohmann::json to_json() const = 0;
 
     std::string serialize() const {

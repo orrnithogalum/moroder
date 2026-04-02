@@ -97,6 +97,9 @@ class MusicServer:
             if not id.startswith("PL") and type == "playlist":
                 id += "PL"
 
+            if id.startswith("VLPL") and type == "playlist":
+                id = id[2:]
+
             if type == "song":
                 results = radio(self, id, None, limit)
             else:
