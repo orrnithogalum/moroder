@@ -8,26 +8,39 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from server import MusicServer
 
+from ytmusicapi.parsers.playlists import validate_playlist_id
 from ytmusicapi.parsers.watch import parse_watch_playlist
 from ytmusicapi.parsers.watch import TAB_CONTENT
 from ytmusicapi.parsers.watch import nav
 
-def _build_body(video_id: str, radio: bool = True) -> dict:
+def _build_body(radio: bool = True) -> dict:
     body = {
         "enablePersistentPlaylistPanel": True,
         "isAudioOnly": True,
         "tunerSettingValue": "AUTOMIX_SETTING_NORMAL",
-        "videoId": video_id,
-        "playlistId": "RDAMVM" + video_id,
     }
+
     if radio:
         body["params"] = "wAEB"
+
     return body
 
-async def radio(server: MusicServer, video_id: str, limit: int = 25):
+async def radio(server: MusicServer, video_id: str | None, playlist_id: str | None, limit: int = 25):
     try:
-        body = _build_body(video_id, radio=True)
-        server.radio_sessions[video_id] = body
+        if not video_id and not playlist_id:
+            raise Exception("Invalid arguments")
+
+        body = _build_body(radio=True)
+
+        if video_id:
+            body["videoId"] = video_id
+            body["playlistId"] = "RDAMVM" + video_id
+
+        elif playlist_id:
+            validated_playlist_id = validate_playlist_id(playlist_id)
+            body["playlistId"] = validated_playlist_id
+
+        server.radio_sessions[video_id if video_id else playlist_id] = body
 
         response = server.ytm._send_request("next", body)
 
@@ -43,7 +56,7 @@ async def radio(server: MusicServer, video_id: str, limit: int = 25):
             "musicQueueRenderer",
             "content",
             "playlistPanelRenderer"
-        ])
+        ], False)
 
         tracks = parse_watch_playlist(results["contents"]) or []
 
@@ -58,7 +71,8 @@ async def radio(server: MusicServer, video_id: str, limit: int = 25):
             ctoken = results["continuations"][0].get(cont_key, {}).get("continuation")
 
         # Stream tracks
-        for track in tracks[:limit]:
+        start = 1 if video_id else 0
+        for track in tracks[start:limit+start]:
             yield {
                 "type": "radio-track",
                 "status": "ok",
@@ -70,7 +84,7 @@ async def radio(server: MusicServer, video_id: str, limit: int = 25):
             "type": "radio-done",
             "status": "ok",
             "continuation": ctoken,
-            "id": video_id
+            "id": video_id if video_id else playlist_id
         }
 
     except Exception as e:
@@ -80,9 +94,9 @@ async def radio(server: MusicServer, video_id: str, limit: int = 25):
         }
 
 
-async def radio_next(server: MusicServer, video_id: str, ctoken: str, limit: int = 25):
+async def radio_next(server: MusicServer, video_id: str | None, playlist_id: str | None, ctoken: str, limit: int = 25):
     try:
-        body = server.radio_sessions.get(video_id) or {}
+        body = server.radio_sessions.get(video_id if video_id else playlist_id) or {}
 
         additional_params = f"&ctoken={ctoken}&continuation={ctoken}"
         response = server.ytm._send_request("next", body, additional_params)

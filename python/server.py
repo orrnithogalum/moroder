@@ -92,16 +92,34 @@ class MusicServer:
         elif action == "radio":
             id = req.get("id", "")
             limit = req.get("limit", "")
+            type = req.get("type", "song")
 
-            async for result in radio(self, id, limit):
+            if not id.startswith("PL") and type == "playlist":
+                id += "PL"
+
+            if type == "song":
+                results = radio(self, id, None, limit)
+            else:
+                results = radio(self, None, "RDAM" + id, limit)
+
+            async for result in results:
                 print((json.dumps(result) + "\n"), flush=True)
 
         elif action == "radio_next":
             id = req.get("id", "")
             ctoken = req.get("continuation", "")
             limit = req.get("limit", "")
+            type = req.get("type", "song")
 
-            async for result in radio_next(self, id, ctoken, limit):
+            if not id.startswith("PL") and type == "playlist":
+                id += "PL"
+
+            if type == "song":
+                results = radio_next(self, id, None, ctoken, limit)
+            else:
+                results = radio_next(self, None, "RDAM" + id, ctoken, limit)
+
+            async for result in results:
                 print((json.dumps(result) + "\n"), flush=True)
 
         elif action == "get_album":

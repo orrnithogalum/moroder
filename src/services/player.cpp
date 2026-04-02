@@ -218,10 +218,12 @@ void services::Player::worker_loop() {
                 }
 
                 bool should_queue = false;
+                bool is_queue_empty = false;
 
                 {
                     std::lock_guard lock(state_mutex);
                     should_queue = state.is_streaming_audio;
+                    is_queue_empty = state.user_queue.empty();
                 }
 
                 std::shared_ptr<music::IStreamable> streamable;
@@ -252,11 +254,26 @@ void services::Player::worker_loop() {
                     spdlog::warn("PLAYER: QueueStreamableCommand, unknown streamable type");
                 }
 
+                if(is_queue_empty && c.start_radio) {
+                    {
+                        std::lock_guard lock(command_mutex);
+                        command_queue.push(QueueStreamableRadioCommand{streamable});
+                    }
+                    command_cv.notify_one();
+                }
+
                 {
                     std::lock_guard lock(state_mutex);
-                    state.user_queue.push_back(streamable);
 
-                    if(!should_queue) {
+                    if(c.queue_in_radio) {
+                        state.radio_queue.push_back(streamable);
+
+                    } else {
+                        state.user_queue.push_back(streamable);
+
+                    }
+
+                    if(!should_queue && !c.queue_in_radio) {
                         state.queue_position = state.user_queue.size() - 1;
                         state.is_streaming_audio = true;
                         state.current = state.user_queue.back();
@@ -295,11 +312,90 @@ void services::Player::worker_loop() {
                 for(auto streamable : container->getStreamables()) {
                     {
                         std::lock_guard lock(command_mutex);
-                        command_queue.push(QueueStreamableCommand{streamable, c.fetch_albums});
+                        command_queue.push(QueueStreamableCommand{
+                            .streamable=streamable,
+                            .fetch_album=false,
+                            .start_radio=false,
+                            .queue_in_radio=false
+                        });
+                    }
+                }
+
+
+                bool is_queue_empty = false;
+
+                {
+                    std::lock_guard lock(state_mutex);
+                    is_queue_empty = state.user_queue.empty();
+                }
+
+                if(is_queue_empty && c.start_radio) {
+                    {
+                        std::lock_guard lock(command_mutex);
+                        command_queue.push(QueueStreamableContainerRadioCommand{container});
+                    }
+                    command_cv.notify_one();
+                }
+            }
+
+            else if constexpr (std::is_same_v<T, QueueStreamableRadioCommand>) {
+                spdlog::info("PLAYER: QueueStreamableRadioCommand");
+
+                music::Radio radio;
+
+                if (auto song_ptr = std::dynamic_pointer_cast<music::Song>(c.streamable)) {
+                    radio = music_service->getRadio(song_ptr->ref);
+
+                } else if (auto episode_ptr = std::dynamic_pointer_cast<music::Episode>(c.streamable)) {
+                    radio = music_service->getRadio(episode_ptr->ref);
+
+                } else {
+                    spdlog::warn("PLAYER: QueueStreamableRadioCommand, unknown streamable type");
+                }
+
+                std::shared_ptr<music::IStreamableContainer> container = std::make_shared<music::Radio>(radio);
+
+                for(auto streamable : container->getStreamables()) {
+                    {
+                        std::lock_guard lock(command_mutex);
+                        command_queue.push(QueueStreamableCommand{
+                            .streamable=streamable,
+                            .fetch_album=false,
+                            .start_radio=false,
+                            .queue_in_radio=true
+                        });
                     }
                 }
                 command_cv.notify_one();
             }
+
+            else if constexpr (std::is_same_v<T, QueueStreamableContainerRadioCommand>) {
+                spdlog::info("PLAYER: QueueStreamableContainerRadioCommand");
+                music::Radio radio;
+
+                if (auto playlist_ptr = std::dynamic_pointer_cast<music::Playlist>(c.container)) {
+                    radio = music_service->getRadio(playlist_ptr->ref);
+
+                } else {
+                    spdlog::warn("PLAYER: QueueStreamableRadioCommand, unsupported streamable type");
+                }
+
+                std::shared_ptr<music::IStreamableContainer> container = std::make_shared<music::Radio>(radio);
+
+                for(auto streamable : container->getStreamables()) {
+                    {
+                        std::lock_guard lock(command_mutex);
+                        command_queue.push(QueueStreamableCommand{
+                            .streamable=streamable,
+                            .fetch_album=false,
+                            .start_radio=false,
+                            .queue_in_radio=true
+                        });
+                    }
+                }
+                command_cv.notify_one();
+            }
+
 
         }, cmd);
 

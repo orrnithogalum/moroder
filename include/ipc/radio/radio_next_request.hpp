@@ -21,7 +21,8 @@ public:
             {"action", "radio_next"},
             {"limit", cfg.RADIO_RESULT_LIMIT},
             {"continuation", radio_.continuation},
-            {"id", radio_.seed_id}
+            {"id", radio_.seed_id},
+            {"type", radio_.type}
         };
     }
 

@@ -13,6 +13,7 @@ struct Radio : IStreamableContainer {
 public:
     std::string seed_id;
     std::string continuation;
+    std::string type;
 };
 
 }

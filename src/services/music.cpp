@@ -233,8 +233,8 @@ std::vector<music::SearchResult> services::Music::getSearch(const std::string& q
     return response.results;
 }
 
-music::Radio services::Music::getRadio(const music::SongRef& song) {
-    ipc::RadioRequest request(song);
+music::Radio services::Music::getRadio(const std::string id, const std::string type) {
+    ipc::RadioRequest request(id, type);
 
     ipc::RadioResponse response = this->sendStreamed<ipc::RadioRequest, ipc::RadioResponse>(
         request,
@@ -251,6 +251,7 @@ music::Radio services::Music::getRadio(const music::SongRef& song) {
     );
 
     music::Radio r;
+    r.type = type;
     r.seed_id = response.seed_id;
     r.continuation = response.continuation;
 
@@ -259,6 +260,18 @@ music::Radio services::Music::getRadio(const music::SongRef& song) {
     }
 
     return r;
+}
+
+music::Radio services::Music::getRadio(const music::SongRef& song) {
+    return this->getRadio(song.id, "song");
+}
+
+music::Radio services::Music::getRadio(const music::EpisodeRef& episode) {
+    return this->getRadio(episode.id, "song");
+}
+
+music::Radio services::Music::getRadio(const music::PlaylistRef& playlist) {
+    return this->getRadio(playlist.id, "playlist");
 }
 
 music::Radio services::Music::getRadioNext(const music::Radio& radio) {
@@ -322,6 +335,8 @@ music::Album services::Music::getAlbum(const music::AlbumRef& album) {
     );
 
     music::Album a;
+    a.setRef(album);
+
     for (const auto& s : response.results) {
         a.addStreamable(s);
     }
@@ -343,6 +358,8 @@ music::Playlist services::Music::getPlaylist(const music::PlaylistRef& playlist)
     );
 
     music::Playlist p;
+    p.setRef(playlist);
+
     for (const auto& s : response.results) {
         p.addStreamable(s);
     }

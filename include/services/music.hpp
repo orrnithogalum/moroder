@@ -27,6 +27,9 @@ public:
     music::Episode  getEpisode(const music::EpisodeRef& episode);
 
     music::Radio    getRadio(const music::SongRef& song);
+    music::Radio    getRadio(const music::EpisodeRef& episode);
+    music::Radio    getRadio(const music::PlaylistRef& playlist);
+
     music::Radio    getRadioNext(const music::Radio& radio);
 
     music::Album    getAlbum(const music::AlbumRef& album);
@@ -67,6 +70,8 @@ private:
         const std::function<void(nlohmann::json&, Response&)>& handleResponse,
         const std::string& doneType
     );
+
+    music::Radio getRadio(const std::string id, const std::string type);
 };
 
 }

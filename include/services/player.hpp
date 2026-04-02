@@ -1,6 +1,8 @@
 /* PLAYER
 - Service that wraps: Music, Mpris and Social into one service
 - Adds queuing support
+- Makes sure all music_service commands are synchronous
+- Give a shared pointer on a struct ref and it will queue the thing for you
 */
 
 #pragma once
@@ -20,19 +22,27 @@ private:
         std::string query;
     };
 
+    struct QueueStreamableRadioCommand {
+        std::shared_ptr<music::IStreamable> streamable;
+    };
+
     struct QueueStreamableCommand {
         std::shared_ptr<music::IStreamable> streamable;
         bool fetch_album = true;
+
+        bool start_radio = true;
+        bool queue_in_radio = false;
+    };
+
+    struct QueueStreamableContainerRadioCommand {
+        std::shared_ptr<music::IStreamableContainer> container;
     };
 
     struct QueueStreamableContainerCommand {
         std::shared_ptr<music::IStreamableContainer> container;
-        bool fetch_albums = false;
-    };
 
-    enum class CommandType {
-        QueueStreamable,
-        QueueStreamableContainer
+        bool fetch_albums = false;
+        bool start_radio  = true;
     };
 
 public:
@@ -82,7 +92,10 @@ private:
 
     using Command = std::variant<
         SearchCommand,
+        QueueStreamableRadioCommand,
         QueueStreamableCommand,
+
+        QueueStreamableContainerRadioCommand,
         QueueStreamableContainerCommand
     >;
 
