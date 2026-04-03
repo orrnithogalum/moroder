@@ -143,7 +143,7 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
                 {
                     std::unique_lock lock(command_mutex);
                     command_queue.push(QueueStreamableCommand{
-                        .streamable=this->state.user_queue.back(),
+                        .streamable=this->state.radio_queue.front(),
                         .fetch_album=false,
                         .start_radio=false,
                         .queue_in_radio=false,
