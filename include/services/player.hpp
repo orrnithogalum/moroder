@@ -45,20 +45,28 @@ private:
         bool start_radio  = true;
     };
 
+    struct QueueNextRadioCommand {
+        music::Radio radio;
+    };
+
 public:
     /* PlayerState
     - Shared player state between all threads
     */
     struct PlayerState {
         int queue_position;
+
         std::deque<std::shared_ptr<music::IStreamable>> user_queue;
         std::deque<std::shared_ptr<music::IStreamable>> radio_queue;
 
         std::shared_ptr<music::IStreamable> current;
         std::vector<music::SearchResult> search_results;
 
+        bool autoplay = true;
         bool is_loading_search = false;
         bool is_streaming_audio = false;
+
+        music::Radio radio;
     };
 
     PlayerState state;
@@ -96,7 +104,9 @@ private:
         QueueStreamableCommand,
 
         QueueStreamableContainerRadioCommand,
-        QueueStreamableContainerCommand
+        QueueStreamableContainerCommand,
+
+        QueueNextRadioCommand
     >;
 
     std::queue<Command> command_queue;

@@ -155,6 +155,7 @@ int main(int argc, char *argv[]) {
 
         if (state_copy.is_loading_search) {
             result_elements.emplace_back(text("Loading...") | italic | dim);
+
         } else {
             for (size_t i = 0; i < state_copy.search_results.size(); ++i) {
                 auto& r = state_copy.search_results[i];
@@ -205,7 +206,7 @@ int main(int argc, char *argv[]) {
                 auto cell = [](const std::string& path){ return ftxui::image_view(path); };
 
                 if (!thumb.empty() && thumb.rfind("https://", 0) == 0) {
-                    thumb_box = cell(thumb) | flex | size(WIDTH, EQUAL, 4) | size(HEIGHT, EQUAL, 2);
+                    thumb_box = ftxui::filler() | flex | size(WIDTH, EQUAL, 4) | size(HEIGHT, EQUAL, 2); // cell(thumb)
                 } else {
                     thumb_box = ftxui::filler() | flex | size(WIDTH, EQUAL, 4) | size(HEIGHT, EQUAL, 2);
                 }
@@ -250,7 +251,11 @@ int main(int argc, char *argv[]) {
         return vbox({
             text("[DEBUG] PLAYER STATUS"),
             text(state_copy.is_streaming_audio ? "streaming" : "not streaming") | color(state_copy.is_streaming_audio ? Color::Green : Color::Blue),
-            text(state_copy.is_loading_search ? "loading search" : "not searching") | color(state_copy.is_streaming_audio ? Color::Green : Color::Blue),
+            text(state_copy.is_loading_search ? "loading search" : "not searching") | color(state_copy.is_loading_search ? Color::Green : Color::Blue),
+            text(state_copy.autoplay ? "autoplay: true" : "autoplay: false") | color(state_copy.autoplay ? Color::Green : Color::Blue),
+            text("Queue position: " + std::to_string(state_copy.queue_position)) | color(Color::Default),
+            text("Queue size: " + std::to_string(state_copy.user_queue.size())) | color(Color::Default),
+            text("Radio queue size: " + std::to_string(state_copy.radio_queue.size())) | color(Color::Default),
             text(""),
             text("Search") | bold,
             input->Render(),

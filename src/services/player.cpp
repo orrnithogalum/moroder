@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 #include <mutex>
+#include <type_traits>
 
 services::Player::Player(const std::string_view& app_name, const std::string_view& app_name_human, const uint64_t app_id) {
     this->app_name = app_name;
@@ -137,6 +138,31 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
             */
             this->state.queue_position++;
 
+            if(!this->state.radio_queue.empty() && state.queue_position >= state.user_queue.size()) {
+
+                {
+                    std::unique_lock lock(command_mutex);
+                    command_queue.push(QueueStreamableCommand{
+                        .streamable=this->state.user_queue.back(),
+                        .fetch_album=false,
+                        .start_radio=false,
+                        .queue_in_radio=false,
+                    });
+                }
+
+                this->state.radio_queue.pop_front();
+                command_cv.notify_one();
+            }
+
+            if(this->state.autoplay && this->state.radio_queue.empty()) {
+                {
+                    std::unique_lock lock(command_mutex);
+                    command_queue.push(QueueNextRadioCommand{this->state.radio});
+                }
+
+                command_cv.notify_one();
+            }
+
             if (state.queue_position < state.user_queue.size()) {
                 state.current = state.user_queue[state.queue_position];
                 should_skip = true;
@@ -192,7 +218,7 @@ void services::Player::worker_loop() {
             using T = std::decay_t<decltype(c)>;
 
             if constexpr (std::is_same_v<T, SearchCommand>) {
-                spdlog::info("PLAYER: SearchCommand\n");
+                spdlog::info("PLAYER: SearchCommand");
 
                 {
                     std::lock_guard lock(state_mutex);
@@ -352,6 +378,12 @@ void services::Player::worker_loop() {
 
                 } else {
                     spdlog::warn("PLAYER: QueueStreamableRadioCommand, unknown streamable type");
+                    return;
+                }
+
+                {
+                    std::lock_guard lock(state_mutex);
+                    this->state.radio = radio;
                 }
 
                 std::shared_ptr<music::IStreamableContainer> container = std::make_shared<music::Radio>(radio);
@@ -379,9 +411,47 @@ void services::Player::worker_loop() {
 
                 } else {
                     spdlog::warn("PLAYER: QueueStreamableRadioCommand, unsupported streamable type");
+                    return;
+                }
+
+                {
+                    std::lock_guard lock(state_mutex);
+                    this->state.radio = radio;
                 }
 
                 std::shared_ptr<music::IStreamableContainer> container = std::make_shared<music::Radio>(radio);
+
+                for(auto streamable : container->getStreamables()) {
+                    {
+                        std::lock_guard lock(command_mutex);
+                        command_queue.push(QueueStreamableCommand{
+                            .streamable=streamable,
+                            .fetch_album=false,
+                            .start_radio=false,
+                            .queue_in_radio=true
+                        });
+                    }
+                }
+                command_cv.notify_one();
+
+            } else if constexpr (std::is_same_v<T, QueueNextRadioCommand>) {
+                spdlog::info("PLAYER: QueueNextRadioCommand");
+
+                music::Radio state_radio;
+
+                {
+                    std::lock_guard lock(state_mutex);
+                    state_radio = this->state.radio;
+                }
+
+                music::Radio new_radio = music_service->getRadioNext(state_radio);
+
+                {
+                    std::lock_guard lock(state_mutex);
+                    this->state.radio = new_radio;
+                }
+
+                std::shared_ptr<music::IStreamableContainer> container = std::make_shared<music::Radio>(new_radio);
 
                 for(auto streamable : container->getStreamables()) {
                     {
