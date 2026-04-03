@@ -278,6 +278,7 @@ void services::Player::worker_loop() {
 
                 } else {
                     spdlog::warn("PLAYER: QueueStreamableCommand, unknown streamable type");
+                    return;
                 }
 
                 if(is_queue_empty && c.start_radio) {
@@ -334,6 +335,7 @@ void services::Player::worker_loop() {
 
                 } else {
                     spdlog::warn("PLAYER: QueueStreamableContainerCommand, unknown streamable type");
+                    return;
                 }
 
                 for(auto streamable : container->getStreamables()) {
