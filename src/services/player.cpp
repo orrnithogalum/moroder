@@ -270,7 +270,6 @@ void services::Player::worker_loop() {
 
                     } else {
                         state.user_queue.push_back(streamable);
-
                     }
 
                     if(!should_queue && !c.queue_in_radio) {
@@ -280,7 +279,9 @@ void services::Player::worker_loop() {
                     }
                 }
 
-                mpv_service->load(streamable->getStreamUrl());
+                if(!c.queue_in_radio) {
+                    mpv_service->load(streamable->getStreamUrl());
+                }
 
                 if(should_queue) {
                     this->updateMprisControls();

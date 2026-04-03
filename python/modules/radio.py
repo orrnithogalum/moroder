@@ -63,6 +63,7 @@ async def radio(
             [*TAB_CONTENT, "musicQueueRenderer", "content", "playlistPanelRenderer"],
             True,
         )
+
         if not results:
             msg = "No content returned by the server."
             if playlistId:
@@ -82,6 +83,9 @@ async def radio(
             None,
         )
         tracks = parse_watch_playlist(results["contents"])
+
+        if videoId:
+            tracks = tracks[1:]
 
         # Extract continuation token
         ctoken = None
