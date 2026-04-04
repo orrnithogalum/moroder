@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 #include <mutex>
+#include <sys/stat.h>
 #include <type_traits>
 
 services::Player::Player(const std::string_view& app_name, const std::string_view& app_name_human, const uint64_t app_id) {
@@ -123,8 +124,14 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
     mpris_service->startLoopAsync();
 
     mpv_service->setOnStreamEnd([this] {
+        spdlog::info("PLAYER: Stream end");
         mpris_service->setPlaybackStatus(services::PlaybackStatus::Stopped);
 
+        std::shared_ptr<music::IStreamable> radio_next;
+        music::Radio state_radio;
+
+        bool start_next_radio = false;
+        bool to_radio_skip = false;
         bool should_skip = false;
 
         {
@@ -139,34 +146,43 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
             this->state.queue_position++;
 
             if(!this->state.radio_queue.empty() && state.queue_position >= state.user_queue.size()) {
+                to_radio_skip = true;
 
-                {
-                    std::unique_lock lock(command_mutex);
-                    command_queue.push(QueueStreamableCommand{
-                        .streamable=this->state.radio_queue.front(),
-                        .fetch_album=false,
-                        .start_radio=false,
-                        .queue_in_radio=false,
-                    });
-                }
-
+                radio_next = state.radio_queue.front();
                 this->state.radio_queue.pop_front();
-                command_cv.notify_one();
             }
 
             if(this->state.autoplay && this->state.radio_queue.empty()) {
-                {
-                    std::unique_lock lock(command_mutex);
-                    command_queue.push(QueueNextRadioCommand{this->state.radio});
-                }
-
-                command_cv.notify_one();
+                start_next_radio = true;
+                state_radio = state.radio;
             }
 
             if (state.queue_position < state.user_queue.size()) {
                 state.current = state.user_queue[state.queue_position];
                 should_skip = true;
             }
+        }
+
+        if(start_next_radio) {
+            {
+                std::unique_lock lock(command_mutex);
+                command_queue.push(QueueNextRadioCommand{state_radio});
+            }
+
+            command_cv.notify_one();
+        }
+
+        if(to_radio_skip) {
+            {
+                std::unique_lock lock(command_mutex);
+                command_queue.push(QueueStreamableCommand{
+                    .streamable=radio_next,
+                    .fetch_album=false,
+                    .start_radio=false,
+                    .queue_in_radio=false,
+                });
+            }
+            command_cv.notify_one();
         }
 
         /* If should skip:
@@ -183,6 +199,7 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
     });
 
     mpv_service->setOnStreamStart([this] {
+        spdlog::info("PLAYER: Stream start");
         uint64_t song_duration = mpv_service->getStreamDuration();
         {
             std::lock_guard lock(state_mutex);
@@ -526,21 +543,43 @@ void services::Player::queue(std::shared_ptr<music::IStreamableContainer> contai
 }
 
 void services::Player::skipForward() {
+    bool to_radio_skip = false;
     bool should_skip = true;
+
+    std::shared_ptr<music::IStreamable> radio_next;
 
     {
         std::lock_guard lock(state_mutex);
-        if (state.queue_position + 1 >= state.user_queue.size()) {
+        if (state.queue_position + 1 >= state.user_queue.size() && state.radio_queue.empty()) {
             state.is_streaming_audio = false;
             should_skip = false;
 
             spdlog::warn("PLAYER: tried to skip to next song, but queue is done");
 
-        } else {
+        } else if (state.queue_position < state.user_queue.size() && state.radio_queue.empty()){
+            state.queue_position++;
+            state.current = state.user_queue[state.queue_position];
+
+        } else if (state.queue_position + 1 >= state.user_queue.size() && !state.radio_queue.empty()) {
+            state.queue_position++;
+            radio_next = state.radio_queue.front();
+
+            state.current = radio_next;
+            state.user_queue.push_back(radio_next);
+            state.radio_queue.pop_front();
+
+            to_radio_skip = true;
+
+            spdlog::info("PLAYER: skipping to radio");
+
+        } else if (state.queue_position < state.user_queue.size() && !state.radio_queue.empty()){
             state.queue_position++;
             state.current = state.user_queue[state.queue_position];
         }
+    }
 
+    if(to_radio_skip) {
+        mpv_service->load(radio_next->getStreamUrl());
     }
 
     if(should_skip) {
@@ -592,7 +631,7 @@ void services::Player::skipBackward() {
 void services::Player::updateMprisControls() {
     {
         std::lock_guard lock(state_mutex);
-        mpris_service->setIsNextPossible(state.queue_position + 1 < state.user_queue.size());
+        mpris_service->setIsNextPossible((state.queue_position + 1 < state.user_queue.size()) || (!state.radio_queue.empty()));
         mpris_service->setIsPreviousPossible(state.queue_position > 0 && state.user_queue.size() > 1);
         mpris_service->updatePlayerControls();
     }
