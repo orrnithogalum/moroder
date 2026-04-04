@@ -446,6 +446,11 @@ void services::Player::worker_loop() {
                     state_radio = this->state.radio;
                 }
 
+                if(state_radio.continuation.empty()) {
+                    spdlog::warn("PLAYER: QueueNextRadioCommand, no continuation");
+                    return;
+                }
+
                 music::Radio new_radio = music_service->getRadioNext(state_radio);
 
                 {
