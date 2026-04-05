@@ -27,6 +27,7 @@ public:
     music::Episode  getEpisode(const music::EpisodeRef& episode);
 
     music::Radio    getRadio(const music::SongRef& song);
+    music::Radio    getRadio(const music::AlbumRef& album);
     music::Radio    getRadio(const music::EpisodeRef& episode);
     music::Radio    getRadio(const music::PlaylistRef& playlist);
 

@@ -95,7 +95,7 @@ class MusicServer:
             type = req.get("type", "song")
 
             if not id.startswith("PL") and type == "playlist":
-                id += "PL"
+                id = "PL" + id
 
             if id.startswith("VLPL") and type == "playlist":
                 id = id[2:]

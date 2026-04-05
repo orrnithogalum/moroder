@@ -266,6 +266,10 @@ music::Radio services::Music::getRadio(const music::SongRef& song) {
     return this->getRadio(song.id, "song");
 }
 
+music::Radio services::Music::getRadio(const music::AlbumRef& album) {
+    return this->getRadio(album.id, "playlist");
+}
+
 music::Radio services::Music::getRadio(const music::EpisodeRef& episode) {
     return this->getRadio(episode.id, "song");
 }

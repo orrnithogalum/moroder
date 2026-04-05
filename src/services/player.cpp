@@ -149,7 +149,8 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
                 to_radio_skip = true;
 
                 radio_next = state.radio_queue.front();
-                this->state.radio_queue.pop_front();
+                state.radio_queue.pop_front();
+                state.current = radio_next;
             }
 
             if(this->state.autoplay && this->state.radio_queue.empty()) {
@@ -188,7 +189,7 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
         /* If should skip:
         - We don't actually call the skip method because mpv will autoplay by itself
         */
-        if(should_skip) {
+        if(should_skip || to_radio_skip) {
             this->updateMprisControls();
             this->updateMprisData();
             this->updateSocialData();
@@ -266,7 +267,7 @@ void services::Player::worker_loop() {
                 {
                     std::lock_guard lock(state_mutex);
                     should_queue = state.is_streaming_audio;
-                    is_queue_empty = state.user_queue.empty();
+                    is_queue_empty = state.user_queue.empty() && state.radio_queue.empty();
                 }
 
                 std::shared_ptr<music::IStreamable> streamable;
@@ -403,6 +404,7 @@ void services::Player::worker_loop() {
                 {
                     std::lock_guard lock(state_mutex);
                     this->state.radio = radio;
+                    this->state.radio_queue.clear();
                 }
 
                 std::shared_ptr<music::IStreamableContainer> container = std::make_shared<music::Radio>(radio);
@@ -428,6 +430,9 @@ void services::Player::worker_loop() {
                 if (auto playlist_ptr = std::dynamic_pointer_cast<music::Playlist>(c.container)) {
                     radio = music_service->getRadio(playlist_ptr->ref);
 
+                } else if (auto album_ptr = std::dynamic_pointer_cast<music::Album>(c.container)){
+                    radio = music_service->getRadio(album_ptr->ref);
+
                 } else {
                     spdlog::warn("PLAYER: QueueStreamableRadioCommand, unsupported streamable type");
                     return;
@@ -436,6 +441,7 @@ void services::Player::worker_loop() {
                 {
                     std::lock_guard lock(state_mutex);
                     this->state.radio = radio;
+                    this->state.radio_queue.clear();
                 }
 
                 std::shared_ptr<music::IStreamableContainer> container = std::make_shared<music::Radio>(radio);
@@ -525,7 +531,12 @@ void services::Player::queue(std::shared_ptr<music::IStreamable> streamable) {
 
     {
         std::lock_guard lock(command_mutex);
-        command_queue.push(QueueStreamableCommand{streamable, cfg.FETCH_ALBUMS});
+        command_queue.push(QueueStreamableCommand{
+            .streamable=streamable,
+            .fetch_album=cfg.FETCH_ALBUMS,
+            .start_radio=true,
+            .queue_in_radio=false
+        });
     }
 
     command_cv.notify_one();
