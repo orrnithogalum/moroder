@@ -48,6 +48,8 @@ async def radio(
         endpoint = "next"
         response = server.ytm._send_request(endpoint, body)
 
+        server.radio_sessions[videoId if videoId else playlistId] = body
+
         watchNextRenderer = nav(
             response,
             [
