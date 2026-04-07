@@ -29,8 +29,8 @@ private:
     struct QueueStreamableCommand {
         std::shared_ptr<music::IStreamable> streamable;
         bool fetch_album = true;
-
         bool start_radio = true;
+        bool start_fresh = false;
         bool queue_in_radio = false;
     };
 
@@ -42,7 +42,9 @@ private:
         std::shared_ptr<music::IStreamableContainer> container;
 
         bool fetch_albums = false;
+        bool start_fresh  = false;
         bool start_radio  = true;
+        bool queue_in_radio = false;
     };
 
     struct QueueNextRadioCommand {
@@ -83,7 +85,7 @@ public:
 
     void search(const std::string& query);
 
-    void queue(std::shared_ptr<music::IStreamable> streamable);
+    void queue(std::shared_ptr<music::IStreamable> streamable, const bool fresh = true, const bool radio = true);
     void queue(std::shared_ptr<music::IStreamableContainer> container);
 
     using RequestCompletedCallback = std::function<void()>;

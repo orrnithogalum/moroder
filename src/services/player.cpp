@@ -180,6 +180,7 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
                     .streamable=radio_next,
                     .fetch_album=false,
                     .start_radio=false,
+                    .start_fresh=false,
                     .queue_in_radio=false,
                 });
             }
@@ -299,7 +300,7 @@ void services::Player::worker_loop() {
                     return;
                 }
 
-                if(is_queue_empty && c.start_radio) {
+                if(c.start_radio) {
                     {
                         std::lock_guard lock(command_mutex);
                         command_queue.push(QueueStreamableRadioCommand{streamable});
@@ -363,6 +364,7 @@ void services::Player::worker_loop() {
                             .streamable=streamable,
                             .fetch_album=false,
                             .start_radio=false,
+                            .start_fresh=false,
                             .queue_in_radio=false
                         });
                     }
@@ -416,6 +418,7 @@ void services::Player::worker_loop() {
                             .streamable=streamable,
                             .fetch_album=false,
                             .start_radio=false,
+                            .start_fresh=false,
                             .queue_in_radio=true
                         });
                     }
@@ -453,6 +456,7 @@ void services::Player::worker_loop() {
                             .streamable=streamable,
                             .fetch_album=false,
                             .start_radio=false,
+                            .start_fresh=false,
                             .queue_in_radio=true
                         });
                     }
@@ -490,6 +494,7 @@ void services::Player::worker_loop() {
                             .streamable=streamable,
                             .fetch_album=false,
                             .start_radio=false,
+                            .start_fresh=false,
                             .queue_in_radio=true
                         });
                     }
@@ -526,7 +531,7 @@ void services::Player::search(const std::string& query) {
     command_cv.notify_one();
 }
 
-void services::Player::queue(std::shared_ptr<music::IStreamable> streamable) {
+void services::Player::queue(std::shared_ptr<music::IStreamable> streamable, const bool fresh, const bool radio) {
     Config cfg = Config::get();
 
     {
@@ -534,7 +539,8 @@ void services::Player::queue(std::shared_ptr<music::IStreamable> streamable) {
         command_queue.push(QueueStreamableCommand{
             .streamable=streamable,
             .fetch_album=cfg.FETCH_ALBUMS,
-            .start_radio=true,
+            .start_radio=radio,
+            .start_fresh=fresh,
             .queue_in_radio=false
         });
     }
@@ -547,7 +553,13 @@ void services::Player::queue(std::shared_ptr<music::IStreamableContainer> contai
 
     {
         std::lock_guard lock(command_mutex);
-        command_queue.push(QueueStreamableContainerCommand{container, false});
+        command_queue.push(QueueStreamableContainerCommand{
+            .container=container,
+            .fetch_albums=false,
+            .start_fresh=false,
+            .start_radio=false,
+            .queue_in_radio=false
+        });
     }
 
     command_cv.notify_one();
