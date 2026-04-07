@@ -300,6 +300,19 @@ void services::Player::worker_loop() {
                     return;
                 }
 
+                if(c.start_fresh) {
+                    mpv_service->clearQueue();
+                    this->resetMprisData();
+
+                    {
+                        std::lock_guard lock(state_mutex);
+                        state.user_queue.clear();
+                        state.radio_queue.clear();
+                        state.queue_position = 0;
+                        state.current = streamable;
+                    }
+                }
+
                 if(c.start_radio) {
                     {
                         std::lock_guard lock(command_mutex);
