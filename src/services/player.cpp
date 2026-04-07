@@ -387,15 +387,7 @@ void services::Player::worker_loop() {
                     }
                 }
 
-
-                bool is_queue_empty = false;
-
-                {
-                    std::lock_guard lock(state_mutex);
-                    is_queue_empty = state.user_queue.empty();
-                }
-
-                if(is_queue_empty && c.start_radio) {
+                if(c.start_radio) {
                     {
                         std::lock_guard lock(command_mutex);
                         command_queue.push(QueueStreamableContainerRadioCommand{container});
