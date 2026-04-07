@@ -217,3 +217,10 @@ uint64_t services::MPV::getStreamDuration() {
 
     return static_cast<uint64_t>(duration * 1000000.0);
 }
+
+void services::MPV::clearQueue() {
+    this->stop();
+
+    const char* args[] = {"playlist-clear", nullptr};
+    command(args);
+}

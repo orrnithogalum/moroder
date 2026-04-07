@@ -41,6 +41,7 @@ public:
 
     void skipForward();
     void skipBackward();
+    void clearQueue();
 
     /* getStreamDuration
     - Retrieves the duration of the currently loaded stream in microseconds.
