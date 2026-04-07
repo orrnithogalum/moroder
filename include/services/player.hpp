@@ -12,6 +12,7 @@
 #include "music.hpp"
 #include "social.hpp"
 
+#include <cstdint>
 #include <queue>
 
 namespace services {
@@ -87,6 +88,9 @@ public:
 
     void queue(std::shared_ptr<music::IStreamable> streamable, const bool fresh = true, const bool radio = true);
     void queue(std::shared_ptr<music::IStreamableContainer> container, const bool fresh = true, const bool radio = true);
+
+    void removeFromUserQueue(uint16_t);
+    void removeFromRadioQueue(uint16_t);
 
     using RequestCompletedCallback = std::function<void()>;
 

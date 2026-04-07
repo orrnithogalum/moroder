@@ -224,3 +224,12 @@ void services::MPV::clearQueue() {
     const char* args[] = {"playlist-clear", nullptr};
     command(args);
 }
+
+void services::MPV::removeAt(uint16_t index) {
+    std::string index_str = std::to_string(index);
+
+    const char* args[] = {"playlist-remove", index_str.c_str(), nullptr};
+
+    command(args);
+    spdlog::info("MPV: Removed song at index {}", index);
+}

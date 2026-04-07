@@ -611,6 +611,7 @@ void services::Player::skipForward() {
     }
 
     if(to_radio_skip) {
+        spdlog::info("PLAYER: loading next radio song");
         mpv_service->load(radio_next->getStreamUrl());
     }
 
@@ -745,4 +746,34 @@ void services::Player::updateSocialData() {
             current->getDuration()
         );
     }
+}
+
+void services::Player::removeFromUserQueue(uint16_t index) {
+    bool should_skip = false;
+
+    {
+        std::lock_guard lock(state_mutex);
+        if (index < state.user_queue.size()) {
+            state.user_queue.erase(state.user_queue.begin() + index);
+
+        } else {
+            spdlog::warn("PLAYER: tried to remove song at {} but index is invalid ({}).", index, state.user_queue.size());
+            return;
+        }
+
+        if(index < state.queue_position) {
+            state.queue_position -= 1;
+        }
+
+        if(index == state.queue_position) {
+            should_skip = true;
+        }
+    }
+
+    if(should_skip) {
+        this->skipForward();
+    }
+
+    mpv_service->removeAt(index);
+    this->updateMprisControls();
 }

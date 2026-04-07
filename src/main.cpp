@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
         auto& results = state_copy.search_results;
 
         if(event == Event::Return || event == Event::r) {
-            if(event == Event::r && !browsing_results) {
+            if((event == Event::r) && !browsing_results) {
                 return false;
             }
 
@@ -80,6 +80,7 @@ int main(int argc, char *argv[]) {
                             // Push to the player queue
                             if (event == Event::r) {
                                 // player.radio(streamable);  // Assuming radio accepts IStreamable pointer
+                                player.removeFromUserQueue(0);
                             } else {
                                 player.queue(streamable);  // Queue expects IStreamable pointer
                             }
@@ -211,6 +212,9 @@ int main(int argc, char *argv[]) {
                     thumb_box = ftxui::filler() | flex | size(WIDTH, EQUAL, 4) | size(HEIGHT, EQUAL, 2);
                 }
 
+                top_label = top_label.substr(0, 30) + "...";
+                bottom_label = top_label.substr(0, 30) + "...";
+
                 // Highlight the selected element
                 if ((int)i == selected_index) {
                     result_elements.emplace_back(
@@ -273,8 +277,70 @@ int main(int argc, char *argv[]) {
         input
     });
 
+    auto queue_renderer = Renderer([&] {
+        services::Player::PlayerState state_copy;
+        {
+            std::lock_guard lock(player.state_mutex);
+            state_copy = player.state;
+        }
+
+        std::vector<Element> user_queue_elements;
+        std::vector<Element> radio_queue_elements;
+
+        // Populate user queue elements
+        for (const auto& item : state_copy.user_queue) {
+            std::string label;
+
+            if (auto song = dynamic_cast<music::Song*>(item.get())) {
+                label = "Song: " + song->ref.title;
+            } else if (auto episode = dynamic_cast<music::Episode*>(item.get())) {
+                label = "Episode: " + episode->ref.title;
+            } else {
+                label = "Unknown item";
+            }
+
+            label = label.substr(0, 30) + "...";
+            user_queue_elements.push_back(text(label));
+        }
+
+        // Populate radio queue elements
+        for (const auto& item : state_copy.radio_queue) {
+            std::string label;
+
+            if (auto song = dynamic_cast<music::Song*>(item.get())) {
+                label = "Song: " + song->ref.title;
+            } else if (auto episode = dynamic_cast<music::Episode*>(item.get())) {
+                label = "Episode: " + episode->ref.title;
+            } else {
+                label = "Unknown item";
+            }
+
+            radio_queue_elements.push_back(text(label));
+        }
+
+        return vbox({
+            vbox({
+                text("User Queue") | bold | center,
+                vbox(std::move(user_queue_elements)) | frame
+            }) | flex,
+            text(""),
+            separator(),
+            text(""),
+            vbox({
+                text("Radio Queue") | bold | center,
+                vbox(std::move(radio_queue_elements)) | frame
+            }) | flex
+        }) | flex;
+    });
+
     auto ui = Renderer(main_component, [&] {
-        return renderer->Render();
+        return hbox({
+            renderer->Render() | frame | flex,
+            text(" "),
+            separator(),
+            text(" "),
+            queue_renderer->Render() | frame | flex
+        });
     });
 
     screen.Loop(ui);

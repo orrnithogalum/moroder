@@ -36,12 +36,13 @@ public:
 
     void seekForward(uint64_t microseconds);
     void seekBackward(uint64_t microseconds);
-
     void setPosition(uint64_t microseconds);
 
     void skipForward();
     void skipBackward();
     void clearQueue();
+
+    void removeAt(uint16_t index);
 
     /* getStreamDuration
     - Retrieves the duration of the currently loaded stream in microseconds.
