@@ -377,9 +377,13 @@ void services::Player::worker_loop() {
                             .streamable=streamable,
                             .fetch_album=false,
                             .start_radio=false,
-                            .start_fresh=false,
+                            .start_fresh=c.start_fresh,
                             .queue_in_radio=false
                         });
+                    }
+
+                    if(c.start_fresh) {
+                        c.start_fresh = false;
                     }
                 }
 
@@ -561,7 +565,7 @@ void services::Player::queue(std::shared_ptr<music::IStreamable> streamable, con
     command_cv.notify_one();
 }
 
-void services::Player::queue(std::shared_ptr<music::IStreamableContainer> container) {
+void services::Player::queue(std::shared_ptr<music::IStreamableContainer> container, const bool fresh, const bool radio) {
     Config cfg = Config::get();
 
     {
@@ -569,8 +573,8 @@ void services::Player::queue(std::shared_ptr<music::IStreamableContainer> contai
         command_queue.push(QueueStreamableContainerCommand{
             .container=container,
             .fetch_albums=false,
-            .start_fresh=false,
-            .start_radio=false,
+            .start_fresh=fresh,
+            .start_radio=radio,
             .queue_in_radio=false
         });
     }
