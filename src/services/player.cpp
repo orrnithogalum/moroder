@@ -302,6 +302,7 @@ void services::Player::worker_loop() {
 
                 if(c.start_fresh) {
                     mpv_service->clearQueue();
+                    mpris_service->setPlaybackStatus(services::PlaybackStatus::Stopped);
                     this->resetMprisData();
 
                     {
