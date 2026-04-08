@@ -19,7 +19,7 @@ from ytmusicapi.parsers.watch import (
 
 
 async def radio(
-    server: MusicServer, videoId: str | None, playlistId: str | None, limit: int = 25
+    server: MusicServer, videoId: str | None, playlistId: str | None, limit: int = 50
 ):
     try:
         body = {
@@ -120,7 +120,7 @@ async def radio_next(
     video_id: str | None,
     playlist_id: str | None,
     ctoken: str,
-    limit: int = 25,
+    limit: int = 50,
 ):
     try:
         body = server.radio_sessions.get(video_id if video_id else playlist_id) or {}
