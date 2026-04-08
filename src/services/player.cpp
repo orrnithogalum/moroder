@@ -777,3 +777,15 @@ void services::Player::removeFromUserQueue(uint16_t index) {
     mpv_service->removeAt(index);
     this->updateMprisControls();
 }
+
+void services::Player::removeFromRadioQueue(uint16_t index) {
+    {
+        std::lock_guard lock(state_mutex);
+
+        if(index < state.radio_queue.size()) {
+            state.radio_queue.erase(state.radio_queue.begin() + index);
+        }
+    }
+
+    this->updateMprisControls();
+}
