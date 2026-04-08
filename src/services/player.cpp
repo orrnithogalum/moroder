@@ -123,6 +123,21 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
 
     mpris_service->startLoopAsync();
 
+    mpv_service->setOnStreamStart([this] {
+        spdlog::info("PLAYER: Stream start");
+        uint64_t song_duration = mpv_service->getStreamDuration();
+        {
+            std::lock_guard lock(state_mutex);
+            state.current->setDuration(song_duration);
+            state.is_streaming_audio = true;
+        }
+
+        mpris_service->setPlaybackStatus(services::PlaybackStatus::Playing);
+        this->updateMprisControls();
+        this->updateMprisData();
+        this->updateSocialData();
+    });
+
     mpv_service->setOnStreamEnd([this] {
         spdlog::info("PLAYER: Stream end");
         mpris_service->setPlaybackStatus(services::PlaybackStatus::Stopped);
@@ -200,19 +215,25 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
         }
     });
 
-    mpv_service->setOnStreamStart([this] {
-        spdlog::info("PLAYER: Stream start");
-        uint64_t song_duration = mpv_service->getStreamDuration();
+    mpv_service->setOnStreamError([this] {
+        int current_pos;
+
         {
             std::lock_guard lock(state_mutex);
-            state.current->setDuration(song_duration);
-            state.is_streaming_audio = true;
+            state.user_queue.pop_back();
+            current_pos = state.queue_position;
+            state.queue_position = state.user_queue.size() - 1;
         }
 
-        mpris_service->setPlaybackStatus(services::PlaybackStatus::Playing);
-        this->updateMprisControls();
-        this->updateMprisData();
-        this->updateSocialData();
+        if(current_pos < 0) {
+            current_pos = 0;
+        }
+
+        mpv_service->removeAt(current_pos);
+        this->skipForward();
+
+        // We do this because mpv automatically skips on stream error
+        mpv_service->skipTo(current_pos);
     });
 }
 

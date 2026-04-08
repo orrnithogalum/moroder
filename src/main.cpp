@@ -83,6 +83,25 @@ int main(int argc, char *argv[]) {
                                 player.removeFromUserQueue(0);
                             } else {
                                 player.queue(streamable);  // Queue expects IStreamable pointer
+
+                                music::Song song2;
+                                music::SongRef song2ref;
+
+                                music::ArtistRef artist2ref;
+                                artist2ref.id = "UCbIB3Oh5BezJe3sR0BEk0cw";
+                                artist2ref.name = "Claire Laffut";
+
+                                song2ref.id = "eey0WS_tPUM";
+                                song2ref.title = "Vérité";
+                                song2ref.thumbnail_small = "https://lh3.googleusercontent.com/bT84KwawD-7yHQ44FdJycxjk4ZOuUL6BjGgaxtA94JuAB5lxb_X40Y0Zqw0gLq_vgSA37C8GtGwFsq9b=w60-h60-l90-rj";
+                                song2ref.thumbnail_large = "https://lh3.googleusercontent.com/bT84KwawD-7yHQ44FdJycxjk4ZOuUL6BjGgaxtA94JuAB5lxb_X40Y0Zqw0gLq_vgSA37C8GtGwFsq9b=w120-h120-l90-rj";
+                                song2ref.artists.push_back(artist2ref);
+
+                                song2.setRef(song2ref);
+                                std::shared_ptr<music::IStreamable> streamable2;
+                                streamable2 = std::make_shared<music::Song>(song2);
+
+                                player.queue(streamable2, false, false);
                             }
 
                             // spdlog::info("Queued SongRef as IStreamable: {}", data.ref);

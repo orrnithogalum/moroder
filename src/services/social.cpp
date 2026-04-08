@@ -16,6 +16,13 @@ services::Social::Social(const uint64_t application_id) : app_id(application_id)
             std::replace(clean.begin(), clean.end(), '\n', ' ');
             std::replace(clean.begin(), clean.end(), '\r', ' ');
 
+            // split on first '):' and keep the rest
+            auto pos = clean.find("):");
+            if (pos != std::string::npos) {
+                clean = clean.substr(pos + 2);
+                clean.erase(0, clean.find_first_not_of(" "));
+            }
+
             switch (severity) {
                 case discordpp::LoggingSeverity::Verbose:
                     spdlog::debug("SOCIAL: {}", clean);

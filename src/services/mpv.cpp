@@ -2,6 +2,7 @@
 
 #include "../../include/utils/utils.hpp"
 
+#include <mpv/client.h>
 #include <spdlog/spdlog.h>
 #include <stdexcept>
 
@@ -74,12 +75,19 @@ void services::MPV::eventLoop() {
         case MPV_EVENT_END_FILE: {
             auto* ev = (mpv_event_end_file*)event->data;
 
-            if (ev->reason != MPV_END_FILE_REASON_EOF) { break; }
+            if (ev->reason == MPV_END_FILE_REASON_EOF) {
+                spdlog::info("MPV: song ended normally");
 
-            spdlog::info("MPV: song ended");
+                if (on_stream_end) {
+                    on_stream_end();
+                }
 
-            if (on_stream_end) {
-                on_stream_end();
+            } else if (ev->reason == MPV_END_FILE_REASON_ERROR){
+                spdlog::warn("MPV: playback error: {}", mpv_error_string(ev->error));
+
+                if (on_stream_error) {
+                    on_stream_error();
+                }
             }
 
             break;
@@ -93,6 +101,10 @@ void services::MPV::eventLoop() {
             break;
         }
     }
+}
+
+void services::MPV::setOnStreamError(std::function<void()> cb) {
+    on_stream_error = std::move(cb);
 }
 
 void services::MPV::setOnStreamStart(std::function<void()> cb) {
@@ -232,4 +244,13 @@ void services::MPV::removeAt(uint16_t index) {
 
     command(args);
     spdlog::info("MPV: Removed song at index {}", index);
+}
+
+void services::MPV::skipTo(uint16_t index) {
+    std::string index_str = std::to_string(index);
+
+    const char* args[] = {"playlist-play-index", index_str.c_str(), nullptr};
+
+    command(args);
+    spdlog::info("MPV: Skipped to song at index {}", index);
 }

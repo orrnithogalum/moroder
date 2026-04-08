@@ -40,6 +40,7 @@ public:
 
     void skipForward();
     void skipBackward();
+    void skipTo(uint16_t index);
     void clearQueue();
 
     void removeAt(uint16_t index);
@@ -56,6 +57,7 @@ public:
     */
     uint64_t getStreamPosition();
 
+    void setOnStreamError(std::function<void()> cb);
     void setOnStreamStart(std::function<void()> cb);
     void setOnStreamLoad(std::function<void()> cb);
     void setOnStreamEnd(std::function<void()> cb);
@@ -70,6 +72,7 @@ private:
     std::thread event_thread;
     std::atomic<bool> running{true};
 
+    std::function<void()> on_stream_error;
     std::function<void()> on_stream_start;
     std::function<void()> on_stream_load;
     std::function<void()> on_stream_end;
