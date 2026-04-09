@@ -84,24 +84,44 @@ int main(int argc, char *argv[]) {
                             } else {
                                 player.queue(streamable);  // Queue expects IStreamable pointer
 
-                                music::Song song2;
-                                music::SongRef song2ref;
+                                // music::Song song2;
+                                // music::SongRef song2ref;
 
-                                music::ArtistRef artist2ref;
-                                artist2ref.id = "UCbIB3Oh5BezJe3sR0BEk0cw";
-                                artist2ref.name = "Claire Laffut";
+                                // music::ArtistRef artist2ref;
+                                // artist2ref.id = "UCbIB3Oh5BezJe3sR0BEk0cw";
+                                // artist2ref.name = "Claire Laffut";
 
-                                song2ref.id = "eey0WS_tPUM";
-                                song2ref.title = "Vérité";
-                                song2ref.thumbnail_small = "https://lh3.googleusercontent.com/bT84KwawD-7yHQ44FdJycxjk4ZOuUL6BjGgaxtA94JuAB5lxb_X40Y0Zqw0gLq_vgSA37C8GtGwFsq9b=w60-h60-l90-rj";
-                                song2ref.thumbnail_large = "https://lh3.googleusercontent.com/bT84KwawD-7yHQ44FdJycxjk4ZOuUL6BjGgaxtA94JuAB5lxb_X40Y0Zqw0gLq_vgSA37C8GtGwFsq9b=w120-h120-l90-rj";
-                                song2ref.artists.push_back(artist2ref);
+                                // song2ref.id = "eey0WS_tPUM";
+                                // song2ref.title = "Vérité";
+                                // song2ref.thumbnail_small = "https://lh3.googleusercontent.com/bT84KwawD-7yHQ44FdJycxjk4ZOuUL6BjGgaxtA94JuAB5lxb_X40Y0Zqw0gLq_vgSA37C8GtGwFsq9b=w60-h60-l90-rj";
+                                // song2ref.thumbnail_large = "https://lh3.googleusercontent.com/bT84KwawD-7yHQ44FdJycxjk4ZOuUL6BjGgaxtA94JuAB5lxb_X40Y0Zqw0gLq_vgSA37C8GtGwFsq9b=w120-h120-l90-rj";
+                                // song2ref.artists.push_back(artist2ref);
 
-                                song2.setRef(song2ref);
-                                std::shared_ptr<music::IStreamable> streamable2;
-                                streamable2 = std::make_shared<music::Song>(song2);
+                                // song2.setRef(song2ref);
+                                // std::shared_ptr<music::IStreamable> streamable2;
+                                // streamable2 = std::make_shared<music::Song>(song2);
 
-                                player.queue(streamable2, false, false);
+                                // player.queue(streamable2, false, false);
+
+                                // music::Episode episode3;
+                                // music::EpisodeRef episode3ref;
+
+                                // music::PodcastRef podcast3ref;
+
+                                // podcast3ref.id = "MPSPPL6NdkXsPL07Il2hEQGcLI4dg_LTg7xA2L";
+                                // podcast3ref.name = "Lofi Girl - Radios";
+
+                                // episode3ref.id = "SnX4knSvyko";
+                                // episode3ref.title = "bossa lofi radio chill music for relaxing days";
+                                // episode3ref.thumbnail_small = "https://i.ytimg.com/vi/SnX4knSvyko/hqdefault.jpg?sqp=-oaymwEWCOADEI4CIAQqCggAEOADGC0guwJIWg&rs=AMzJL3kB0kHdPtvmYdpmDC8yJjZ8dbEJIA";
+                                // episode3ref.thumbnail_large = "https://i.ytimg.com/vi/SnX4knSvyko/hqdefault.jpg?sqp=-oaymwEWCOADEI4CIAQqCggAEOADGC0guwJIWg&rs=AMzJL3kB0kHdPtvmYdpmDC8yJjZ8dbEJIA";
+                                // episode3ref.podcast = podcast3ref;
+
+                                // episode3.setRef(episode3ref);
+                                // std::shared_ptr<music::IStreamable> streamable3;
+                                // streamable3 = std::make_shared<music::Episode>(episode3);
+
+                                // player.queue(streamable3, false, false);
                             }
 
                             // spdlog::info("Queued SongRef as IStreamable: {}", data.ref);

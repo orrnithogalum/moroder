@@ -21,7 +21,7 @@ services::MPV::MPV() {
     mpv_set_option_string(mpv, "playlist-start", "0");
 
     mpv_set_option_string(mpv, "ytdl", "yes");
-    mpv_set_option_string(mpv, "ytdl-format", "bestaudio");
+    mpv_set_option_string(mpv, "ytdl-format", "bestaudio/best");
 
     mpv_set_option_string(mpv, "log-file", std::string(utils::resolve_path(MORODER_LOG_PATH).string() + "/mpv.log").c_str());
 

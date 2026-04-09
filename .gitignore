@@ -8,10 +8,12 @@ build/
 
 # editor
 .vscode/
+.zed/
 
 # logs
-logs/
+logs/*
 
 # extra
 tests/
 env/
+*.sh

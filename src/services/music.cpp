@@ -141,10 +141,6 @@ template<typename ResponseType> ResponseType services::Music::send(const ipc::Re
 
     write(pipe_stdin[1], request_string.c_str(), request_string.size());
     ssize_t n = read(pipe_stdout[0], this->buffer, sizeof(this->buffer)-1);
-    if (n <= 0) {
-        spdlog::warn(log);
-        return ResponseType();
-    }
 
     auto j = nlohmann::json::parse(std::string(this->buffer, n), nullptr, false);
     if (j.is_discarded()) {
@@ -152,8 +148,19 @@ template<typename ResponseType> ResponseType services::Music::send(const ipc::Re
         return ResponseType();
     }
 
+    if (n <= 0) {
+        spdlog::warn(log);
+        return ResponseType();
+    }
+
     buffer[n] = '\0';
-    return ResponseType(buffer);
+
+    try {
+        return ResponseType(buffer);
+
+    } catch(...) {
+        return ResponseType();
+    }
 }
 
 template <typename Request, typename Response> Response services::Music::sendStreamed(
@@ -197,17 +204,21 @@ template <typename Request, typename Response> Response services::Music::sendStr
                     handleResponse(j, response);
                     stop = true;
                     break;
+
                 } else if (type == "error") {
                     spdlog::error("PYTHON: stream error, {}", j.dump());
                     stop = true;
                     break;
+
                 } else {
                     handleResponse(j, response);
                     count++;
                 }
 
-            } catch (const std::exception& e) {
-                spdlog::warn("PYTHON: failed to parse stream line, {}", e.what());
+            } catch (...) {
+                spdlog::error("PYTHON: failed to parse stream");
+                stop = true;
+                break;
             }
         }
     }
