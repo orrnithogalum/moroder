@@ -1,9 +1,11 @@
 #include "../../include/services/mpv.hpp"
 
+#include "../../include/config/config.hpp"
 #include "../../include/utils/utils.hpp"
 
-#include <mpv/client.h>
 #include <spdlog/spdlog.h>
+#include <mpv/client.h>
+#include <filesystem>
 #include <stdexcept>
 
 services::MPV::MPV() {
@@ -22,6 +24,15 @@ services::MPV::MPV() {
     mpv_set_option_string(mpv, "ytdl-format", "bestaudio");
 
     mpv_set_option_string(mpv, "log-file", std::string(utils::resolve_path(MORODER_LOG_PATH).string() + "/mpv.log").c_str());
+
+    Config cfg = Config::get();
+    std::filesystem::path cookies_path = utils::resolve_path(cfg.MPV_COOKIES_PATH.c_str());
+
+    if(std::filesystem::exists(cookies_path)) {
+        spdlog::info("MPV: found cookies at: {}", cookies_path.c_str());
+        mpv_set_option_string(mpv, "ytdl-raw-options", std::string("cookies-from-browser=firefox:" + cookies_path.string()).c_str());
+    }
+
 
     if (!mpv) {
         throw std::runtime_error("Failed to create mpv instance");

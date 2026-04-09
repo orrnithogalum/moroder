@@ -25,7 +25,8 @@ public:
 
     std::string LASTFM_API_KEY;
 
-    fs::path COOKIES_PATH;
+    fs::path YTM_COOKIES_PATH;
+    fs::path MPV_COOKIES_PATH;
 
     int SEARCH_RESULT_LIMIT;
     int RADIO_RESULT_LIMIT;
@@ -82,8 +83,11 @@ public:
                 } else if (key == "FETCH_ALBUMS") {
                     new_config << "FETCH_ALBUMS=" << (FETCH_ALBUMS ? "true" : "false") << "\n";
 
-                } else if (key == "COOKIES_PATH") {
-                    new_config << "COOKIES_PATH=\"" << COOKIES_PATH.string() << "\"\n";
+                } else if (key == "YTM_COOKIES_PATH") {
+                    new_config << "YTM_COOKIES_PATH=\"" << YTM_COOKIES_PATH.string() << "\"\n";
+
+                } else if (key == "MPV_COOKIES_PATH") {
+                    new_config << "MPV_COOKIES_PATH=\"" << MPV_COOKIES_PATH.string() << "\"\n";
 
                 } else if (key == "SEARCH_RESULT_LIMIT") {
                     new_config << "SEARCH_RESULT_LIMIT=" << SEARCH_RESULT_LIMIT << "\n";
@@ -192,8 +196,11 @@ private:
                 if (key == "LASTFM_API_KEY")
                     cfg.LASTFM_API_KEY = value.substr(1, value.size() - 2);
 
-                else if(key == "COOKIES_PATH")
-                    cfg.COOKIES_PATH = expand_user(value.substr(1, value.size() - 2));
+                else if(key == "YTM_COOKIES_PATH")
+                    cfg.YTM_COOKIES_PATH = expand_user(value.substr(1, value.size() - 2));
+
+                else if(key == "MPV_COOKIES_PATH")
+                    cfg.MPV_COOKIES_PATH = expand_user(value.substr(1, value.size() - 2));
 
                 else if(key == "SEARCH_RESULT_LIMIT")
                     cfg.SEARCH_RESULT_LIMIT = std::stoi(value);

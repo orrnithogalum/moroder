@@ -1,5 +1,5 @@
 # SEARCH
-# - Performs a search on YouTube Music using ytmusicapi
+# - Performs a search using ytmusicapi
 # - Limits results to prevent large payloads that could overflow the buffer
 # - Returns status and a list of results
 

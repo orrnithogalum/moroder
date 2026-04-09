@@ -81,7 +81,7 @@ services::Music::Music(const std::string_view& app_name) {
 
         std::string app_name_str(app_name);
 
-        auto cookies_path = (cfg.COOKIES_PATH) / "browser.json";
+        auto cookies_path = (cfg.MPV_COOKIES_PATH) / "browser.json";
 
         if(std::filesystem::exists(cookies_path)) {
             spdlog::info("PYTHON: found cookies at " + cookies_path.string());

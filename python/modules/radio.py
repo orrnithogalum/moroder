@@ -1,5 +1,5 @@
 # RADIO
-# - Get the list, for a song, of similar songs on YouTube Music using ytmusicapi
+# - Get the list, for a song or playlist, of similar songs using ytmusicapi
 # - Limits results to prevent large payloads that could overflow the buffer
 # - Returns status and a list of results
 
