@@ -6,7 +6,6 @@
 #include "../../include/ipc/search/search_response.hpp"
 #include "../../include/ipc/search/search_request.hpp"
 
-
 #include "../../include/ipc/radio/radio_next_response.hpp"
 #include "../../include/ipc/radio/radio_next_request.hpp"
 #include "../../include/ipc/radio/radio_response.hpp"

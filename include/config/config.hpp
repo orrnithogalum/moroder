@@ -12,9 +12,9 @@
 #include <string_view>
 #include <filesystem>
 #include <stdexcept>
+#include <optional>
 #include <fstream>
 #include <cstdlib>
-#include <optional>
 #include <string>
 
 namespace fs = std::filesystem;

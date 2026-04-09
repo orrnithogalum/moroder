@@ -9,9 +9,8 @@
 #pragma once
 
 #include <nlohmann/json.hpp>
-#include <string>
-
 #include <spdlog/spdlog.h>
+#include <string>
 
 namespace ipc {
 

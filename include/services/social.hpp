@@ -6,10 +6,10 @@
 
 #pragma once
 
+#include "discordpp.h"
+
 #include <thread>
 #include <mutex>
-
-#include "discordpp.h"
 
 namespace services {
 

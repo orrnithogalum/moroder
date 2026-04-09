@@ -5,12 +5,12 @@
 
 #pragma once
 
-#include "../interfaces/container.hpp"
 #include "../interfaces/streamable.hpp"
+#include "../interfaces/container.hpp"
 #include "artist.hpp"
 
-#include <memory>
 #include <nlohmann/json.hpp>
+#include <memory>
 #include <string>
 #include <vector>
 

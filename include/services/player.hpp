@@ -7,10 +7,10 @@
 
 #pragma once
 
-#include "mpv.hpp"
+#include "social.hpp"
 #include "mpris.hpp"
 #include "music.hpp"
-#include "social.hpp"
+#include "mpv.hpp"
 
 #include <cstdint>
 #include <queue>

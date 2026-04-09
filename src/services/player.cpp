@@ -3,12 +3,12 @@
 #include "../../include/config/config.hpp"
 
 #include <spdlog/spdlog.h>
+#include <type_traits>
+#include <sys/stat.h>
 #include <cstdint>
 #include <memory>
 #include <string>
 #include <mutex>
-#include <sys/stat.h>
-#include <type_traits>
 
 services::Player::Player(const std::string_view& app_name, const std::string_view& app_name_human, const uint64_t app_id) {
     this->app_name = app_name;
