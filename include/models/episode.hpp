@@ -23,6 +23,8 @@ struct EpisodeRef {
 
     music::PodcastRef podcast;
 
+    bool is_live;
+
     static EpisodeRef from_json(const nlohmann::json& j) {
         EpisodeRef e;
 
@@ -44,6 +46,8 @@ struct EpisodeRef {
             e.thumbnail_large = "";
             e.thumbnail_small = "";
         }
+
+        e.is_live = j.value("live", false);
 
         return e;
     }
