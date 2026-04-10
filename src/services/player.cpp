@@ -45,12 +45,15 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
     });
 
     mpris_service->onToggle([&] {
+        bool is_playing;
+
         {
             std::lock_guard lock(state_mutex);
             state.is_streaming_audio = !state.is_streaming_audio;
+            is_playing = state.is_streaming_audio;
         }
 
-        if(state.is_streaming_audio) {
+        if(is_playing) {
             mpv_service->pause();
             social_service->pause();
         } else {
@@ -58,7 +61,7 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
             social_service->resume();
         }
 
-        mpris_service->setPlaybackStatus(state.is_streaming_audio ? services::PlaybackStatus::Playing : services::PlaybackStatus::Paused);
+        mpris_service->setPlaybackStatus(is_playing ? services::PlaybackStatus::Playing : services::PlaybackStatus::Paused);
     });
 
     mpris_service->onStop([&] {
@@ -70,6 +73,7 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
         mpv_service->stop();
         social_service->removeStatus();
         mpris_service->setPlaybackStatus(services::PlaybackStatus::Stopped);
+        this->resetMprisData();
     });
 
     mpris_service->onPlay([&] {
