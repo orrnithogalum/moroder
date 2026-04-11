@@ -15,7 +15,7 @@ public:
     explicit RadioRequest(const std::string id, const std::string type) : stream_id(std::move(id)), req_type(std::move(type)) {}
 
     nlohmann::json to_json() const override {
-        Config cfg = Config::get();
+        const Config cfg = Config::get();
         return {
             {"action", "radio"},
             {"limit", cfg.RADIO_RESULT_LIMIT},

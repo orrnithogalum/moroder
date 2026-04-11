@@ -25,12 +25,16 @@ services::MPV::MPV() {
 
     mpv_set_option_string(mpv, "log-file", std::string(utils::resolve_path(MORODER_LOG_PATH).string() + "/mpv.log").c_str());
 
-    Config cfg = Config::get();
-    std::filesystem::path cookies_path = utils::resolve_path(cfg.MPV_COOKIES_PATH.c_str());
+    const Config cfg = Config::get();
 
-    if(std::filesystem::exists(cookies_path)) {
+    if(!cfg.MPV_COOKIES_PATH.string().empty() && std::filesystem::exists(cfg.MPV_COOKIES_PATH)) {
+        std::filesystem::path cookies_path = utils::resolve_path(cfg.MPV_COOKIES_PATH.c_str());
+
         spdlog::info("MPV: found cookies at: {}", cookies_path.c_str());
         mpv_set_option_string(mpv, "ytdl-raw-options", std::string("cookies-from-browser=firefox:" + cookies_path.string()).c_str());
+
+    } else {
+        spdlog::warn("MPV: cookies weren't set");
     }
 
 

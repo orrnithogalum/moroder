@@ -16,7 +16,7 @@ public:
     explicit PlaylistRequest(const music::PlaylistRef& ref) : ref_(std::move(ref)) {}
 
     nlohmann::json to_json() const override {
-        Config cfg = Config::get();
+        const Config cfg = Config::get();
         return {
             {"action", "get_playlist"},
             {"id", ref_.id}

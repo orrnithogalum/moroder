@@ -16,7 +16,7 @@ public:
     explicit RadioNextRequest(const music::Radio& radio) : radio_(std::move(radio)) {}
 
     nlohmann::json to_json() const override {
-        Config cfg = Config::get();
+        const Config cfg = Config::get();
         return {
             {"action", "radio_next"},
             {"limit", cfg.RADIO_RESULT_LIMIT},

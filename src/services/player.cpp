@@ -567,7 +567,7 @@ void services::Player::search(const std::string& query) {
 }
 
 void services::Player::queue(std::shared_ptr<music::IStreamable> streamable, const bool fresh, const bool radio) {
-    Config cfg = Config::get();
+    const Config cfg = Config::get();
 
     {
         std::lock_guard lock(command_mutex);
@@ -584,7 +584,7 @@ void services::Player::queue(std::shared_ptr<music::IStreamable> streamable, con
 }
 
 void services::Player::queue(std::shared_ptr<music::IStreamableContainer> container, const bool fresh, const bool radio) {
-    Config cfg = Config::get();
+    const Config cfg = Config::get();
 
     {
         std::lock_guard lock(command_mutex);

@@ -16,7 +16,7 @@ public:
     explicit AlbumRequest(const music::AlbumRef& ref) : ref_(std::move(ref)) {}
 
     nlohmann::json to_json() const override {
-        Config cfg = Config::get();
+        const Config cfg = Config::get();
         return {
             {"action", "get_album"},
             {"id", ref_.id}
