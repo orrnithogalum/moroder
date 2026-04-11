@@ -25,6 +25,7 @@ public:
 
     std::string LASTFM_API_KEY;
 
+    fs::path PYTHON_PATH;
     fs::path YTM_COOKIES_PATH;
     fs::path MPV_COOKIES_PATH;
 
@@ -82,6 +83,9 @@ public:
 
                 } else if (key == "FETCH_ALBUMS") {
                     new_config << "FETCH_ALBUMS=" << (FETCH_ALBUMS ? "true" : "false") << "\n";
+
+                } else if (key == "PYTHON_PATH") {
+                    new_config << "PYTHON_PATH=\"" << PYTHON_PATH.string() << "\"\n";
 
                 } else if (key == "YTM_COOKIES_PATH") {
                     new_config << "YTM_COOKIES_PATH=\"" << YTM_COOKIES_PATH.string() << "\"\n";
@@ -195,6 +199,9 @@ private:
             try {
                 if (key == "LASTFM_API_KEY")
                     cfg.LASTFM_API_KEY = value.substr(1, value.size() - 2);
+
+                else if(key == "PYTHON_PATH")
+                    cfg.PYTHON_PATH = expand_user(value.substr(1, value.size() - 2));
 
                 else if(key == "YTM_COOKIES_PATH")
                     cfg.YTM_COOKIES_PATH = expand_user(value.substr(1, value.size() - 2));

@@ -89,9 +89,20 @@ services::Music::Music(const std::string_view& app_name) {
             cookies_path = "";
         }
 
+        bool use_default = false;
+
+        if (cfg.PYTHON_PATH.string().empty()) {
+            spdlog::warn("PYTHON: python path empty, defaulting to /usr/bin/python");
+            use_default = true;
+
+        } else if (!fs::exists(cfg.PYTHON_PATH) || !fs::is_regular_file(cfg.PYTHON_PATH)) {
+            spdlog::warn("PYTHON: python path not found at {}, defaulting to /usr/bin/python", cfg.PYTHON_PATH.string());
+            use_default = true;
+        }
+
         execl(
-            "/usr/bin/python",
-            "/usr/bin/python",
+            use_default ? "/usr/bin/python" : cfg.PYTHON_PATH.c_str(),
+            use_default ? "/usr/bin/python" : cfg.PYTHON_PATH.c_str(),
             "-u",
             this->python_server_path.c_str(),
             app_name_str.c_str(),
