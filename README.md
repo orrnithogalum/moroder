@@ -29,3 +29,9 @@ And I didn't have any idea what to do,
 But I knew I needed a loop, so I put a loop on the main thread
 Which then was synced to the ftxui display.
 I knew that could be the feel of the future,
+
+## Installation
+### Arch Linux
+```bash
+paru -S moroder-bin
+```
