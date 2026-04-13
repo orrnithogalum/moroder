@@ -99,7 +99,7 @@ target_link_libraries(${PROJECT_NAME}
 
     spdlog::spdlog
     nlohmann_json::nlohmann_json
-    SDBusCpp::sdbus-c++
+    sdbus-c++
 
     ftxui::screen
     ftxui::dom

@@ -186,7 +186,10 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
         if(start_next_radio) {
             {
                 std::unique_lock lock(command_mutex);
-                command_queue.push(QueueNextRadioCommand{state_radio});
+                command_queue.push(QueueNextRadioCommand{
+                    .radio=state_radio,
+                    .auto_play=true
+                });
             }
 
             command_cv.notify_one();
@@ -530,8 +533,12 @@ void services::Player::worker_loop() {
                             .fetch_album=false,
                             .start_radio=false,
                             .start_fresh=false,
-                            .queue_in_radio=true
+                            .queue_in_radio=!c.auto_play
                         });
+
+                        if(c.auto_play) {
+                            c.auto_play = false;
+                        }
                     }
                 }
                 command_cv.notify_one();

@@ -50,6 +50,8 @@ private:
 
     struct QueueNextRadioCommand {
         music::Radio radio;
+
+        bool auto_play = false;
     };
 
 public:
