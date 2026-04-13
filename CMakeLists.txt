@@ -31,20 +31,32 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(nlohmann_json)
 
 FetchContent_Declare(
-  ftxui
-  GIT_REPOSITORY https://github.com/ArthurSonzogni/ftxui.git
-  GIT_TAG v6.1.9
+    ftxui
+    GIT_REPOSITORY https://github.com/ArthurSonzogni/ftxui.git
+    GIT_TAG v6.1.9
 )
 FetchContent_MakeAvailable(ftxui)
 
 FetchContent_Declare(
-  ftxui-image-view
-  GIT_REPOSITORY https://github.com/orrnithogalum/ftxui-image-view-async.git
-  GIT_TAG main
+    ftxui-image-view
+    GIT_REPOSITORY https://github.com/orrnithogalum/ftxui-image-view-async.git
+    GIT_TAG main
 )
 FetchContent_MakeAvailable(ftxui-image-view)
 
-find_package(sdbus-c++ REQUIRED)
+FetchContent_Declare(
+    sdbus-cpp
+    GIT_REPOSITORY https://github.com/Kistler-Group/sdbus-cpp.git
+    GIT_TAG v2.2.1
+)
+FetchContent_MakeAvailable(sdbus-cpp)
+
+FetchContent_Declare(
+    ftxui-grid-container
+    GIT_REPOSITORY https://github.com/mingsheng13/grid-container-ftxui
+    GIT_TAG master
+)
+FetchContent_MakeAvailable(ftxui-grid-container)
 
 set(SOURCES
     src/services/mpris.cpp
@@ -93,6 +105,7 @@ target_link_libraries(${PROJECT_NAME}
     ftxui::dom
     ftxui::component
     ftxui-image-view
+    ftxui-grid-container
 
     mpv
 
