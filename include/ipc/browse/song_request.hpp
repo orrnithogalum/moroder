@@ -1,7 +1,7 @@
 /* GET SONG
 - Returns extra details needed for mpris on a song.
 - Needed as search doesn't reliably include duration for all results.
-- Python endpoint in python/services/get_song.py
+- Python endpoint in python/modules/get_song.py
 */
 
 #pragma once

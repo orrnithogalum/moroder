@@ -1,6 +1,6 @@
 /* ALBUM
 - Returns track list for a given album.
-- Python endpoint in python/services/album.py
+- Python endpoint in python/modules/album.py
 */
 
 #pragma once

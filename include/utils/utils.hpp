@@ -33,6 +33,7 @@ I knew that could be the feel of the future,
 #pragma once
 
 #include <filesystem>
+#include <algorithm>
 #include <stdexcept>
 
 namespace fs = std::filesystem;
@@ -63,5 +64,10 @@ inline void ensure_dir(const fs::path& path) {
         }
     }
 }
+
+inline std::string lower(std::string s) {
+    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c){ return std::tolower(c); });
+    return s;
+};
 
 }

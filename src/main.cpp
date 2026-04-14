@@ -80,7 +80,9 @@ int main(int argc, char *argv[]) {
                             // Push to the player queue
                             if (event == Event::r) {
                                 // player.radio(streamable);  // Assuming radio accepts IStreamable pointer
-                                player.removeFromUserQueue(0);
+                                // player.removeFromUserQueue(0);
+                                player.getLibraryPlaylists();
+
                             } else {
                                 player.queue(streamable);  // Queue expects IStreamable pointer
 
@@ -193,7 +195,7 @@ int main(int argc, char *argv[]) {
 
         std::vector<Element> result_elements;
 
-        if (state_copy.is_loading_search) {
+        if (state_copy.loading["search"] == services::Player::LoadingState::Loading) {
             result_elements.emplace_back(text("Loading...") | italic | dim);
 
         } else {
@@ -293,8 +295,8 @@ int main(int argc, char *argv[]) {
 
         return vbox({
             text("[DEBUG] PLAYER STATUS"),
-            text(state_copy.is_streaming_audio ? "streaming" : "not streaming") | color(state_copy.is_streaming_audio ? Color::Green : Color::Blue),
-            text(state_copy.is_loading_search ? "loading search" : "not searching") | color(state_copy.is_loading_search ? Color::Green : Color::Blue),
+            text(state_copy.loading["audio"] == services::Player::LoadingState::Loading ? "streaming" : "not streaming") | color(state_copy.loading["audio"] == services::Player::LoadingState::Loading ? Color::Green : Color::Blue),
+            text(state_copy.loading["search"] == services::Player::LoadingState::Loading ? "loading search" : "not searching") | color(state_copy.loading["search"] == services::Player::LoadingState::Loading ? Color::Green : Color::Blue),
             text(state_copy.autoplay ? "autoplay: true" : "autoplay: false") | color(state_copy.autoplay ? Color::Green : Color::Blue),
             text("Queue position: " + std::to_string(state_copy.queue_position)) | color(Color::Default),
             text("Queue size: " + std::to_string(state_copy.user_queue.size())) | color(Color::Default),

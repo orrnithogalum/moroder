@@ -14,6 +14,8 @@
 
 #include <cstdint>
 #include <queue>
+#include <unordered_map>
+#include <vector>
 
 namespace services {
 
@@ -54,10 +56,18 @@ private:
         bool auto_play = false;
     };
 
+    struct HomeCommand {};
+    struct LibraryPlaylistsCommand {};
+
 public:
     /* PlayerState
     - Shared player state between all threads
     */
+    enum class LoadingState {
+        Loading,
+        Done,
+    };
+
     struct PlayerState {
         int queue_position;
 
@@ -65,11 +75,14 @@ public:
         std::deque<std::shared_ptr<music::IStreamable>> radio_queue;
 
         std::shared_ptr<music::IStreamable> current;
-        std::vector<music::SearchResult> search_results;
+
+        std::unordered_map<std::string, std::vector<music::ApiResult>> home;
+        std::vector<music::Playlist> library_playlists;
+        std::vector<music::ApiResult> search_results;
+
+        std::unordered_map<std::string, LoadingState> loading;
 
         bool autoplay = true;
-        bool is_loading_search = false;
-        bool is_streaming_audio = false;
 
         music::Radio radio;
     };
@@ -86,6 +99,8 @@ public:
     void skipForward();
     void skipBackward();
 
+    void getHome();
+    void getLibraryPlaylists();
     void search(const std::string& query);
 
     void queue(std::shared_ptr<music::IStreamable> streamable, const bool fresh = true, const bool radio = true);
@@ -114,7 +129,10 @@ private:
         QueueStreamableContainerRadioCommand,
         QueueStreamableContainerCommand,
 
-        QueueNextRadioCommand
+        QueueNextRadioCommand,
+
+        HomeCommand,
+        LibraryPlaylistsCommand
     >;
 
     std::queue<Command> command_queue;

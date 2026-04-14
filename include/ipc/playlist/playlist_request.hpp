@@ -1,6 +1,6 @@
 /* PLAYLIST
 - Returns track list for a given playlist.
-- Python endpoint in python/services/playlist.py
+- Python endpoint in python/modules/playlist.py
 */
 
 #pragma once

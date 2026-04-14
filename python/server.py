@@ -3,6 +3,8 @@
 # - Handles search, streaming, playback control, and fetching detailed song info
 # - Maintains player state and optionally a logged-in user instance
 
+from modules.private.library_playlists import library_playlists
+
 from modules.radio import radio_next
 from modules.radio import radio
 
@@ -10,6 +12,7 @@ from modules.playlist import playlist
 from modules.search import search
 from modules.album import album
 from modules.song import song
+from modules.home import home
 
 from ytmusicapi import YTMusic
 
@@ -89,6 +92,12 @@ class MusicServer:
             async for result in search(self, query, limit):
                 print((json.dumps(result) + "\n"), flush=True)
 
+
+        elif action == "home":
+            async for result in home(self):
+                print((json.dumps(result) + "\n"), flush=True)
+
+
         elif action == "radio":
             id = req.get("id", "")
             limit = req.get("limit", "")
@@ -108,6 +117,7 @@ class MusicServer:
             async for result in results:
                 print((json.dumps(result) + "\n"), flush=True)
 
+
         elif action == "radio_next":
             id = req.get("id", "")
             ctoken = req.get("continuation", "")
@@ -125,11 +135,13 @@ class MusicServer:
             async for result in results:
                 print((json.dumps(result) + "\n"), flush=True)
 
+
         elif action == "get_album":
             id = req.get("id", "")
 
             async for result in album(self, id):
                 print((json.dumps(result) + "\n"), flush=True)
+
 
         elif action == "get_playlist":
             id = req.get("id", "")
@@ -137,8 +149,15 @@ class MusicServer:
             async for result in playlist(self, id):
                 print((json.dumps(result) + "\n"), flush=True)
 
+
         elif action == "get_song":
             return song(self, req.get("song_title", ""), req.get("song_artist", ""))
+
+
+        elif action == "get_library_playlists":
+            async for result in library_playlists(self):
+                print((json.dumps(result) + "\n"), flush=True)
+
 
         else:
             return {"status": "error", "message": f"Unknown action: {action}"}

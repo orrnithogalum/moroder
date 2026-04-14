@@ -1,5 +1,7 @@
 #include "../../include/services/music.hpp"
 
+#include "../../include/ipc/playlist/library_playlists_response.hpp"
+#include "../../include/ipc/playlist/library_playlists_request.hpp"
 #include "../../include/ipc/playlist/playlist_response.hpp"
 #include "../../include/ipc/playlist/playlist_request.hpp"
 
@@ -16,10 +18,11 @@
 
 #include "../../include/ipc/browse/song_response.hpp"
 #include "../../include/ipc/browse/song_request.hpp"
-
-#include "../../include/models/radio.hpp"
+#include "../../include/ipc/browse/home_response.hpp"
+#include "../../include/ipc/browse/home_request.hpp"
 
 #include "../../include/config/config.hpp"
+#include "../../include/models/radio.hpp"
 #include "../../include/utils/utils.hpp"
 #include "../../include/ipc/request.hpp"
 
@@ -29,6 +32,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include <memory>
 
@@ -238,7 +242,7 @@ template <typename Request, typename Response> Response services::Music::sendStr
     return response;
 }
 
-std::vector<music::SearchResult> services::Music::getSearch(const std::string& query) {
+std::vector<music::ApiResult> services::Music::getSearch(const std::string& query) {
     ipc::SearchRequest request(query);
 
     ipc::SearchResponse response = this->sendStreamed<ipc::SearchRequest, ipc::SearchResponse>(
@@ -390,4 +394,36 @@ music::Playlist services::Music::getPlaylist(const music::PlaylistRef& playlist)
     }
 
     return p;
+}
+
+std::unordered_map<std::string, std::vector<music::ApiResult>> services::Music::getHome() {
+    ipc::HomeRequest request;
+
+    ipc::HomeResponse response = this->sendStreamed<ipc::HomeRequest, ipc::HomeResponse>(
+        request,
+        [](nlohmann::json& j, ipc::HomeResponse& response) {
+            if (j["type"] == "home-item") {
+                response.addItem(j["category"], j["data"]);
+            }
+        },
+        "home-done"
+    );
+
+    return response.results;
+}
+
+std::vector<music::Playlist> services::Music::getLibraryPlaylists() {
+    ipc::LibraryPlaylistsRequest request;
+
+    ipc::LibraryPlaylistsResponse response = this->sendStreamed<ipc::LibraryPlaylistsRequest, ipc::LibraryPlaylistsResponse>(
+        request,
+        [](nlohmann::json& j, ipc::LibraryPlaylistsResponse& response) {
+            if (j["type"] == "library-playlists-item") {
+                response.addItem(j["data"]);
+            }
+        },
+        "library-playlists-done"
+    );
+
+    return response.results;
 }

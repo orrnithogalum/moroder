@@ -6,13 +6,15 @@
 
 #pragma once
 
-#include "../models/search_result.hpp"
+#include "../models/api_result.hpp"
 #include "../models/radio.hpp"
 #include "../ipc/request.hpp"
 
+#include <unordered_map>
 #include <sys/types.h>
 #include <string_view>
 #include <string>
+#include <vector>
 
 namespace services {
 
@@ -21,7 +23,10 @@ public:
     Music(const std::string_view& app_name);
     ~Music();
 
-    std::vector<music::SearchResult> getSearch(const std::string& query);
+    std::vector<music::Playlist>  getLibraryPlaylists();
+    std::vector<music::ApiResult> getSearch(const std::string& query);
+
+    std::unordered_map<std::string, std::vector<music::ApiResult>> getHome();
 
     music::Song     getSong(const music::SongRef& song);
     music::Episode  getEpisode(const music::EpisodeRef& episode);

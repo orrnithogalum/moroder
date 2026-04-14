@@ -1,10 +1,11 @@
 /* SEARCH RESULT
-- The object that encapsulates all search result types of ytmusicapi
+- The object that encapsulates all search and home result types of ytmusicapi
 - Result data can only be of a single type in music::<Type>
 */
 
 #pragma once
 
+#include "../utils/utils.hpp"
 #include "playlist.hpp"
 #include "episode.hpp"
 #include "podcast.hpp"
@@ -28,21 +29,29 @@ using ResultData = std::variant<
     music::PodcastRef
 >;
 
-struct SearchResult {
+struct ApiResult {
     std::string category;
     std::string resultType;
     ResultData data;
 
-    static SearchResult from_json(const nlohmann::json& j) {
-        SearchResult res;
+    static ApiResult from_json(const nlohmann::json& j) {
+        ApiResult res;
 
         res.category = j.contains("category") && j["category"].is_string() ? j["category"].get<std::string>() : "";
-        res.resultType = j.contains("resultType") && j["resultType"].is_string() ? j["resultType"].get<std::string>() : "";
+
+        res.resultType = (j.contains("resultType") && j["resultType"].is_string())
+            ? j["resultType"].get<std::string>()
+            : (j.contains("type") && j["type"].is_string())
+            ? j["type"].get<std::string>()
+            : "";
+
+        res.category = utils::lower(res.category);
+        res.resultType = utils::lower(res.resultType);
 
         if (res.resultType == "song" || res.resultType == "video") {
             res.data = music::SongRef::from_json(j);
 
-        } else if (res.resultType == "album") {
+        } else if (res.resultType == "album" || res.resultType == "ep"){
             res.data = music::AlbumRef::from_json(j);
 
         } else if (res.resultType == "artist") {

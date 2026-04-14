@@ -1,6 +1,6 @@
 /* SEARCH
 - Returns search results for a given query.
-- Python endpoint in python/services/search.py
+- Python endpoint in python/modules/search.py
 */
 
 #pragma once

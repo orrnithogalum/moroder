@@ -1,6 +1,6 @@
 /* RADIO NEXT
 - Returns the next radio results for a given radio.
-- Python endpoint in python/services/radio.py
+- Python endpoint in python/modules/radio.py
 */
 
 #pragma once

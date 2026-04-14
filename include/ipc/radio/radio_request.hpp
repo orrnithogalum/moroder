@@ -1,6 +1,6 @@
 /* RADIO
 - Returns radio results for a given song.
-- Python endpoint in python/services/radio.py
+- Python endpoint in python/modules/radio.py
 */
 
 #pragma once
