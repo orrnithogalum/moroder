@@ -23,6 +23,8 @@ public:
     Music(const std::string_view& app_name);
     ~Music();
 
+    bool isLoggedIn();
+
     std::vector<music::Playlist>  getLibraryPlaylists();
     std::vector<music::ApiResult> getSearch(const std::string& query);
 

@@ -3,9 +3,14 @@
 #include <ftxui/component/event.hpp>
 #include <ftxui/dom/elements.hpp>
 
+#include <mutex>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/spdlog.h>
 #include <memory>
+
+#include "../include/ui/components/search_bar.hpp"
+#include "../include/ui/components/carousel.hpp"
+#include "../include/ui/components/sidebar.hpp"
 
 #include "../include/services/player.hpp"
 #include "../include/config/config.hpp"
@@ -381,6 +386,96 @@ int main(int argc, char *argv[]) {
             separator(),
             text(" "),
             queue_renderer->Render() | frame | flex
+        });
+    });
+
+    // screen.Loop(ui);
+
+    // Non-Debug ui:
+
+    player.isLoggedIn();
+    player.getLibraryPlaylists();
+
+    int spinner_frame = 0;
+
+    int sidebar_selected = 0;
+    bool sidebar_focused = false;
+
+    ui::SidebarData sidebar_data = {};
+    auto sidebar = ui::Sidebar(&sidebar_data, &sidebar_selected, &sidebar_focused);
+
+    ui::SearchBarData search_bar_data = {};
+    auto search_bar = ui::SearchBar(&search_bar_data);
+
+    int carousel_selected = 0;
+    bool carousel_focused = false;
+
+    ui::CarouselData carousel_data = {};
+    auto carousel = ui::Carousel(&carousel_data, &carousel_selected, &carousel_focused);
+
+    Component vertical_separator = Renderer([] {
+        return vbox({
+            separator() | color(Color::RGB(100, 100, 100)),
+            text("")
+        });
+    });
+
+    auto layout = Container::Horizontal({
+        sidebar,
+        vertical_separator,
+        search_bar,
+        carousel
+    });
+
+    ui = Renderer(layout, [&] {
+        sidebar_focused = sidebar->Focused();
+
+        services::Player::PlayerState state_copy;
+        {
+            std::lock_guard lock(player.state_mutex);
+            state_copy = player.state;
+        }
+
+        spinner_frame++;
+        ui::getSidebarData(&state_copy, &sidebar_data);
+
+        return hbox({
+            vbox({
+                text(" "),
+                hbox({
+                    text("") | color(Color::Red1),
+                    text("  "),
+                    text("Moroder")
+                }) | bold | center,
+
+                text(" "),
+                text(" "),
+
+                sidebar->Render() | yframe,
+                sidebar_data.is_loading ? (vbox({filler(), spinner(15, spinner_frame), filler()}) | center | flex) : emptyElement()
+            }) | size(WIDTH, EQUAL, 30),
+
+            text(" "),
+            separator() | color(Color::RGB(100, 100, 100)),
+            text(" "),
+
+            vbox({
+                hbox({
+                    search_bar->Render() | flex,
+                    vbox({
+                        text(""),
+                        state_copy.is_logged_in ? (text("") | size(WIDTH, EQUAL, 3) | color(Color::Green1)) : text("") | size(WIDTH, EQUAL, 3) | color(Color::Red1),
+                        text("")
+                    }) | align_right
+                }),
+
+                separator() | color(Color::RGB(100, 100, 100)),
+                text(" "),
+
+                text(" "),
+                text(" "),
+                carousel->Render()
+            }) | flex
         });
     });
 

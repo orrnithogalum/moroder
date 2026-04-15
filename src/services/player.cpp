@@ -570,11 +570,28 @@ void services::Player::worker_loop() {
             } else if constexpr (std::is_same_v<T, LibraryPlaylistsCommand>) {
                 spdlog::info("PLAYER: LibraryPlaylistsCommand");
 
+                {
+                    std::lock_guard lock(state_mutex);
+                    state.loading["library_playlists"] = LoadingState::Loading;
+                    state.library_playlists.clear();
+                }
+
                 std::vector<music::Playlist> user_playlists = music_service->getLibraryPlaylists();
 
                 {
                     std::lock_guard lock(state_mutex);
+                    state.loading["library_playlists"] = LoadingState::Done;
                     state.library_playlists = user_playlists;
+                }
+
+            } else if constexpr (std::is_same_v<T, IsLoggedInCommand>) {
+                spdlog::info("PLAYER: IsLoggedInCommand");
+
+                bool logged_in = music_service->isLoggedIn();
+
+                {
+                    std::lock_guard lock(state_mutex);
+                    state.is_logged_in = logged_in;
                 }
             }
 
@@ -601,6 +618,15 @@ void services::Player::getHome() {
     {
         std::lock_guard lock(command_mutex);
         command_queue.push(HomeCommand{});
+    }
+
+    command_cv.notify_one();
+}
+
+void services::Player::isLoggedIn() {
+    {
+        std::lock_guard lock(command_mutex);
+        command_queue.push(IsLoggedInCommand{});
     }
 
     command_cv.notify_one();

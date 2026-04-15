@@ -16,6 +16,8 @@
 #include "../../include/ipc/album/album_response.hpp"
 #include "../../include/ipc/album/album_request.hpp"
 
+#include "../../include/ipc/browse/is_logged_in_response.hpp"
+#include "../../include/ipc/browse/is_logged_in_request.hpp"
 #include "../../include/ipc/browse/song_response.hpp"
 #include "../../include/ipc/browse/song_request.hpp"
 #include "../../include/ipc/browse/home_response.hpp"
@@ -28,11 +30,11 @@
 
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
+#include <unordered_map>
 #include <filesystem>
 #include <sys/wait.h>
 #include <unistd.h>
 #include <string>
-#include <unordered_map>
 #include <vector>
 #include <memory>
 
@@ -426,4 +428,15 @@ std::vector<music::Playlist> services::Music::getLibraryPlaylists() {
     );
 
     return response.results;
+}
+
+bool services::Music::isLoggedIn() {
+    ipc::IsLoggedInRequest request;
+
+    ipc::IsLoggedInResponse response = send<ipc::IsLoggedInResponse>(
+        request,
+        "PYTHON: returned empty on is logged in request"
+    );
+
+    return response.is_logged_in;
 }

@@ -27,6 +27,7 @@ class MusicServer:
     # - Provides player control and search / song info
 
     def __init__(self, app_name: str = "", cookies_path: str = ""):
+        self.logged_in = False
         self.login(cookies_path)
 
         # player state
@@ -157,6 +158,10 @@ class MusicServer:
         elif action == "get_library_playlists":
             async for result in library_playlists(self):
                 print((json.dumps(result) + "\n"), flush=True)
+
+
+        elif action == "is_logged_in":
+            return {"status": "ok", "value": self.logged_in}
 
 
         else:

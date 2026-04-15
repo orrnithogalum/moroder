@@ -65,6 +65,11 @@ set(SOURCES
     src/services/player.cpp
     src/services/social.cpp
 
+    src/ui/components/carousel.cpp
+    src/ui/components/search_bar.cpp
+    src/ui/components/sidebar.cpp
+    src/ui/components/spinner.cpp
+
     src/main.cpp
 )
 

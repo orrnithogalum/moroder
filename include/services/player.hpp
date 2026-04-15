@@ -58,6 +58,7 @@ private:
 
     struct HomeCommand {};
     struct LibraryPlaylistsCommand {};
+    struct IsLoggedInCommand {};
 
 public:
     /* PlayerState
@@ -82,6 +83,7 @@ public:
 
         std::unordered_map<std::string, LoadingState> loading;
 
+        bool is_logged_in = false;
         bool autoplay = true;
 
         music::Radio radio;
@@ -100,6 +102,7 @@ public:
     void skipBackward();
 
     void getHome();
+    void isLoggedIn();
     void getLibraryPlaylists();
     void search(const std::string& query);
 
@@ -132,7 +135,8 @@ private:
         QueueNextRadioCommand,
 
         HomeCommand,
-        LibraryPlaylistsCommand
+        LibraryPlaylistsCommand,
+        IsLoggedInCommand
     >;
 
     std::queue<Command> command_queue;

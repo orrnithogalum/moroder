@@ -22,7 +22,7 @@ public:
         json_ = nlohmann::json::parse(raw);
         status_ = json_.value("status", "error");
 
-        if (status_ == "error") {
+        if (status_ != "ok") {
             message_ = json_.value("message", "Unknown error");
         }
 

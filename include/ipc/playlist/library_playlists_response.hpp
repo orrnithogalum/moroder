@@ -12,6 +12,10 @@ public:
     explicit LibraryPlaylistsResponse() : Response() {}
 
     void addItem(const nlohmann::json& j) {
+        if(j.contains("playlistId") && j["playlistId"].is_string() && j["playlistId"] == "SE") {
+            return;
+        }
+
         results.emplace_back(music::Playlist::from_json(j));
     }
 };
