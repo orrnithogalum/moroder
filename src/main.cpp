@@ -7,6 +7,7 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/spdlog.h>
 #include <memory>
+#include <sys/stat.h>
 
 #include "../include/ui/components/search_bar.hpp"
 #include "../include/ui/components/carousel.hpp"
@@ -438,6 +439,7 @@ int main(int argc, char *argv[]) {
 
         spinner_frame++;
         ui::getSidebarData(&state_copy, &sidebar_data);
+        ui::getCarouselData(&state_copy, "category", &carousel_data);
 
         return hbox({
             vbox({

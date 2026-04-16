@@ -6,9 +6,11 @@
 
 using namespace ftxui;
 
-namespace ui {
+void ui::getCarouselData(services::Player::PlayerState* state, std::string category, CarouselData* data) {
 
-ftxui::Component Carousel(CarouselData* data, int* selected, bool* focused) {
+}
+
+ftxui::Component ui::Carousel(CarouselData* data, int* selected, bool* focused) {
     MenuOption options;
     options.direction = Direction::Right;
     options.Horizontal();
@@ -34,6 +36,4 @@ ftxui::Component Carousel(CarouselData* data, int* selected, bool* focused) {
     };
 
     return Menu(&data->entries_spoof, selected, options);
-}
-
 }

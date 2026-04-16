@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../../../include/services/player.hpp"
 #include "../structs/entries.hpp"
 
 #include <ftxui/component/component.hpp>
@@ -15,6 +16,7 @@ struct CarouselData {
     bool is_loading = false;
 };
 
+void getCarouselData(services::Player::PlayerState* state, std::string category, CarouselData* data);
 ftxui::Component Carousel(CarouselData* data, int* selected, bool* focused);
 
 }

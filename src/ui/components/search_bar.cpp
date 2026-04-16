@@ -1,16 +1,16 @@
 #include "../../../include/ui/components/search_bar.hpp"
 
+#include <ftxui/component/component_options.hpp>
 #include <ftxui/component/component.hpp>
 #include <ftxui/dom/elements.hpp>
 
 using namespace ftxui;
 
-namespace ui {
-
-ftxui::Component SearchBar(SearchBarData* data) {
+ftxui::Component ui::SearchBar(SearchBarData* data) {
     InputOption option;
 
     option.placeholder = "Search songs, albums, artists, podcasts";
+    option.multiline = false;
 
     option.transform = [](const InputState& state) {
         Element e = state.element;
@@ -19,6 +19,10 @@ ftxui::Component SearchBar(SearchBarData* data) {
             return e | color(Color::White) | bold;
 
         return e | color(Color::RGB(170, 170, 170));
+    };
+
+    option.on_enter = [data]() {
+        // spdlog::info("SEARCHBAR: enter, " + data->value);
     };
 
     auto input = Input(&data->value, option);
@@ -34,6 +38,4 @@ ftxui::Component SearchBar(SearchBarData* data) {
             }),
         });
     });
-}
-
 }
