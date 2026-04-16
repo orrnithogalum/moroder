@@ -10,10 +10,11 @@
 namespace ui {
 
 struct CarouselData {
-    std::vector<ImageEntry> entries;
     std::vector<std::string> entries_spoof;
+    std::vector<ImageEntry> entries;
 
-    bool is_loading = false;
+    std::string category_name;
+    bool is_loading = true;
 };
 
 void getCarouselData(services::Player::PlayerState* state, std::string category, CarouselData* data);

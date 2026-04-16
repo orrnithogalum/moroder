@@ -1,0 +1,138 @@
+#include "../../../include/ui/components/grid.hpp"
+
+#include "ftxui-grid-container/grid-container.hpp"
+#include "image_view.hpp"
+
+#include <ftxui/component/component.hpp>
+#include <ftxui/dom/elements.hpp>
+
+using namespace ftxui;
+
+void ui::getGridData(services::Player::PlayerState* state, std::string category, GridData* data) {
+
+    data->entries.clear();
+    data->entries_spoof.clear();
+
+    auto it = state->home.find(category);
+    if (it == state->home.end()) {
+        return;
+    }
+
+    category = "  " + category;
+
+    for (auto& r : it->second) {
+        std::string url, top, bottom;
+
+        std::visit([&](auto&& item) {
+            using T = std::decay_t<decltype(item)>;
+
+            if constexpr (std::is_same_v<T, music::SongRef>) {
+                top = item.title;
+                bottom = item.artists.empty() ? "" : item.artists[0].name;
+                url = item.thumbnail_small;
+
+            } else if constexpr (std::is_same_v<T, music::AlbumRef>) {
+                top = item.title;
+                bottom = item.artists.empty() ? "" : item.artists[0].name;
+                url = item.thumbnail_small;
+
+            } else if constexpr (std::is_same_v<T, music::ArtistRef>) {
+                top = item.name;
+                url = item.thumbnail_small;
+
+            } else if constexpr (std::is_same_v<T, music::PlaylistRef>) {
+                top = item.title;
+                bottom = item.author;
+                url = item.thumbnail_small;
+
+            } else if constexpr (std::is_same_v<T, music::PodcastRef>) {
+                top = item.name;
+                url = item.thumbnail_small;
+
+            } else if constexpr (std::is_same_v<T, music::EpisodeRef>) {
+                top = item.title;
+                bottom = item.podcast.name;
+                url = item.thumbnail_small;
+            }
+        }, r.data);
+
+        data->entries.push_back({
+            url,
+            utils::trimSuffix(top, 20, "..."),
+            utils::trimSuffix(bottom, 20, "...")
+        });
+
+        data->entries_spoof.push_back(url);
+    }
+
+    data->category_name = category;
+    data->is_loading = state->loading["home"] == services::Player::LoadingState::Loading;
+}
+
+ftxui::Component ui::Grid(GridData* data, int* selected, bool* focused, int rows) {
+
+    int total = data->entries.size();
+    if (total == 0) {
+        return Renderer([] {
+            return text("Empty grid");
+        });
+    }
+
+    int cols = (total + rows - 1) / rows;
+
+    std::vector<std::vector<Component>> grid_components(rows);
+
+    for (int index = 0; index < total; ++index) {
+
+        int r = index % rows;
+        int c = index / rows;
+
+        const auto& item = data->entries[index];
+
+        ButtonOption option;
+        option.transform = [item, focused](const EntryState& state) {
+            Element thumb;
+
+            if (item.image_url.empty()) {
+                thumb = filler() | size(WIDTH, EQUAL, 4) | size(HEIGHT, EQUAL, 2);
+            } else {
+                thumb = image_view(item.image_url) | size(WIDTH, EQUAL, 4) | size(HEIGHT, EQUAL, 2);
+            }
+
+            return hbox({
+                thumb,
+                text("  "),
+                vbox({
+                    text(item.top) | ((state.focused && *focused)
+                            ? color(Color::White) | bold
+                            : color(Color::RGB(170,170,170))),
+
+                    text(item.bottom) | ((state.focused && *focused)
+                            ? color(Color::RGB(170,170,170))
+                            : color(Color::RGB(100,100,100))),
+                })
+            }) | size(WIDTH, EQUAL, 40) | size(HEIGHT, EQUAL, 3);
+        };
+
+        grid_components[r].push_back(Button(option));
+    }
+
+    auto grid = GridContainer(grid_components);
+
+    return Renderer(grid, [grid, data] {
+        return vbox({
+            text(""),
+            text(""),
+            hbox({
+                text(" "),
+                text(data->category_name),
+            }),
+            text(""),
+            text(""),
+            hbox({
+                text(" "),
+                grid->Render() | xframe
+            }) | xframe,
+        });
+    });
+}

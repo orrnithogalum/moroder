@@ -70,4 +70,43 @@ inline std::string lower(std::string s) {
     return s;
 };
 
+inline std::string trimSuffix(const std::string& str, size_t max_size, const std::string& suffix) {
+    if (str.size() <= max_size)
+        return str;
+
+    if (suffix.size() >= max_size)
+        return suffix.substr(0, max_size);
+
+    size_t cut = max_size - suffix.size();
+    return str.substr(0, cut) + suffix;
+}
+
+static std::string trimWordsSuffix(const std::string& str, size_t max_size, const std::string& suffix) {
+    if (str.size() <= max_size)
+        return str;
+
+    if (suffix.size() >= max_size)
+        return suffix.substr(0, max_size);
+
+    size_t limit = max_size - suffix.size();
+
+    std::string result;
+    std::istringstream iss(str);
+    std::string word;
+
+    while (iss >> word) {
+        std::string candidate = result.empty() ? word : result + " " + word;
+
+        if (candidate.size() > limit)
+            break;
+
+        result = candidate;
+    }
+
+    if (result.empty())
+        return str.substr(0, limit) + suffix;
+
+    return result + suffix;
+}
+
 }

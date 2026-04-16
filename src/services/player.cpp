@@ -560,10 +560,17 @@ void services::Player::worker_loop() {
             } else if constexpr (std::is_same_v<T, HomeCommand>) {
                 spdlog::info("PLAYER: HomeCommand");
 
+                {
+                    std::lock_guard lock(state_mutex);
+                    state.loading["home"] = LoadingState::Loading;
+                    state.home.clear();
+                }
+
                 std::unordered_map<std::string, std::vector<music::ApiResult>> user_home = music_service->getHome();
 
                 {
                     std::lock_guard lock(state_mutex);
+                    state.loading["home"] = LoadingState::Done;
                     state.home = user_home;
                 }
 
