@@ -6,6 +6,7 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <string>
 
 namespace music {
@@ -13,6 +14,7 @@ namespace music {
 class IStreamable {
 public:
     virtual ~IStreamable() = default;
+    virtual std::shared_ptr<IStreamable> clone() const = 0;
 
 protected:
     uint64_t duration;

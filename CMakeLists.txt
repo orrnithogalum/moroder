@@ -70,6 +70,7 @@ set(SOURCES
     src/ui/components/carousel.cpp
     src/ui/components/content.cpp
     src/ui/components/grid.cpp
+    src/ui/components/playback_bar.cpp
     src/ui/components/search_bar.cpp
     src/ui/components/sidebar.cpp
 
@@ -127,7 +128,6 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(${PROJECT_NAME}
         PRIVATE
         MORODER_PYTHON_PATH="${CMAKE_SOURCE_DIR}/python"
-        MORODER_ASSET_PATH="${CMAKE_SOURCE_DIR}/assets"
         MORODER_LOG_PATH="${CMAKE_SOURCE_DIR}/logs"
 
         MORODER_CACHE_PATH=".cache/moroder"
@@ -136,7 +136,6 @@ else()
     target_compile_definitions(${PROJECT_NAME}
         PRIVATE
         MORODER_PYTHON_PATH=".local/share/moroder/python"
-        MORODER_ASSET_PATH="$.local/share/moroder/assets"
         MORODER_LOG_PATH=".local/state/moroder/logs"
 
         MORODER_CACHE_PATH=".cache/moroder"

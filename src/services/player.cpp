@@ -79,6 +79,8 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
     });
 
     mpris_service->onStop([&] {
+        this->stopPositionTick();
+
         {
             std::lock_guard lock(state_mutex);
             state.loading["audio"] = LoadingState::Done;
@@ -154,10 +156,12 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
         this->updateMprisControls();
         this->updateMprisData();
         this->updateSocialData();
+        this->startPositionTick();
     });
 
     mpv_service->setOnStreamEnd([this] {
         spdlog::info("PLAYER: Stream end");
+        this->stopPositionTick();
         mpris_service->setPlaybackStatus(services::PlaybackStatus::Stopped);
 
         std::shared_ptr<music::IStreamable> radio_next;
@@ -237,6 +241,9 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
     });
 
     mpv_service->setOnStreamError([this] {
+        spdlog::warn("PLAYER: Stream error");
+
+        this->stopPositionTick();
         int current_pos;
 
         {
@@ -609,6 +616,8 @@ void services::Player::worker_loop() {
 }
 
 services::Player::~Player() {
+    this->stopPositionTick();
+
     {
         std::lock_guard lock(command_mutex);
         running = false;
@@ -906,4 +915,46 @@ void services::Player::removeFromRadioQueue(uint16_t index) {
     }
 
     this->updateMprisControls();
+}
+
+void services::Player::startPositionTick() {
+    stopPositionTick();
+
+    {
+        std::lock_guard lock(position_tick_mutex);
+        position_tick_running = true;
+    }
+
+    position_tick_thread = std::thread([this] {
+        while (true) {
+            std::unique_lock lock(position_tick_mutex);
+
+            position_tick_cv.wait_for(lock, std::chrono::seconds(1), [this] {
+                return !position_tick_running;
+            });
+
+            if (!position_tick_running) break;
+
+            lock.unlock();
+
+            uint64_t duration = mpv_service->getStreamDuration();
+            uint64_t pos = mpv_service->getStreamPosition();
+
+            if (on_position_tick) {
+                on_position_tick(pos, duration);
+            }
+        }
+    });
+}
+
+void services::Player::stopPositionTick() {
+    {
+        std::lock_guard lock(position_tick_mutex);
+        position_tick_running = false;
+    }
+
+    position_tick_cv.notify_all();
+
+    if (position_tick_thread.joinable())
+        position_tick_thread.join();
 }

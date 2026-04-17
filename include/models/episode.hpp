@@ -71,6 +71,10 @@ struct Episode : IStreamable {
         this->url = "https://www.youtube.com/watch?v=" + ref.id;
         this->duration = 0;
     }
+
+    std::shared_ptr<IStreamable> clone() const override {
+        return std::make_shared<Episode>(*this);
+    }
 };
 
 }

@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <queue>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 namespace services {
@@ -118,6 +119,10 @@ public:
         on_request_completed = std::move(cb);
     }
 
+    void setOnPositionTick(std::function<void(uint64_t position, uint64_t duration)> cb) {
+        on_position_tick = std::move(cb);
+    }
+
 private:
     std::string app_name;
 
@@ -172,6 +177,16 @@ private:
     void updateSocialData();
 
     void resetMprisData();
+
+    std::function<void(uint64_t position, uint64_t duration)> on_position_tick;
+
+    std::thread position_tick_thread;
+    std::mutex position_tick_mutex;
+    std::condition_variable position_tick_cv;
+    bool position_tick_running = false;
+
+    void startPositionTick();
+    void stopPositionTick();
 };
 
 }
