@@ -6,13 +6,13 @@
 #include <mutex>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/spdlog.h>
-#include <memory>
 #include <sys/stat.h>
+#include <memory>
 
 #include "../include/ui/components/search_bar.hpp"
 #include "../include/ui/components/carousel.hpp"
 #include "../include/ui/components/sidebar.hpp"
-#include "../include/ui/components/home.hpp"
+#include "../include/ui/components/content.hpp"
 #include "../include/ui/components/grid.hpp"
 
 #include "../include/services/player.hpp"
@@ -69,26 +69,31 @@ int main(int argc, char *argv[]) {
     ui::SearchBarData search_bar_data = {};
     auto search_bar = ui::SearchBar(&search_bar_data);
 
-    std::deque<ui::HomeEntry> home_items;
-    std::vector<Component> home_components = { Renderer([]{ return emptyElement(); }) };
+    std::deque<ui::ContentEntry> main_content_items;
+    std::vector<Component> main_content_components = { Renderer([]{ return emptyElement(); }) };
 
-    auto home_container = Container::Vertical(home_components);
-
-    Component vertical_separator = Renderer([] {
-        return vbox({
-            separator() | color(Color::RGB(100, 100, 100)),
-            text(" ")
-        });
-    });
+    auto main_content = Container::Vertical(main_content_components);
 
     auto layout = Container::Horizontal({
         sidebar,
-        vertical_separator,
+        Renderer([] {
+            return vbox({
+                separator() | color(Color::RGB(100, 100, 100)),
+                text(" ")
+            });
+        }),
         Container::Vertical({
             search_bar,
-            home_container
+            main_content
         }),
     });
+
+    search_bar_data.onSearch = [&player, &main_content, &screen](const std::string& value) {
+        spdlog::info("SEARCHBAR: enter pressed with value, " + value);
+
+        main_content->DetachAllChildren();
+        screen.PostEvent(Event::Custom);
+    };
 
     auto ui = Renderer(layout, [&] {
         sidebar_focused = sidebar->Focused();
@@ -106,15 +111,15 @@ int main(int argc, char *argv[]) {
             const std::string& category_ref = category;
 
             auto already_exists = std::any_of(
-                home_items.begin(), home_items.end(),
-                [&](const ui::HomeEntry& item) {
+                main_content_items.begin(), main_content_items.end(),
+                [&](const ui::ContentEntry& item) {
                     return item.category == category_ref;
                 }
             );
 
             if (!already_exists) {
-                home_items.push_back(ui::HomeEntry{});
-                ui::HomeEntry& item = home_items.back();
+                main_content_items.push_back(ui::ContentEntry{});
+                ui::ContentEntry& item = main_content_items.back();
 
                 item.category = category;
                 item.selected = 0;
@@ -127,12 +132,12 @@ int main(int argc, char *argv[]) {
                     item.component = ui::Carousel(&item.data, &item.selected, &item.focused);
                 }
 
-                home_components.push_back(item.component);
-                home_container->Add(item.component);
+                main_content_components.push_back(item.component);
+                main_content->Add(item.component);
             }
         }
 
-        for (auto& item : home_items) {
+        for (auto& item : main_content_items) {
             ui::getCarouselData(&state_copy, item.category, &item.data);
             item.focused = item.component->Focused();
         }
@@ -150,7 +155,6 @@ int main(int argc, char *argv[]) {
                 text(" "),
 
                 sidebar->Render() | yframe,
-                sidebar_data.is_loading ? (vbox({filler(), spinner(15, spinner_frame), filler()}) | center | flex) : emptyElement()
             }) | size(WIDTH, EQUAL, 30),
 
             text(" "),
@@ -169,11 +173,22 @@ int main(int argc, char *argv[]) {
 
                 separator() | color(Color::RGB(100, 100, 100)),
 
-                home_items.empty() ? (vbox({filler(), spinner(15, spinner_frame), filler()}) | center | flex) : emptyElement(),
                 hbox({
                     text(" "),
-                    home_container->Render() | yframe | yflex
-                }) | yflex
+                    main_content->Render() | yframe | yflex
+                }) | yflex,
+
+                ((main_content_items.empty() || sidebar_data.is_loading) && state_copy.is_logged_in) ||
+                state_copy.loading["search"] == services::Player::LoadingState::Loading ?
+                    vbox({
+                        filler(),
+                        hbox({
+                            filler(),
+                            spinner(15, spinner_frame)
+                        })
+                    }) | flex :
+                    emptyElement(),
+
             }) | flex
         });
     });

@@ -1,6 +1,7 @@
 #include "../../../include/ui/components/grid.hpp"
 
 #include "ftxui-grid-container/grid-container.hpp"
+#include "spdlog/spdlog.h"
 #include "image_view.hpp"
 
 #include <ftxui/component/component.hpp>
@@ -58,8 +59,8 @@ void ui::getGridData(services::Player::PlayerState* state, std::string category,
 
         data->entries.push_back({
             url,
-            utils::trimSuffix(top, 20, "..."),
-            utils::trimSuffix(bottom, 20, "...")
+            utils::trimSuffix(top, 30, "..."),
+            utils::trimSuffix(bottom, 30, "...")
         });
 
         data->entries_spoof.push_back(url);
@@ -112,6 +113,10 @@ ftxui::Component ui::Grid(GridData* data, int* selected, bool* focused, int rows
                             : color(Color::RGB(100,100,100))),
                 })
             }) | size(WIDTH, EQUAL, 40) | size(HEIGHT, EQUAL, 3);
+        };
+
+        option.on_click = [item, focused]() {
+            spdlog::info("GRID: enter pressed on item, " + item.top + " " + item.bottom);
         };
 
         grid_components[r].push_back(Button(option));

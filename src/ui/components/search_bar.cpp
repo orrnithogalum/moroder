@@ -22,7 +22,7 @@ ftxui::Component ui::SearchBar(SearchBarData* data) {
     };
 
     option.on_enter = [data]() {
-        // spdlog::info("SEARCHBAR: enter, " + data->value);
+        data->onSearch(data->value);
     };
 
     auto input = Input(&data->value, option);

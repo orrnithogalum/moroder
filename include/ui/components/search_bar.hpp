@@ -7,6 +7,7 @@ namespace ui {
 
 struct SearchBarData {
     std::string value;
+    std::function<void(const std::string&)> onSearch;
 };
 
 ftxui::Component SearchBar(SearchBarData* data);

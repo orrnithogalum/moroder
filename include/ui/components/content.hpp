@@ -5,7 +5,7 @@
 
 namespace ui {
 
-struct HomeEntry {
+struct ContentEntry {
     ui::GridData grid_data;
     ui::CarouselData data;
     std::string category;

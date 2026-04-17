@@ -1,4 +1,5 @@
 #include "../../../include/ui/components/carousel.hpp"
+#include "spdlog/spdlog.h"
 #include "image_view.hpp"
 
 #include <ftxui/component/component_base.hpp>
@@ -116,6 +117,10 @@ ftxui::Component ui::Carousel(CarouselData* data, int* selected, bool* focused) 
             }),
             text(" "),
         });
+    };
+
+    options.on_enter = [data, selected] () {
+        spdlog::info("CAROUSEL: enter pressed on item, " + data->entries[*selected].top + " " + data->entries[*selected].bottom);
     };
 
     auto menu = Menu(&data->entries_spoof, selected, options);

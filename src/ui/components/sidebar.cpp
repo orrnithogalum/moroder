@@ -1,6 +1,7 @@
 #include "../../../include/ui/components/sidebar.hpp"
 
 #include "../../../include/ui/structs/entries.hpp"
+#include "spdlog/spdlog.h"
 
 #include <ftxui/component/component_options.hpp>
 #include <ftxui/component/component_base.hpp>
@@ -17,14 +18,17 @@ void ui::getSidebarData(services::Player::PlayerState* state, ui::SidebarData* d
     data->entries = {
         {"  Home", ""},
         {"  Library", ""},
-        {"  New playlist", ""},
     };
 
     data->entries_spoof = {
         "01",
         "02",
-        "03",
     };
+
+    if(state->is_logged_in) {
+        data->entries.push_back({"  New playlist", ""});
+        data->entries_spoof.push_back("03");
+    }
 
     for (auto& playlist : state->library_playlists) {
         data->entries_spoof.emplace_back(playlist.ref.id);
@@ -77,6 +81,10 @@ Component ui::Sidebar(ui::SidebarData* data, int* selected, bool* focused) {
                 text("")
             }) | (entry_state.active && *focused ? color(Color::White) | bold : color(Color::RGB(170, 170, 170)))
         });
+    };
+
+    options.on_enter = [data, selected] {
+        spdlog::info("SIDEBAR: enter pressed on item, " + data->entries[*selected].top + " " + data->entries[*selected].bottom);
     };
 
     return Menu(&data->entries_spoof, selected, options);
