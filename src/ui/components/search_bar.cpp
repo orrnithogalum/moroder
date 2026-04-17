@@ -1,4 +1,5 @@
 #include "../../../include/ui/components/search_bar.hpp"
+#include "../../../include/ui/constants/colors.hpp"
 
 #include <ftxui/component/component_options.hpp>
 #include <ftxui/component/component.hpp>
@@ -16,9 +17,9 @@ ftxui::Component ui::SearchBar(SearchBarData* data) {
         Element e = state.element;
 
         if (state.focused)
-            return e | color(Color::White) | bold;
+            return e | color(ui::GetColor(ui::MColor::TEXT_TOP_PRIMARY)) | bold;
 
-        return e | color(Color::RGB(170, 170, 170));
+        return e | color(ui::GetColor(ui::MColor::TEXT_TOP_SECONDARY));
     };
 
     option.on_enter = [data]() {
@@ -32,7 +33,7 @@ ftxui::Component ui::SearchBar(SearchBarData* data) {
             text(" "),
             hbox({
                 text("  "),
-                text("") | color(Color::RGB(170, 170, 170)),
+                text("") | color(ui::GetColor(ui::MColor::TEXT_TOP_SECONDARY)),
                 text("  "),
                 input->Render(),
             }),

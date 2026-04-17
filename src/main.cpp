@@ -10,10 +10,9 @@
 #include <memory>
 
 #include "../include/ui/components/search_bar.hpp"
-#include "../include/ui/components/carousel.hpp"
 #include "../include/ui/components/sidebar.hpp"
 #include "../include/ui/components/content.hpp"
-#include "../include/ui/components/grid.hpp"
+#include "../include/ui/constants/colors.hpp"
 
 #include "../include/services/player.hpp"
 #include "../include/config/config.hpp"
@@ -78,7 +77,7 @@ int main(int argc, char *argv[]) {
         sidebar,
         Renderer([] {
             return vbox({
-                separator() | color(Color::RGB(100, 100, 100)),
+                separator() | color(ui::GetColor(ui::MColor::SEPARATOR)),
                 text(" ")
             });
         }),
@@ -92,6 +91,7 @@ int main(int argc, char *argv[]) {
         spdlog::info("SEARCHBAR: enter pressed with value, " + value);
 
         main_content->DetachAllChildren();
+        main_content->Add(Renderer([] { return emptyElement(); }));
         screen.PostEvent(Event::Custom);
     };
 
@@ -107,40 +107,8 @@ int main(int argc, char *argv[]) {
         spinner_frame++;
         ui::getSidebarData(&state_copy, &sidebar_data);
 
-        for (auto& [category, _] : state_copy.home) {
-            const std::string& category_ref = category;
-
-            auto already_exists = std::any_of(
-                main_content_items.begin(), main_content_items.end(),
-                [&](const ui::ContentEntry& item) {
-                    return item.category == category_ref;
-                }
-            );
-
-            if (!already_exists) {
-                main_content_items.push_back(ui::ContentEntry{});
-                ui::ContentEntry& item = main_content_items.back();
-
-                item.category = category;
-                item.selected = 0;
-                item.focused = false;
-
-                if(utils::lower(category) == "quick picks") {
-                    ui::getGridData(&state_copy, category, &item.grid_data);
-                    item.component = ui::Grid(&item.grid_data, &item.selected, &item.focused, 4);
-                } else {
-                    item.component = ui::Carousel(&item.data, &item.selected, &item.focused);
-                }
-
-                main_content_components.push_back(item.component);
-                main_content->Add(item.component);
-            }
-        }
-
-        for (auto& item : main_content_items) {
-            ui::getCarouselData(&state_copy, item.category, &item.data);
-            item.focused = item.component->Focused();
-        }
+        // Build main content, home as default
+        ui::buildHome(&state_copy, main_content_items, main_content_components, main_content);
 
         return hbox({
             vbox({
@@ -158,7 +126,7 @@ int main(int argc, char *argv[]) {
             }) | size(WIDTH, EQUAL, 30),
 
             text(" "),
-            separator() | color(Color::RGB(100, 100, 100)),
+            separator() | color(ui::GetColor(ui::MColor::SEPARATOR)),
             text(" "),
 
             vbox({
@@ -166,20 +134,19 @@ int main(int argc, char *argv[]) {
                     search_bar->Render() | flex,
                     vbox({
                         text(" "),
-                        state_copy.is_logged_in ? (text("") | size(WIDTH, EQUAL, 3) | color(Color::Green1)) : text("") | size(WIDTH, EQUAL, 3) | color(Color::Red1),
+                        state_copy.is_logged_in ? (text("") | size(WIDTH, EQUAL, 3) | color(ui::GetColor(ui::MColor::SUCESS))) : text("") | size(WIDTH, EQUAL, 3) |  color(ui::GetColor(ui::MColor::ERROR)),
                         text(" ")
                     }) | align_right
                 }),
 
-                separator() | color(Color::RGB(100, 100, 100)),
+                separator() | color(ui::GetColor(ui::MColor::SEPARATOR)),
 
                 hbox({
                     text(" "),
                     main_content->Render() | yframe | yflex
                 }) | yflex,
 
-                ((main_content_items.empty() || sidebar_data.is_loading) && state_copy.is_logged_in) ||
-                state_copy.loading["search"] == services::Player::LoadingState::Loading ?
+                ((main_content_items.empty() || sidebar_data.is_loading) && state_copy.is_logged_in) ?
                     vbox({
                         filler(),
                         hbox({

@@ -16,4 +16,6 @@ struct ContentEntry {
     ftxui::Component component;
 };
 
+void buildHome(services::Player::PlayerState* state, std::deque<ContentEntry>& items, std::vector<ftxui::Component>& components, ftxui::Component main_container);
+
 }

@@ -1,5 +1,6 @@
 #include "../../../include/ui/components/sidebar.hpp"
 
+#include "../../../include/ui/constants/colors.hpp"
 #include "../../../include/ui/structs/entries.hpp"
 #include "spdlog/spdlog.h"
 
@@ -42,8 +43,8 @@ Component ui::Sidebar(ui::SidebarData* data, int* selected, bool* focused) {
     MenuOption options;
 
     options.entries_option.animated_colors.foreground = AnimatedColorOption {
-        .inactive = Color::White,
-        .active = Color::Default
+        .inactive = ui::GetColor(ui::MColor::WHITE),
+        .active = ui::GetColor(ui::MColor::DEFAULT)
     };
 
     options.entries_option.transform = [data, focused](const EntryState& entry_state) {
@@ -51,16 +52,16 @@ Component ui::Sidebar(ui::SidebarData* data, int* selected, bool* focused) {
 
         if(entry_state.index == 2) {
             return vbox({
-                separator() | color(Color::RGB(100, 100, 100)),
+                separator() | color(ui::GetColor(ui::MColor::SEPARATOR)),
                 hbox({
                     text("  "),
                     vbox({
                         text(""),
-                        text(item.top) | (entry_state.active && *focused ? color(Color::White) | bold : color(Color::RGB(170, 170, 170))),
+                        text(item.top) | (entry_state.active && *focused ? color(ui::GetColor(ui::MColor::TEXT_TOP_PRIMARY)) | bold : color(ui::GetColor(ui::MColor::TEXT_TOP_SECONDARY))),
                         text(""),
                     })
                 })
-            }) | (entry_state.active && *focused ? color(Color::White) | bold : color(Color::RGB(170, 170, 170)));
+            }) | (entry_state.active && *focused ? color(ui::GetColor(ui::MColor::TEXT_TOP_PRIMARY)) | bold : color(ui::GetColor(ui::MColor::TEXT_TOP_SECONDARY)));
         }
 
         if(entry_state.index > 2) {
@@ -68,8 +69,8 @@ Component ui::Sidebar(ui::SidebarData* data, int* selected, bool* focused) {
                 text("  "),
                 vbox({
                     text(""),
-                    text(item.top) | (entry_state.active && *focused ? color(Color::White) | bold : color(Color::RGB(170, 170, 170))),
-                    text(item.bottom) | (entry_state.active && *focused ? color(Color::RGB(170, 170, 170)) | bold : color(Color::RGB(70, 70, 70))),
+                    text(item.top) | (entry_state.active && *focused ? color(ui::GetColor(ui::MColor::TEXT_TOP_PRIMARY)) | bold : color(ui::GetColor(ui::MColor::TEXT_TOP_SECONDARY))),
+                    text(item.bottom) | (entry_state.active && *focused ? color(ui::GetColor(ui::MColor::TEXT_BOTTOM_PRIMARY)) | bold : color(ui::GetColor(ui::MColor::TEXT_BOTTOM_SECONDARY))),
                 })
             });
         }
@@ -77,9 +78,9 @@ Component ui::Sidebar(ui::SidebarData* data, int* selected, bool* focused) {
         return hbox({
             text("  "),
             vbox({
-                text(item.top) | (entry_state.active && *focused ? color(Color::White) | bold : color(Color::RGB(170, 170, 170))),
+                text(item.top) | (entry_state.active && *focused ? color(ui::GetColor(ui::MColor::TEXT_TOP_PRIMARY)) | bold : color(ui::GetColor(ui::MColor::TEXT_TOP_SECONDARY))),
                 text("")
-            }) | (entry_state.active && *focused ? color(Color::White) | bold : color(Color::RGB(170, 170, 170)))
+            }) | (entry_state.active && *focused ? color(ui::GetColor(ui::MColor::TEXT_TOP_PRIMARY)) | bold : color(ui::GetColor(ui::MColor::TEXT_TOP_SECONDARY)))
         });
     };
 

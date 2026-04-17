@@ -1,4 +1,5 @@
 #include "../../../include/ui/components/carousel.hpp"
+#include "../../../include/ui/constants/colors.hpp"
 #include "spdlog/spdlog.h"
 #include "image_view.hpp"
 
@@ -110,8 +111,8 @@ ftxui::Component ui::Carousel(CarouselData* data, int* selected, bool* focused) 
                 hbox({
                     text(" "),
                     vbox({
-                        text(item.top) | (state.active && *focused ? color(Color::White) | bold : color(Color::RGB(170, 170, 170))),
-                        text(item.bottom) | (state.active && *focused ? color(Color::RGB(170, 170, 170)) | bold : color(Color::RGB(70, 70, 70))),
+                        text(item.top) | (state.active && *focused ?  color(ui::GetColor(ui::MColor::TEXT_TOP_PRIMARY)) | bold : color(ui::GetColor(ui::MColor::TEXT_TOP_SECONDARY))),
+                        text(item.bottom) | (state.active && *focused ? color(ui::GetColor(ui::MColor::TEXT_BOTTOM_PRIMARY)) | bold : color(ui::GetColor(ui::MColor::TEXT_BOTTOM_SECONDARY))),
                     }),
                 }),
             }),

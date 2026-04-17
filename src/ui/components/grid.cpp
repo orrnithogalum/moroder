@@ -1,4 +1,5 @@
 #include "../../../include/ui/components/grid.hpp"
+#include "../../../include/ui/constants/colors.hpp"
 
 #include "ftxui-grid-container/grid-container.hpp"
 #include "spdlog/spdlog.h"
@@ -105,12 +106,12 @@ ftxui::Component ui::Grid(GridData* data, int* selected, bool* focused, int rows
                 text("  "),
                 vbox({
                     text(item.top) | ((state.focused && *focused)
-                            ? color(Color::White) | bold
-                            : color(Color::RGB(170,170,170))),
+                        ? color(ui::GetColor(ui::MColor::TEXT_TOP_PRIMARY)) | bold
+                        : color(ui::GetColor(ui::MColor::TEXT_TOP_SECONDARY))),
 
                     text(item.bottom) | ((state.focused && *focused)
-                            ? color(Color::RGB(170,170,170))
-                            : color(Color::RGB(100,100,100))),
+                        ? color(ui::GetColor(ui::MColor::TEXT_BOTTOM_PRIMARY))
+                        : color(ui::GetColor(ui::MColor::TEXT_BOTTOM_SECONDARY))),
                 })
             }) | size(WIDTH, EQUAL, 40) | size(HEIGHT, EQUAL, 3);
         };
