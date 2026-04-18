@@ -2,7 +2,6 @@
 
 #include "../../../include/ui/constants/colors.hpp"
 #include "../../../include/ui/structs/entries.hpp"
-#include "spdlog/spdlog.h"
 
 #include <ftxui/component/component_options.hpp>
 #include <ftxui/component/component_base.hpp>
@@ -85,7 +84,9 @@ Component ui::Sidebar(ui::SidebarData* data, int* selected, bool* focused) {
     };
 
     options.on_enter = [data, selected] {
-        spdlog::info("SIDEBAR: enter pressed on item, " + data->entries[*selected].top + " " + data->entries[*selected].bottom);
+        if(data->entries_spoof[*selected] == "01") {
+            data->onHome();
+        }
     };
 
     return Menu(&data->entries_spoof, selected, options);

@@ -14,6 +14,8 @@ struct SidebarData {
     std::vector<ui::SimpleEntry> entries;
 
     bool is_loading = true;
+
+    std::function<void()> onHome;
 };
 
 void getSidebarData(services::Player::PlayerState* state, SidebarData* data);

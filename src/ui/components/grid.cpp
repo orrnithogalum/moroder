@@ -58,6 +58,7 @@ void ui::getGridData(services::Player::PlayerState* state, std::string category,
             }
         }, r.data);
 
+        data->result = r;
         data->entries.push_back({
             url,
             utils::trimSuffix(top, 30, "..."),

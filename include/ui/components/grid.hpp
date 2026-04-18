@@ -10,11 +10,14 @@
 namespace ui {
 
 struct GridData {
+    std::string category_name;
+
     std::vector<std::string> entries_spoof;
     std::vector<ImageEntry> entries;
 
-    std::string category_name;
     bool is_loading = true;
+
+    music::ApiResult result;
 };
 
 void getGridData(services::Player::PlayerState* state, std::string category, GridData* data);

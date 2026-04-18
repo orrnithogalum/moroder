@@ -6,16 +6,19 @@
 namespace ui {
 
 struct ContentEntry {
+    std::string category;
+
     ui::GridData grid_data;
     ui::CarouselData data;
-    std::string category;
 
     int selected = 0;
     bool focused = false;
 
     ftxui::Component component;
+    music::ApiResult result;
 };
 
-void buildHome(services::Player::PlayerState* state, std::deque<ContentEntry>& items, std::vector<ftxui::Component>& components, ftxui::Component main_container);
+void buildHome(services::Player::PlayerState* state, std::deque<ContentEntry>& items, ftxui::Component main_container);
+void buildSearch(services::Player::PlayerState* state, std::deque<ContentEntry>& items, ftxui::Component main_container);
 
 }

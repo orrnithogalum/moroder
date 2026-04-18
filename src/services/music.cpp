@@ -213,7 +213,8 @@ template <typename Request, typename Response> Response services::Music::sendStr
             try {
                 auto j = nlohmann::json::parse(line);
 
-                spdlog::info(j.dump(4));
+                // Useful for debug but pollutes log
+                // spdlog::info(j.dump(4));
 
                 std::string type = j["type"].get<std::string>();
 

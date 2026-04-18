@@ -68,6 +68,7 @@ void ui::getCarouselData(services::Player::PlayerState* state, std::string categ
             }
         }, r.data);
 
+        data->result = r;
         data->entries_spoof.push_back(url);
         data->entries.push_back({
             url,
