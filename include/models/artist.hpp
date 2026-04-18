@@ -24,6 +24,10 @@ struct ArtistRef {
             const auto& first_artist = j["artists"].front();
             a.id = first_artist.value("id", "");
             a.name = first_artist.value("name", "");
+
+        } else if (j.contains("title")) {
+            a.name = j.value("title", "");
+
         } else {
             a.id = j.value("browseId", "");
             a.name = j.value("artist", "");

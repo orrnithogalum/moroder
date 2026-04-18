@@ -62,9 +62,12 @@ int main(int argc, char *argv[]) {
     player.getLibraryPlaylists();
     player.getHome();
 
-    int spinner_frame = 0;
+    int spinner_frame    = 0;
     int sidebar_selected = 0;
+
+    bool sidebar_hidden  = false;
     bool sidebar_focused = false;
+
     auto current_state = ui::State::HOME;
 
     ui::SidebarData sidebar_data = {};
@@ -155,23 +158,29 @@ int main(int argc, char *argv[]) {
 
         return vbox({
             hbox({
-                vbox({
-                    text(" "),
-                    hbox({
-                        text("") | color(Color::Red1),
-                        text("  "),
-                        text(APP_NAME_HUMAN)
-                    }) | bold | center,
+                !sidebar_hidden
+                    ? vbox({
+                        text(" "),
+                        hbox({
+                            text("") | color(Color::Red1),
+                            text("  "),
+                            text(APP_NAME_HUMAN)
+                        }) | bold | center,
 
-                    text(" "),
-                    text(" "),
+                        text(" "),
+                        text(" "),
 
-                    sidebar->Render() | yframe,
-                }) | size(WIDTH, EQUAL, 30),
+                        sidebar->Render() | yframe
+                    }) | size(WIDTH, EQUAL, 30)
+                    : emptyElement(),
 
-                text(" "),
-                separator() | color(ui::GetColor(ui::MColor::SEPARATOR)),
-                text(" "),
+                !sidebar_hidden
+                    ? hbox({
+                        text(" "),
+                        separator() | color(ui::GetColor(ui::MColor::SEPARATOR)),
+                        text(" "),
+                    })
+                    : emptyElement(),
 
                 vbox({
                     hbox({
@@ -209,6 +218,15 @@ int main(int argc, char *argv[]) {
                 ? playback_bar->Render()
                 : emptyElement()
         });
+    });
+
+    ui = CatchEvent(ui, [&sidebar_hidden](Event event){
+        if(event == Event::s) {
+            sidebar_hidden = !sidebar_hidden;
+            return true;
+        }
+
+        return false;
     });
 
     screen.Loop(ui);

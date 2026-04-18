@@ -39,32 +39,34 @@ void ui::getCarouselData(services::Player::PlayerState* state, std::string categ
             using T = std::decay_t<decltype(item)>;
 
             if constexpr (std::is_same_v<T, music::SongRef>) {
-                top = item.title;
+                top    = item.title;
                 bottom = item.artists.empty() ? "" : item.artists[0].name;
-                url = item.thumbnail_small;
+                url    = item.thumbnail_small;
 
             } else if constexpr (std::is_same_v<T, music::AlbumRef>) {
-                top = item.title;
+                top    = item.title;
                 bottom = item.artists.empty() ? "" : item.artists[0].name;
-                url = item.thumbnail_small;
+                url    = item.thumbnail_small;
 
             } else if constexpr (std::is_same_v<T, music::ArtistRef>) {
-                top = item.name;
-                url = item.thumbnail_small;
+                top    = item.name;
+                bottom = "Artist";
+                url    = item.thumbnail_small;
 
             } else if constexpr (std::is_same_v<T, music::PlaylistRef>) {
-                top = item.title;
+                top    = item.title;
                 bottom = item.author;
-                url = item.thumbnail_small;
+                url    = item.thumbnail_small;
 
             } else if constexpr (std::is_same_v<T, music::PodcastRef>) {
-                top = item.name;
-                url = item.thumbnail_small;
+                top    = item.name;
+                bottom = "Podcast";
+                url    = item.thumbnail_small;
 
             } else if constexpr (std::is_same_v<T, music::EpisodeRef>) {
-                top = item.title;
+                top    = item.title;
                 bottom = item.podcast.name;
-                url = item.thumbnail_small;
+                url    = item.thumbnail_small;
             }
         }, r.data);
 

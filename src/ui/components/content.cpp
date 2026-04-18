@@ -82,13 +82,13 @@ void ui::buildSearch(services::Player::PlayerState* state, std::deque<ContentEnt
             if constexpr (std::is_same_v<T, music::SongRef>) {
                 category = result.id;
                 top      = result.title;
-                bottom   = !result.artists.empty() ? result.artists[0].name : "unknown";
+                bottom   = !result.artists.empty() ? result.artists[0].name : "";
                 url      = result.thumbnail_small;
 
             } else if constexpr (std::is_same_v<T, music::AlbumRef>) {
                 category = result.id;
                 top      = result.title;
-                bottom   = !result.artists.empty() ? result.artists[0].name : "unknown";
+                bottom   = !result.artists.empty() ? result.artists[0].name : "";
                 url      = result.thumbnail_small;
 
             } else if constexpr (std::is_same_v<T, music::ArtistRef>) {
@@ -100,7 +100,7 @@ void ui::buildSearch(services::Player::PlayerState* state, std::deque<ContentEnt
             } else if constexpr (std::is_same_v<T, music::PlaylistRef>) {
                 category = result.id;
                 top      = result.title;
-                bottom   = !result.author.empty() ? result.author : "unknown";
+                bottom   = result.author;
                 url      = result.thumbnail_small;
 
             } else if constexpr (std::is_same_v<T, music::PodcastRef>) {
@@ -112,7 +112,7 @@ void ui::buildSearch(services::Player::PlayerState* state, std::deque<ContentEnt
             } else if constexpr (std::is_same_v<T, music::EpisodeRef>) {
                 category = result.id;
                 top      = result.title;
-                bottom   = !result.podcast.name.empty() ? result.podcast.name : "unknown";
+                bottom   = result.podcast.name;
                 url      = result.thumbnail_small;
             }
         }, search_result.data);
