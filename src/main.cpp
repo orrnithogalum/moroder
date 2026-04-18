@@ -90,20 +90,26 @@ int main(int argc, char *argv[]) {
     std::deque<ui::ContentEntry> main_content_items;
     auto main_content = Container::Vertical({ Renderer([]{ return emptyElement(); }) });
 
-    auto layout = Container::Vertical({
-        Container::Horizontal({
-            sidebar,
-            Renderer([] {
-                return vbox({
-                    separator() | color(ui::GetColor(ui::MColor::SEPARATOR)),
-                    text(" ")
-                });
-            }),
-            Container::Vertical({
-                search_bar,
-                main_content
-            }),
+    auto sidebar_container = Container::Horizontal({
+        sidebar
+    });
+
+    auto main_content_container = Container::Horizontal({
+        sidebar_container,
+        Renderer([] {
+            return vbox({
+                separator() | color(ui::GetColor(ui::MColor::SEPARATOR)),
+                text(" ")
+            });
         }),
+        Container::Vertical({
+            search_bar,
+            main_content
+        }),
+    });
+
+    auto layout = Container::Vertical({
+        main_content_container,
         playback_bar
     });
 
@@ -220,9 +226,16 @@ int main(int argc, char *argv[]) {
         });
     });
 
-    ui = CatchEvent(ui, [&sidebar_hidden](Event event){
+    ui = CatchEvent(ui, [&sidebar_hidden, &sidebar, &sidebar_container](Event event){
         if(event == Event::s) {
             sidebar_hidden = !sidebar_hidden;
+
+            if(sidebar_hidden) {
+                sidebar->Detach();
+            } else {
+                sidebar_container->Add(sidebar);
+            }
+
             return true;
         }
 
