@@ -226,8 +226,8 @@ int main(int argc, char *argv[]) {
         });
     });
 
-    ui = CatchEvent(ui, [&sidebar_hidden, &sidebar, &sidebar_container](Event event){
-        if(event == Event::s) {
+    ui = CatchEvent(ui, [&search_bar, &sidebar_hidden, &sidebar, &sidebar_container](Event event){
+        if(event == Event::s && !search_bar->Focused()) {
             sidebar_hidden = !sidebar_hidden;
 
             if(sidebar_hidden) {

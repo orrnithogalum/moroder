@@ -12,12 +12,12 @@ namespace ui {
 struct CarouselData {
     std::string category_name;
 
+    std::vector<music::ApiResult> results;
     std::vector<std::string> entries_spoof;
     std::vector<ImageEntry> entries;
 
     bool is_loading = true;
 
-    music::ApiResult result;
 };
 
 void getCarouselData(services::Player::PlayerState* state, std::string category, CarouselData* data);

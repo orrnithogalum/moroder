@@ -60,7 +60,7 @@ void ui::getGridData(services::Player::PlayerState* state, std::string category,
             }
         }, r.data);
 
-        data->result = r;
+        data->results.push_back(r);
         data->entries.push_back({
             url,
             utils::trimSuffix(top, 30, "..."),
@@ -93,6 +93,7 @@ ftxui::Component ui::Grid(GridData* data, int* selected, bool* focused, int rows
         int c = index / rows;
 
         const auto& item = data->entries[index];
+        const auto& result = data->results[index];
 
         ButtonOption option;
         option.transform = [item, focused](const EntryState& state) {
@@ -119,8 +120,8 @@ ftxui::Component ui::Grid(GridData* data, int* selected, bool* focused, int rows
             }) | size(WIDTH, EQUAL, 40) | size(HEIGHT, EQUAL, 3);
         };
 
-        option.on_click = [item, focused]() {
-            spdlog::info("GRID: enter pressed on item, " + item.top + " " + item.bottom);
+        option.on_click = [item, result]() {
+            spdlog::info("GRID: enter pressed on item, " + item.top + " " + item.bottom + " " + result.resultType);
         };
 
         grid_components[r].push_back(Button(option));

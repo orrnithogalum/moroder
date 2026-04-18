@@ -153,8 +153,8 @@ void ui::buildSearch(services::Player::PlayerState* state, std::deque<ContentEnt
             });
         };
 
-        item.component = Button("", [&item] {
-            spdlog::info("SEARCH: clicked item ", item.category);
+        item.component = Button("", [result = search_result] {
+            spdlog::info("SEARCH: clicked item {}", result.resultType);
         }, opt);
 
         item.focused = false;

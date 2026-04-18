@@ -70,7 +70,7 @@ void ui::getCarouselData(services::Player::PlayerState* state, std::string categ
             }
         }, r.data);
 
-        data->result = r;
+        data->results.push_back(r);
         data->entries_spoof.push_back(url);
         data->entries.push_back({
             url,
@@ -124,7 +124,7 @@ ftxui::Component ui::Carousel(CarouselData* data, int* selected, bool* focused) 
     };
 
     options.on_enter = [data, selected] () {
-        spdlog::info("CAROUSEL: enter pressed on item, " + data->entries[*selected].top + " " + data->entries[*selected].bottom);
+        spdlog::info("CAROUSEL: enter pressed on item, " + data->entries[*selected].top + " " + data->entries[*selected].bottom + " " + data->results[*selected].resultType);
     };
 
     auto menu = Menu(&data->entries_spoof, selected, options);

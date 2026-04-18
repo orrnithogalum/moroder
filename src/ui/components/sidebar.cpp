@@ -2,6 +2,7 @@
 
 #include "../../../include/ui/constants/colors.hpp"
 #include "../../../include/ui/structs/entries.hpp"
+#include "spdlog/spdlog.h"
 
 #include <ftxui/component/component_options.hpp>
 #include <ftxui/component/component_base.hpp>
@@ -31,6 +32,7 @@ void ui::getSidebarData(services::Player::PlayerState* state, ui::SidebarData* d
     }
 
     for (auto& playlist : state->library_playlists) {
+        data->results.emplace_back(playlist);
         data->entries_spoof.emplace_back(playlist.ref.id);
         data->entries.emplace_back(ui::SimpleEntry{ playlist.ref.title, playlist.ref.author });
     }
@@ -86,6 +88,9 @@ Component ui::Sidebar(ui::SidebarData* data, int* selected, bool* focused) {
     options.on_enter = [data, selected] {
         if(data->entries_spoof[*selected] == "01") {
             data->onHome();
+
+        } else if (*selected > 2) {
+            spdlog::info("SIDEBAR: pressed enter on playlist, " + data->results[*selected].ref.title);
         }
     };
 

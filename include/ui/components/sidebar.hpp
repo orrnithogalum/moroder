@@ -12,6 +12,7 @@ namespace ui {
 struct SidebarData {
     std::vector<std::string> entries_spoof;
     std::vector<ui::SimpleEntry> entries;
+    std::vector<music::Playlist> results;
 
     bool is_loading = true;
 
