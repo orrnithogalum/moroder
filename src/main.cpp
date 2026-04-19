@@ -80,6 +80,8 @@ int main(int argc, char *argv[]) {
     auto playback_bar = ui::PlaybackBar(&playback_bar_data);
 
     player.setOnPositionTick([&screen, &playback_bar_data](uint64_t position, uint64_t duration) {
+        if (duration == 0) return;
+
         int progress = (position * 100) / duration;
         progress = std::clamp(progress, 0, 100);
 
@@ -245,7 +247,9 @@ int main(int argc, char *argv[]) {
 
                     hbox({
                         text(" "),
-                        main_content->Render() | yframe | yflex
+                        current_state != ui::State::QUEUE
+                            ? main_content->Render() | yframe | yflex
+                            : main_content->Render() | xflex
                     }) | yflex,
 
                     ((main_content_items.empty() || sidebar_data.is_loading) && state_copy.is_logged_in) ?

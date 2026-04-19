@@ -63,8 +63,8 @@ void ui::getGridData(services::Player::PlayerState* state, std::string category,
         data->results.push_back(r);
         data->entries.push_back({
             url,
-            utils::trimSuffix(top, 30, "..."),
-            utils::trimSuffix(bottom, 30, "...")
+            top,
+            bottom
         });
 
         data->entries_spoof.push_back(url);
@@ -109,11 +109,11 @@ ftxui::Component ui::Grid(GridData* data, int* selected, bool* focused, int rows
                 thumb,
                 text("  "),
                 vbox({
-                    text(item.top) | ((state.focused && *focused)
+                    text(utils::trimSuffix(item.top, 20, "...")) | ((state.focused && *focused)
                         ? color(ui::GetColor(ui::MColor::TEXT_TOP_PRIMARY)) | bold
                         : color(ui::GetColor(ui::MColor::TEXT_TOP_SECONDARY))),
 
-                    text(item.bottom) | ((state.focused && *focused)
+                    text(utils::trimSuffix(item.bottom, 20, "...")) | ((state.focused && *focused)
                         ? color(ui::GetColor(ui::MColor::TEXT_BOTTOM_PRIMARY))
                         : color(ui::GetColor(ui::MColor::TEXT_BOTTOM_SECONDARY))),
                 })

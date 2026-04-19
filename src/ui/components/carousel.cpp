@@ -74,8 +74,8 @@ void ui::getCarouselData(services::Player::PlayerState* state, std::string categ
         data->entries_spoof.push_back(url);
         data->entries.push_back({
             url,
-            utils::trimSuffix(top, 20, "..."),
-            utils::trimSuffix(bottom, 20, "...")
+            top,
+            bottom
         });
     }
 
@@ -114,8 +114,8 @@ ftxui::Component ui::Carousel(CarouselData* data, int* selected, bool* focused) 
                 hbox({
                     text(" "),
                     vbox({
-                        text(item.top) | (state.active && *focused ?  color(ui::GetColor(ui::MColor::TEXT_TOP_PRIMARY)) | bold : color(ui::GetColor(ui::MColor::TEXT_TOP_SECONDARY))),
-                        text(item.bottom) | (state.active && *focused ? color(ui::GetColor(ui::MColor::TEXT_BOTTOM_PRIMARY)) | bold : color(ui::GetColor(ui::MColor::TEXT_BOTTOM_SECONDARY))),
+                        text(utils::trimSuffix(item.top, 20, "...")) | (state.active && *focused ?  color(ui::GetColor(ui::MColor::TEXT_TOP_PRIMARY)) | bold : color(ui::GetColor(ui::MColor::TEXT_TOP_SECONDARY))),
+                        text(utils::trimSuffix(item.bottom, 20, "...")) | (state.active && *focused ? color(ui::GetColor(ui::MColor::TEXT_BOTTOM_PRIMARY)) | bold : color(ui::GetColor(ui::MColor::TEXT_BOTTOM_SECONDARY))),
                     }),
                 }),
             }),

@@ -3,6 +3,7 @@
 
 #include <ftxui/component/component.hpp>
 #include <ftxui/dom/elements.hpp>
+#include <ftxui/screen/color.hpp>
 #include <type_traits>
 
 #include "image_view.hpp"
@@ -180,14 +181,17 @@ void ui::buildQueue(services::Player::PlayerState* state, std::deque<ContentEntr
             row.top    = song->ref.title;
             row.bottom = !song->ref.artists.empty() ? song->ref.artists[0].name : "";
             row.url    = song->ref.thumbnail_small;
+
         } else if (auto ep = std::dynamic_pointer_cast<music::Episode>(item)) {
             row.id     = ep->ref.id;
             row.top    = ep->ref.title;
             row.bottom = ep->ref.podcast.name;
             row.url    = ep->ref.thumbnail_small;
+
         } else {
             continue;
         }
+
         incoming_rows.push_back(row);
     }
 
@@ -201,6 +205,7 @@ void ui::buildQueue(services::Player::PlayerState* state, std::deque<ContentEntr
                 row.top    = song->ref.title;
                 row.bottom = !song->ref.artists.empty() ? song->ref.artists[0].name : "";
                 row.url    = song->ref.thumbnail_small;
+
             } else if (auto ep = std::dynamic_pointer_cast<music::Episode>(item)) {
                 row.id     = ep->ref.id;
                 row.top    = ep->ref.title;
@@ -209,6 +214,7 @@ void ui::buildQueue(services::Player::PlayerState* state, std::deque<ContentEntr
             } else {
                 continue;
             }
+
             incoming_rows.push_back(row);
         }
     }
@@ -221,8 +227,18 @@ void ui::buildQueue(services::Player::PlayerState* state, std::deque<ContentEntr
     }
     if (same) return;
 
+    std::string thumbnail_url;
+    if (state->current) {
+        if (auto song = std::dynamic_pointer_cast<music::Song>(state->current))
+            thumbnail_url = song->ref.thumbnail_large;
+        else if (auto ep = std::dynamic_pointer_cast<music::Episode>(state->current))
+            thumbnail_url = ep->ref.thumbnail_large;
+    }
+
     main_content_items.clear();
     main_content->DetachAllChildren();
+
+    auto queue_container = Container::Vertical({});
 
     for (auto& row : incoming_rows) {
         main_content_items.push_back(ContentEntry{});
@@ -234,16 +250,20 @@ void ui::buildQueue(services::Player::PlayerState* state, std::deque<ContentEntr
 
         if (row.is_divider) {
             std::string label = row.divider_label;
+
             entry.component = Renderer([label] {
                 return vbox({
+                    text(" "),
                     text(" "),
                     text(label) | color(ui::GetColor(ui::MColor::TEXT_TOP_PRIMARY)),
                     separator() | color(ui::GetColor(ui::MColor::SEPARATOR_SECONDARY)),
                 });
             });
+
         } else {
             ButtonOption opt;
             opt.transform = [top_cap = row.top, bottom_cap = row.bottom, url_cap = row.url](const EntryState& s) {
+
                 Element thumb = url_cap.empty()
                     ? filler() | size(WIDTH, EQUAL, 4) | size(HEIGHT, EQUAL, 2)
                     : image_view(url_cap) | size(WIDTH, EQUAL, 4) | size(HEIGHT, EQUAL, 2);
@@ -252,10 +272,11 @@ void ui::buildQueue(services::Player::PlayerState* state, std::deque<ContentEntr
                     thumb,
                     text("  "),
                     vbox({
-                        text(top_cap) | (s.focused
+                        text(utils::trimSuffix(top_cap, 20, "...")) | (s.focused
                             ? color(ui::GetColor(ui::MColor::TEXT_TOP_PRIMARY)) | bold
                             : color(ui::GetColor(ui::MColor::TEXT_TOP_SECONDARY))),
-                        text(bottom_cap) | (s.focused
+
+                        text(utils::trimSuffix(bottom_cap, 20, "...")) | (s.focused
                             ? color(ui::GetColor(ui::MColor::TEXT_BOTTOM_PRIMARY))
                             : color(ui::GetColor(ui::MColor::TEXT_BOTTOM_SECONDARY))),
                     }) | flex,
@@ -272,8 +293,25 @@ void ui::buildQueue(services::Player::PlayerState* state, std::deque<ContentEntr
             }, opt);
         }
 
-        main_content->Add(entry.component);
+        queue_container->Add(entry.component);
     }
+
+    auto queue_wrapper = Renderer(queue_container, [thumbnail_url, queue_container] {
+        return hbox({
+            filler(),
+            vbox({
+                filler(),
+                image_view(thumbnail_url) | size(WIDTH, EQUAL, 60) | size(HEIGHT, EQUAL, 30),
+                filler()
+            }),
+            filler(),
+            vbox({
+                queue_container->Render() | yframe | yflex,
+            }) | yflex,
+        }) | yflex;
+    });
+
+    main_content->Add(queue_wrapper);
 
     for (auto& entry : main_content_items) {
         entry.focused = entry.component->Focused();
