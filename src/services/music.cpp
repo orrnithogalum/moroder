@@ -146,7 +146,7 @@ services::Music::~Music() {
         if (WIFEXITED(status)) {
             spdlog::info("PYTHON: exited with code {}", WEXITSTATUS(status));
         } else if (WIFSIGNALED(status)) {
-            spdlog::warn("PYTHON: killed by signal {}", WTERMSIG(status));
+            spdlog::info("PYTHON: killed by signal {}", WTERMSIG(status));
         }
     }
 
@@ -214,7 +214,11 @@ template <typename Request, typename Response> Response services::Music::sendStr
                 auto j = nlohmann::json::parse(line);
 
                 // Useful for debug but pollutes log
-                // spdlog::info(j.dump(4));
+                spdlog::info(j.dump(4));
+
+                if (j.contains("data") && j["data"].is_null()) {
+                    break;
+                }
 
                 std::string type = j["type"].get<std::string>();
 

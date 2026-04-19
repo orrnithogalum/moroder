@@ -54,12 +54,15 @@ struct ApiResult {
 
         } else if (res.resultType.empty() && j.contains("subscribers")) {
             res.resultType = "artist";
+
+        } else if (res.resultType.empty() && j.contains("podcastId")) {
+            res.resultType = "podcast";
         }
 
         res.category = utils::lower(res.category);
         res.resultType = utils::lower(res.resultType);
 
-        if (res.resultType == "song" || res.resultType == "video") {
+        if (res.resultType == "song" || res.resultType == "video" || res.resultType == "single") {
             spdlog::info("APIRESULT: parsing a song / video");
             res.data = music::SongRef::from_json(j);
 
