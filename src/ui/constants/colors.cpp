@@ -16,7 +16,9 @@ ftxui::Color GetColor(MColor id) {
         case MColor::TEXT_TOP_SECONDARY:    return Color::RGB(170, 170, 170);
         case MColor::TEXT_BOTTOM_PRIMARY:   return Color::RGB(170, 170, 170);
         case MColor::TEXT_BOTTOM_SECONDARY: return Color::RGB( 70,  70,  70);
-        case MColor::SEPARATOR:             return Color::RGB(100, 100, 100);
+
+        case MColor::SEPARATOR_PRIMARY:     return Color::RGB(100, 100, 100);
+        case MColor::SEPARATOR_SECONDARY:   return Color::RGB( 50,  50,  50);
 
         case MColor::SUCESS:                return Color::Green1;
         case MColor::ERROR:                 return Color::Red1;

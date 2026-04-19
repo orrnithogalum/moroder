@@ -98,7 +98,7 @@ int main(int argc, char *argv[]) {
         sidebar_container,
         Renderer([] {
             return vbox({
-                separator() | color(ui::GetColor(ui::MColor::SEPARATOR)),
+                separator() | color(ui::GetColor(ui::MColor::SEPARATOR_PRIMARY)),
                 text(" ")
             });
         }),
@@ -127,9 +127,37 @@ int main(int argc, char *argv[]) {
 
     search_bar_data.onSearch = [&current_state, &player, &main_content_items, &main_content, &screen](const std::string& value) {
         spdlog::info("SEARCHBAR: enter pressed with value, " + value);
-        current_state = ui::State::SEARCH;
+        current_state = ui::State::QUEUE;
 
-        player.search(value);
+        // player.search(value);
+
+
+
+
+
+        music::Song song2;
+        music::SongRef song2ref;
+
+        music::ArtistRef artist2ref;
+        artist2ref.id = "UCGz-eguN8tcic5kUG4s1ZgA";
+        artist2ref.name = "Tame Impala";
+
+        song2ref.id = "NMRhx71bGo4";
+        song2ref.title = "Let It Happen";
+        song2ref.thumbnail_small = "https://lh3.googleusercontent.com/J67cuSWAzGMlj8d9orcAZjPHsl8RWcXIXkT1d8mGmx9jmXPvXkYpFzuLnucmaqJwVMqxPlSq1GbqPeQy";
+        song2ref.thumbnail_large = "https://lh3.googleusercontent.com/J67cuSWAzGMlj8d9orcAZjPHsl8RWcXIXkT1d8mGmx9jmXPvXkYpFzuLnucmaqJwVMqxPlSq1GbqPeQy";
+        song2ref.artists.push_back(artist2ref);
+
+        song2.setRef(song2ref);
+        std::shared_ptr<music::IStreamable> streamable2;
+        streamable2 = std::make_shared<music::Song>(song2);
+
+        player.queue(streamable2, true, true);
+
+
+
+
+
 
         main_content_items.clear();
         main_content->DetachAllChildren();
@@ -149,6 +177,16 @@ int main(int argc, char *argv[]) {
             if (player.state.current) {
                 state_copy.current = player.state.current->clone();
             }
+
+            state_copy.user_queue.clear();
+            for (auto& item : player.state.user_queue) {
+                state_copy.user_queue.push_back(item->clone());
+            }
+
+            state_copy.radio_queue.clear();
+            for (auto& item : player.state.radio_queue) {
+                state_copy.radio_queue.push_back(item->clone());
+            }
         }
 
         spinner_frame++;
@@ -160,6 +198,9 @@ int main(int argc, char *argv[]) {
 
         } else if(current_state == ui::State::SEARCH && state_copy.loading["search"] == services::Player::LoadingState::Done) {
             ui::buildSearch(&state_copy, main_content_items, main_content);
+
+        } else if(current_state == ui::State::QUEUE) {
+            ui::buildQueue(&state_copy, main_content_items, main_content);
         }
 
         return vbox({
@@ -183,7 +224,7 @@ int main(int argc, char *argv[]) {
                 !sidebar_hidden
                     ? hbox({
                         text(" "),
-                        separator() | color(ui::GetColor(ui::MColor::SEPARATOR)),
+                        separator() | color(ui::GetColor(ui::MColor::SEPARATOR_PRIMARY)),
                         text(" "),
                     })
                     : emptyElement(),
@@ -200,7 +241,7 @@ int main(int argc, char *argv[]) {
                         }) | align_right
                     }),
 
-                    separator() | color(ui::GetColor(ui::MColor::SEPARATOR)),
+                    separator() | color(ui::GetColor(ui::MColor::SEPARATOR_PRIMARY)),
 
                     hbox({
                         text(" "),

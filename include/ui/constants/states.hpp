@@ -7,5 +7,6 @@ namespace ui {
 enum class State {
     HOME,
     SEARCH,
+    QUEUE
 };
 }

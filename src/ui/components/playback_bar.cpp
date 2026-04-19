@@ -46,7 +46,7 @@ Component ui::PlaybackBar(PlaybackData* data) {
             } else {
                 progress_line.push_back(
                     text(bar_char) |
-                    color(ui::GetColor(ui::MColor::SEPARATOR))
+                    color(ui::GetColor(ui::MColor::SEPARATOR_PRIMARY))
                 );
             }
         }

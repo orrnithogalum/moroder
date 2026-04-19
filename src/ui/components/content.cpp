@@ -165,3 +165,117 @@ void ui::buildSearch(services::Player::PlayerState* state, std::deque<ContentEnt
         item.focused = item.component->Focused();
     }
 }
+
+void ui::buildQueue(services::Player::PlayerState* state, std::deque<ContentEntry>& main_content_items, ftxui::Component main_content) {
+    std::deque<ui::QueueEntry> incoming_rows;
+
+    if (!state->user_queue.empty()) {
+        incoming_rows.push_back({ "__divider_user__", "", "", "", true, "Next in queue" });
+    }
+
+    for (auto& item : state->user_queue) {
+        QueueEntry row;
+        if (auto song = std::dynamic_pointer_cast<music::Song>(item)) {
+            row.id     = song->ref.id;
+            row.top    = song->ref.title;
+            row.bottom = !song->ref.artists.empty() ? song->ref.artists[0].name : "";
+            row.url    = song->ref.thumbnail_small;
+        } else if (auto ep = std::dynamic_pointer_cast<music::Episode>(item)) {
+            row.id     = ep->ref.id;
+            row.top    = ep->ref.title;
+            row.bottom = ep->ref.podcast.name;
+            row.url    = ep->ref.thumbnail_small;
+        } else {
+            continue;
+        }
+        incoming_rows.push_back(row);
+    }
+
+    if (state->autoplay && !state->radio_queue.empty()) {
+        incoming_rows.push_back({ "__divider_radio__", "", "", "", true, "Autoplay is on" });
+
+        for (auto& item : state->radio_queue) {
+            QueueEntry row;
+            if (auto song = std::dynamic_pointer_cast<music::Song>(item)) {
+                row.id     = song->ref.id;
+                row.top    = song->ref.title;
+                row.bottom = !song->ref.artists.empty() ? song->ref.artists[0].name : "";
+                row.url    = song->ref.thumbnail_small;
+            } else if (auto ep = std::dynamic_pointer_cast<music::Episode>(item)) {
+                row.id     = ep->ref.id;
+                row.top    = ep->ref.title;
+                row.bottom = ep->ref.podcast.name;
+                row.url    = ep->ref.thumbnail_small;
+            } else {
+                continue;
+            }
+            incoming_rows.push_back(row);
+        }
+    }
+
+    bool same = (main_content_items.size() == incoming_rows.size());
+    if (same) {
+        for (size_t i = 0; i < main_content_items.size(); i++) {
+            if (main_content_items[i].category != incoming_rows[i].id) { same = false; break; }
+        }
+    }
+    if (same) return;
+
+    main_content_items.clear();
+    main_content->DetachAllChildren();
+
+    for (auto& row : incoming_rows) {
+        main_content_items.push_back(ContentEntry{});
+        ContentEntry& entry = main_content_items.back();
+
+        entry.category = row.id;
+        entry.selected = -1;
+        entry.focused  = false;
+
+        if (row.is_divider) {
+            std::string label = row.divider_label;
+            entry.component = Renderer([label] {
+                return vbox({
+                    text(" "),
+                    text(label) | color(ui::GetColor(ui::MColor::TEXT_TOP_PRIMARY)),
+                    separator() | color(ui::GetColor(ui::MColor::SEPARATOR_SECONDARY)),
+                });
+            });
+        } else {
+            ButtonOption opt;
+            opt.transform = [top_cap = row.top, bottom_cap = row.bottom, url_cap = row.url](const EntryState& s) {
+                Element thumb = url_cap.empty()
+                    ? filler() | size(WIDTH, EQUAL, 4) | size(HEIGHT, EQUAL, 2)
+                    : image_view(url_cap) | size(WIDTH, EQUAL, 4) | size(HEIGHT, EQUAL, 2);
+
+                auto row_el = hbox({
+                    thumb,
+                    text("  "),
+                    vbox({
+                        text(top_cap) | (s.focused
+                            ? color(ui::GetColor(ui::MColor::TEXT_TOP_PRIMARY)) | bold
+                            : color(ui::GetColor(ui::MColor::TEXT_TOP_SECONDARY))),
+                        text(bottom_cap) | (s.focused
+                            ? color(ui::GetColor(ui::MColor::TEXT_BOTTOM_PRIMARY))
+                            : color(ui::GetColor(ui::MColor::TEXT_BOTTOM_SECONDARY))),
+                    }) | flex,
+                }) | size(HEIGHT, EQUAL, 2);
+
+                return vbox({
+                    text(" "),
+                    row_el
+                });
+            };
+
+            entry.component = Button("", [] {
+                spdlog::info("QUEUE: clicked item");
+            }, opt);
+        }
+
+        main_content->Add(entry.component);
+    }
+
+    for (auto& entry : main_content_items) {
+        entry.focused = entry.component->Focused();
+    }
+}

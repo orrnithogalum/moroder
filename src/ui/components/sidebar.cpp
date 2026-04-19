@@ -53,7 +53,7 @@ Component ui::Sidebar(ui::SidebarData* data, int* selected, bool* focused) {
 
         if(entry_state.index == 2) {
             return vbox({
-                separator() | color(ui::GetColor(ui::MColor::SEPARATOR)),
+                separator() | color(ui::GetColor(ui::MColor::SEPARATOR_PRIMARY)),
                 hbox({
                     text("  "),
                     vbox({

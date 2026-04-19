@@ -18,7 +18,17 @@ struct ContentEntry {
     music::ApiResult result;
 };
 
+struct QueueEntry {
+    std::string id;
+    std::string top;
+    std::string bottom;
+    std::string url;
+    bool is_divider = false;
+    std::string divider_label;
+};
+
 void buildHome(services::Player::PlayerState* state, std::deque<ContentEntry>& items, ftxui::Component main_container);
 void buildSearch(services::Player::PlayerState* state, std::deque<ContentEntry>& items, ftxui::Component main_container);
+void buildQueue(services::Player::PlayerState* state, std::deque<ContentEntry>& items, ftxui::Component main_container);
 
 }
