@@ -113,9 +113,15 @@ public:
     void removeFromUserQueue(uint16_t);
     void removeFromRadioQueue(uint16_t);
 
-    using RequestCompletedCallback = std::function<void()>;
+    void setOnStreamStart(std::function<void()> cb) {
+        on_stream_start = std::move(cb);
+    }
 
-    void setOnRequestCompletedCallback(RequestCompletedCallback cb) {
+    void setOnStreamEnd(std::function<void()> cb) {
+        on_stream_end = std::move(cb);
+    }
+
+    void setOnRequestCompletedCallback(std::function<void()> cb) {
         on_request_completed = std::move(cb);
     }
 
@@ -153,15 +159,7 @@ private:
 
     std::thread worker_thread;
 
-    RequestCompletedCallback on_request_completed;
-
     bool running = true;
-
-    void notifyRequestCompleted() {
-        if (on_request_completed) {
-            on_request_completed();
-        }
-    }
 
     void worker_loop();
 
@@ -178,6 +176,10 @@ private:
 
     void resetMprisData();
 
+    std::function<void()> on_stream_start;
+    std::function<void()> on_stream_end;
+
+    std::function<void()> on_request_completed;
     std::function<void(uint64_t position, uint64_t duration)> on_position_tick;
 
     std::thread position_tick_thread;

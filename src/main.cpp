@@ -67,6 +67,7 @@ int main(int argc, char *argv[]) {
 
     bool sidebar_hidden  = false;
     bool sidebar_focused = false;
+    bool audio_playing   = false;
 
     auto current_state = ui::State::HOME;
 
@@ -80,12 +81,26 @@ int main(int argc, char *argv[]) {
     auto playback_bar = ui::PlaybackBar(&playback_bar_data);
 
     player.setOnPositionTick([&screen, &playback_bar_data](uint64_t position, uint64_t duration) {
-        if (duration == 0) return;
+        // Remove two seconds to account for UI refresh period
+        // This is just a fix so that the UI progress bar actually reaches song end
+        duration -= 2000000ULL;
+
+        if (duration <= 0) return;
 
         int progress = (position * 100) / duration;
         progress = std::clamp(progress, 0, 100);
 
         playback_bar_data.progress = progress;
+        screen.PostEvent(Event::Custom);
+    });
+
+    player.setOnStreamStart([&screen, &playback_bar_data] {
+        playback_bar_data.progress = 0;
+        screen.PostEvent(Event::Custom);
+    });
+
+    player.setOnStreamEnd([&screen, &playback_bar_data] {
+        playback_bar_data.progress = 0;
         screen.PostEvent(Event::Custom);
     });
 
@@ -129,43 +144,61 @@ int main(int argc, char *argv[]) {
 
     search_bar_data.onSearch = [&current_state, &player, &main_content_items, &main_content, &screen](const std::string& value) {
         spdlog::info("SEARCHBAR: enter pressed with value, " + value);
-        current_state = ui::State::QUEUE;
+        current_state = ui::State::SEARCH;
 
-        // player.search(value);
-
-
-
-
-
-        music::Song song2;
-        music::SongRef song2ref;
-
-        music::ArtistRef artist2ref;
-        artist2ref.id = "UCGz-eguN8tcic5kUG4s1ZgA";
-        artist2ref.name = "Tame Impala";
-
-        song2ref.id = "NMRhx71bGo4";
-        song2ref.title = "Let It Happen";
-        song2ref.thumbnail_small = "https://lh3.googleusercontent.com/J67cuSWAzGMlj8d9orcAZjPHsl8RWcXIXkT1d8mGmx9jmXPvXkYpFzuLnucmaqJwVMqxPlSq1GbqPeQy";
-        song2ref.thumbnail_large = "https://lh3.googleusercontent.com/J67cuSWAzGMlj8d9orcAZjPHsl8RWcXIXkT1d8mGmx9jmXPvXkYpFzuLnucmaqJwVMqxPlSq1GbqPeQy";
-        song2ref.artists.push_back(artist2ref);
-
-        song2.setRef(song2ref);
-        std::shared_ptr<music::IStreamable> streamable2;
-        streamable2 = std::make_shared<music::Song>(song2);
-
-        player.queue(streamable2, true, true);
-
-
-
-
-
+        player.search(value);
 
         main_content_items.clear();
         main_content->DetachAllChildren();
         main_content->Add(Renderer([] { return emptyElement(); }));
 
         screen.PostEvent(Event::Custom);
+    };
+
+    std::function<bool(const ftxui::Event&, const music::ApiResult&)> on_item_press = [&current_state, &player, &main_content_items, &main_content, &screen](const ftxui::Event& event, const music::ApiResult& result) {
+        if(event != Event::q && event != Event::Return) {
+            return false;
+        }
+
+        spdlog::info("SEARCH: enter pressed on result, " + result.resultType);
+        bool sould_queue = event == Event::q;
+
+        std::visit([&](auto&& data) {
+            using T = std::decay_t<decltype(data)>;
+
+            auto make_streamable = [&](auto&& obj) {
+                obj.setRef(data);
+                return std::make_shared<std::decay_t<decltype(obj)>>(std::move(obj));
+            };
+
+            if constexpr (std::is_same_v<T, music::SongRef>) {
+                auto streamable = make_streamable(music::Song{});
+                player.queue(streamable, !sould_queue, !sould_queue);
+
+            } else if constexpr (std::is_same_v<T, music::AlbumRef>) {
+                auto container = make_streamable(music::Album{});
+                player.queue(container, !sould_queue, !sould_queue);
+
+            } else if constexpr (std::is_same_v<T, music::EpisodeRef>) {
+                auto streamable = make_streamable(music::Episode{});
+                player.queue(streamable, !sould_queue, !sould_queue);
+
+            } else if constexpr (std::is_same_v<T, music::PlaylistRef>) {
+                auto container = make_streamable(music::Playlist{});
+                player.queue(container, !sould_queue, !sould_queue);
+            }
+
+        }, result.data);
+
+        current_state = ui::State::QUEUE;
+
+        main_content_items.clear();
+        main_content->DetachAllChildren();
+        main_content->Add(Renderer([] { return emptyElement(); }));
+
+        screen.PostEvent(Event::Custom);
+
+        return true;
     };
 
     auto ui = Renderer(layout, [&] {
@@ -189,6 +222,8 @@ int main(int argc, char *argv[]) {
             for (auto& item : player.state.radio_queue) {
                 state_copy.radio_queue.push_back(item->clone());
             }
+
+            audio_playing = state_copy.loading["audio"] == services::Player::LoadingState::Loading;
         }
 
         spinner_frame++;
@@ -199,7 +234,7 @@ int main(int argc, char *argv[]) {
             ui::buildHome(&state_copy, main_content_items, main_content);
 
         } else if(current_state == ui::State::SEARCH && state_copy.loading["search"] == services::Player::LoadingState::Done) {
-            ui::buildSearch(&state_copy, main_content_items, main_content);
+            ui::buildSearch(&state_copy, main_content_items, main_content, on_item_press);
 
         } else if(current_state == ui::State::QUEUE) {
             ui::buildQueue(&state_copy, main_content_items, main_content);
@@ -271,8 +306,12 @@ int main(int argc, char *argv[]) {
         });
     });
 
-    ui = CatchEvent(ui, [&search_bar, &sidebar_hidden, &sidebar, &sidebar_container](Event event){
-        if(event == Event::s && !search_bar->Focused()) {
+    ui = CatchEvent(ui, [&search_bar, &sidebar_hidden, &sidebar, &sidebar_container, &audio_playing, &current_state](Event event){
+        if(search_bar->Focused()) {
+            return false;
+        }
+
+        if(event == Event::s) {
             sidebar_hidden = !sidebar_hidden;
 
             if(sidebar_hidden) {
@@ -282,6 +321,10 @@ int main(int argc, char *argv[]) {
             }
 
             return true;
+        }
+
+        if(event == Event::a && audio_playing) {
+            current_state = ui::State::QUEUE;
         }
 
         return false;

@@ -2,6 +2,7 @@
 #include "../../../include/ui/constants/colors.hpp"
 
 #include <ftxui/component/component.hpp>
+#include <ftxui/component/event.hpp>
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/screen/color.hpp>
 #include <type_traits>
@@ -47,7 +48,7 @@ void ui::buildHome(services::Player::PlayerState* state, std::deque<ContentEntry
     }
 }
 
-void ui::buildSearch(services::Player::PlayerState* state, std::deque<ContentEntry>& main_content_items, ftxui::Component main_content) {
+void ui::buildSearch(services::Player::PlayerState* state, std::deque<ContentEntry>& main_content_items, ftxui::Component main_content, std::function<bool(const ftxui::Event&, const music::ApiResult&)> on_search_result_press) {
     std::vector<std::string> incoming_categories;
 
     for (auto& search_result : state->search_results) {
@@ -154,9 +155,11 @@ void ui::buildSearch(services::Player::PlayerState* state, std::deque<ContentEnt
             });
         };
 
-        item.component = Button("", [result = search_result] {
-            spdlog::info("SEARCH: clicked item {}", result.resultType);
-        }, opt);
+        auto button = Button("", [] {}, opt);
+
+        item.component = CatchEvent(button, [on_search_result_press, result = search_result](ftxui::Event event) {
+            return on_search_result_press(event, result);
+        });
 
         item.focused = false;
         main_content->Add(item.component);

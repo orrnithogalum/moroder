@@ -157,6 +157,10 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
         this->updateMprisData();
         this->updateSocialData();
         this->startPositionTick();
+
+        if (on_stream_start) {
+            on_stream_start();
+        };
     });
 
     mpv_service->setOnStreamEnd([this] {
@@ -238,6 +242,10 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
         } else {
             this->resetMprisData();
         }
+
+        if (on_stream_end) {
+            on_stream_end();
+        };
     });
 
     mpv_service->setOnStreamError([this] {
@@ -611,7 +619,9 @@ void services::Player::worker_loop() {
 
         }, cmd);
 
-        notifyRequestCompleted();
+        if (on_request_completed) {
+            on_request_completed();
+        };
     }
 }
 
