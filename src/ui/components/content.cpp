@@ -309,7 +309,7 @@ void ui::buildQueue(services::Player::PlayerState* state, std::deque<ContentEntr
             }),
             filler(),
             vbox({
-                queue_container->Render() | yframe | yflex,
+                queue_container->Render() | yframe | yflex | size(WIDTH, ftxui::GREATER_THAN, 30),
             }) | yflex,
         }) | yflex;
     });
