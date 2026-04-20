@@ -9,7 +9,7 @@
 using namespace ftxui;
 
 void ui::getPlaybackData(services::Player::PlayerState* state, PlaybackData* data, int dimx) {
-    data->is_playing = state->loading["audio"] == services::Player::LoadingState::Loading;
+    data->is_playing = state->loading["audio"] == services::Player::LoadingState::Ongoing;
     data->dimx = dimx;
 
     if (auto song_ptr = std::dynamic_pointer_cast<music::Song>(state->current)) {

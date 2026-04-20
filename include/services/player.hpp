@@ -66,7 +66,7 @@ public:
     - Shared player state between all threads
     */
     enum class LoadingState {
-        Loading,
+        Ongoing,
         Done,
     };
 

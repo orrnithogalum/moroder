@@ -223,10 +223,11 @@ int main(int argc, char *argv[]) {
                 state_copy.radio_queue.push_back(item->clone());
             }
 
-            audio_playing = state_copy.loading["audio"] == services::Player::LoadingState::Loading;
+            audio_playing = state_copy.loading["audio"] == services::Player::LoadingState::Ongoing;
         }
 
         spinner_frame++;
+
         ui::getSidebarData(&state_copy, &sidebar_data);
         ui::getPlaybackData(&state_copy, &playback_bar_data, screen.dimx());
 
@@ -300,7 +301,8 @@ int main(int argc, char *argv[]) {
                 }) | flex
             }) | flex,
 
-            playback_bar_data.is_playing
+            (playback_bar_data.is_playing  && state_copy.loading["paused"] == services::Player::LoadingState::Ongoing) ||
+            (!playback_bar_data.is_playing && state_copy.loading["paused"] == services::Player::LoadingState::Done)
                 ? playback_bar->Render()
                 : emptyElement()
         });
