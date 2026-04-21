@@ -32,8 +32,8 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
 
     {
         std::lock_guard lock(state_mutex);
-        state.loading["audio"] = LoadingState::Done;
-        state.loading["search"] = LoadingState::Done;
+        state.flags["audio"] = Flags::Done;
+        state.flags["search"] = Flags::Done;
     }
 
     mpris_service->setHumanName(app_name_human);
@@ -42,8 +42,8 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
     mpris_service->onPause([&] {
         {
             std::lock_guard lock(state_mutex);
-            state.loading["audio"] = LoadingState::Done;
-            state.loading["paused"] = LoadingState::Done;
+            state.flags["audio"] = Flags::Done;
+            state.flags["paused"] = Flags::True;
         }
 
         mpv_service->pause();
@@ -59,13 +59,13 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
         {
             std::lock_guard lock(state_mutex);
 
-            if(state.loading["audio"] == LoadingState::Ongoing) {
-                state.loading["audio"] = LoadingState::Done;
-                state.loading["paused"] = LoadingState::Done;
+            if(state.flags["audio"] == Flags::Ongoing) {
+                state.flags["audio"] = Flags::Done;
+                state.flags["paused"] = Flags::True;
                 is_playing = false;
             } else {
-                state.loading["audio"] = LoadingState::Ongoing;
-                state.loading["paused"] = LoadingState::Ongoing;
+                state.flags["audio"] = Flags::Ongoing;
+                state.flags["paused"] = Flags::False;
                 is_playing = true;
             }
         }
@@ -86,7 +86,7 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
 
         {
             std::lock_guard lock(state_mutex);
-            state.loading["audio"] = LoadingState::Done;
+            state.flags["audio"] = Flags::Done;
         }
 
         mpv_service->stop();
@@ -98,8 +98,8 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
     mpris_service->onPlay([&] {
         {
             std::lock_guard lock(state_mutex);
-            state.loading["audio"] = LoadingState::Ongoing;
-            state.loading["paused"] = LoadingState::Ongoing;
+            state.flags["audio"] = Flags::Ongoing;
+            state.flags["paused"] = Flags::False;
         }
 
         mpv_service->resume();
@@ -153,7 +153,8 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
         {
             std::lock_guard lock(state_mutex);
             state.current->setDuration(song_duration);
-            state.loading["audio"] = LoadingState::Ongoing;
+            state.flags["audio"] = Flags::Ongoing;
+            state.flags["paused"] = Flags::False;
         }
 
         mpris_service->setPlaybackStatus(services::PlaybackStatus::Playing);
@@ -182,7 +183,7 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
         {
             std::lock_guard lock(state_mutex);
 
-            state.loading["audio"] = LoadingState::Done;
+            state.flags["audio"] = Flags::Done;
 
             /* Since we use mpv playlist feature for buffering, we need to increment queue position no matter what.
             - This means that queue position can be equal or greater than the queue size
@@ -302,7 +303,7 @@ void services::Player::worker_loop() {
 
                 {
                     std::lock_guard lock(state_mutex);
-                    state.loading["search"] = LoadingState::Ongoing;
+                    state.flags["search"] = Flags::Ongoing;
                     state.search_results.clear();
                 }
 
@@ -310,7 +311,7 @@ void services::Player::worker_loop() {
 
                 {
                     std::lock_guard lock(state_mutex);
-                    state.loading["search"] = LoadingState::Done;
+                    state.flags["search"] = Flags::Done;
                     state.search_results = res;
                 }
             }
@@ -328,7 +329,7 @@ void services::Player::worker_loop() {
 
                 {
                     std::lock_guard lock(state_mutex);
-                    should_queue = state.loading["audio"] == LoadingState::Ongoing;
+                    should_queue = state.flags["audio"] == Flags::Ongoing;
                     is_queue_empty = state.user_queue.empty() && state.radio_queue.empty();
                 }
 
@@ -395,7 +396,7 @@ void services::Player::worker_loop() {
 
                     if(!should_queue && !c.queue_in_radio) {
                         state.queue_position = state.user_queue.size() - 1;
-                        state.loading["audio"] = LoadingState::Ongoing;
+                        state.flags["audio"] = Flags::Ongoing;
                         state.current = state.user_queue.back();
                     }
                 }
@@ -581,7 +582,7 @@ void services::Player::worker_loop() {
 
                 {
                     std::lock_guard lock(state_mutex);
-                    state.loading["home"] = LoadingState::Ongoing;
+                    state.flags["home"] = Flags::Ongoing;
                     state.home.clear();
                 }
 
@@ -589,7 +590,7 @@ void services::Player::worker_loop() {
 
                 {
                     std::lock_guard lock(state_mutex);
-                    state.loading["home"] = LoadingState::Done;
+                    state.flags["home"] = Flags::Done;
                     state.home = user_home;
                 }
 
@@ -598,7 +599,7 @@ void services::Player::worker_loop() {
 
                 {
                     std::lock_guard lock(state_mutex);
-                    state.loading["library_playlists"] = LoadingState::Ongoing;
+                    state.flags["library_playlists"] = Flags::Ongoing;
                     state.library_playlists.clear();
                 }
 
@@ -606,7 +607,7 @@ void services::Player::worker_loop() {
 
                 {
                     std::lock_guard lock(state_mutex);
-                    state.loading["library_playlists"] = LoadingState::Done;
+                    state.flags["library_playlists"] = Flags::Done;
                     state.library_playlists = user_playlists;
                 }
 
@@ -724,7 +725,7 @@ void services::Player::skipForward() {
     {
         std::lock_guard lock(state_mutex);
         if (state.queue_position + 1 >= state.user_queue.size() && state.radio_queue.empty()) {
-            state.loading["audio"] = LoadingState::Done;
+            state.flags["audio"] = Flags::Done;
             should_skip = false;
 
             spdlog::warn("PLAYER: tried to skip to next song, but queue is done");
@@ -779,7 +780,7 @@ void services::Player::skipBackward() {
         std::lock_guard lock(state_mutex);
 
         if (state.queue_position == 0 || state.user_queue.empty()) {
-            state.loading["audio"] = LoadingState::Done;
+            state.flags["audio"] = Flags::Done;
             should_skip = false;
 
             spdlog::warn("PLAYER: tried to skip to previous song, but already at start of queue.");
@@ -808,6 +809,9 @@ void services::Player::updateMprisControls() {
         mpris_service->setIsNextPossible((state.queue_position + 1 < state.user_queue.size()) || (!state.radio_queue.empty()));
         mpris_service->setIsPreviousPossible(state.queue_position > 0 && state.user_queue.size() > 1);
         mpris_service->updatePlayerControls();
+
+        state.flags["can_skip_forwards"] = (state.queue_position + 1 < state.user_queue.size()) || (!state.radio_queue.empty()) ? Flags::True : Flags::False;
+        state.flags["can_skip_backwards"] = (state.queue_position > 0 && state.user_queue.size() > 1) ? Flags::True : Flags::False;
     }
 }
 

@@ -65,9 +65,12 @@ public:
     /* PlayerState
     - Shared player state between all threads
     */
-    enum class LoadingState {
+    enum class Flags {
         Ongoing,
         Done,
+
+        True,
+        False
     };
 
     struct PlayerState {
@@ -82,7 +85,7 @@ public:
         std::vector<music::Playlist> library_playlists;
         std::vector<music::ApiResult> search_results;
 
-        std::unordered_map<std::string, LoadingState> loading;
+        std::unordered_map<std::string, Flags> flags;
 
         bool is_logged_in = false;
         bool autoplay = true;

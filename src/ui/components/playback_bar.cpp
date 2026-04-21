@@ -9,7 +9,9 @@
 using namespace ftxui;
 
 void ui::getPlaybackData(services::Player::PlayerState* state, PlaybackData* data, int dimx) {
-    data->is_playing = state->loading["audio"] == services::Player::LoadingState::Ongoing;
+    data->is_playing = state->flags["audio"] == services::Player::Flags::Ongoing;
+    data->can_skip_forwards  = state->flags["can_skip_forwards"]  == services::Player::Flags::True;
+    data->can_skip_backwards = state->flags["can_skip_backwards"] == services::Player::Flags::True;
     data->dimx = dimx;
 
     if (auto song_ptr = std::dynamic_pointer_cast<music::Song>(state->current)) {
@@ -51,7 +53,15 @@ Component ui::PlaybackBar(PlaybackData* data) {
             }
         }
 
-        Element left_controls = text(data->is_playing ? "      " : "      ") | color(ui::GetColor(ui::MColor::TEXT_TOP_PRIMARY));
+        Element left_controls = hbox({
+            text("  "),
+            text("") | ((data->can_skip_backwards) ? color(ui::GetColor(ui::MColor::TEXT_TOP_PRIMARY)) : color(ui::GetColor(ui::MColor::TEXT_BOTTOM_SECONDARY))),
+            text("  "),
+            text(data->is_playing ? "" : ""),
+            text("  "),
+            text("") | ((data->can_skip_forwards)  ? color(ui::GetColor(ui::MColor::TEXT_TOP_PRIMARY)) : color(ui::GetColor(ui::MColor::TEXT_BOTTOM_SECONDARY)))
+        });
+
         Element track_info;
 
         if (data->image_url.empty()) {
@@ -68,7 +78,7 @@ Component ui::PlaybackBar(PlaybackData* data) {
 
                 text("  "),
 
-                text(data->title)  | color(ui::GetColor(ui::MColor::TEXT_TOP_PRIMARY)),
+                text(utils::trimSuffix(data->title, 50, "..."))  | color(ui::GetColor(ui::MColor::TEXT_TOP_PRIMARY)),
                 text(" - ") | color(ui::GetColor(ui::MColor::TEXT_BOTTOM_SECONDARY)),
                 text(data->artist) | color(ui::GetColor(ui::MColor::TEXT_TOP_SECONDARY)),
             });

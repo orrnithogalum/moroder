@@ -171,6 +171,16 @@ void ui::buildSearch(services::Player::PlayerState* state, std::deque<ContentEnt
 }
 
 void ui::buildQueue(services::Player::PlayerState* state, std::deque<ContentEntry>& main_content_items, ftxui::Component main_content) {
+    static std::string last_current_id;
+    std::string current_id;
+
+    if (state->current) {
+        if (auto song = std::dynamic_pointer_cast<music::Song>(state->current))
+            current_id = song->ref.id;
+        else if (auto ep = std::dynamic_pointer_cast<music::Episode>(state->current))
+            current_id = ep->ref.id;
+    }
+
     std::deque<ui::QueueEntry> incoming_rows;
 
     if (!state->user_queue.empty()) {
@@ -228,7 +238,12 @@ void ui::buildQueue(services::Player::PlayerState* state, std::deque<ContentEntr
             if (main_content_items[i].category != incoming_rows[i].id) { same = false; break; }
         }
     }
-    if (same) return;
+
+    if (same && current_id == last_current_id) {
+        return;
+    }
+
+    last_current_id = current_id;
 
     std::string thumbnail_url;
     if (state->current) {
@@ -297,6 +312,10 @@ void ui::buildQueue(services::Player::PlayerState* state, std::deque<ContentEntr
         }
 
         queue_container->Add(entry.component);
+    }
+
+    if(queue_container->ChildCount() > state->queue_position + 2) {
+        queue_container->SetActiveChild(queue_container->ChildAt(state->queue_position + 1));
     }
 
     auto queue_wrapper = Renderer(queue_container, [thumbnail_url, queue_container] {

@@ -79,7 +79,7 @@ void ui::getCarouselData(services::Player::PlayerState* state, std::string categ
         });
     }
 
-    data->is_loading = state->loading["home"] == services::Player::LoadingState::Ongoing;
+    data->is_loading = state->flags["home"] == services::Player::Flags::Ongoing;
     data->category_name = category;
 }
 

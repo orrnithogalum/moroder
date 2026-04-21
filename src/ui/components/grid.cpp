@@ -71,7 +71,7 @@ void ui::getGridData(services::Player::PlayerState* state, std::string category,
     }
 
     data->category_name = category;
-    data->is_loading = state->loading["home"] == services::Player::LoadingState::Ongoing;
+    data->is_loading = state->flags["home"] == services::Player::Flags::Ongoing;
 }
 
 ftxui::Component ui::Grid(GridData* data, int* selected, bool* focused, int rows) {

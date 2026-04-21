@@ -23,6 +23,7 @@ struct QueueEntry {
     std::string top;
     std::string bottom;
     std::string url;
+
     bool is_divider = false;
     std::string divider_label;
 };

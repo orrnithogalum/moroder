@@ -223,7 +223,7 @@ int main(int argc, char *argv[]) {
                 state_copy.radio_queue.push_back(item->clone());
             }
 
-            audio_playing = state_copy.loading["audio"] == services::Player::LoadingState::Ongoing;
+            audio_playing = state_copy.flags["audio"] == services::Player::Flags::Ongoing;
         }
 
         spinner_frame++;
@@ -234,7 +234,7 @@ int main(int argc, char *argv[]) {
         if(current_state == ui::State::HOME) {
             ui::buildHome(&state_copy, main_content_items, main_content);
 
-        } else if(current_state == ui::State::SEARCH && state_copy.loading["search"] == services::Player::LoadingState::Done) {
+        } else if(current_state == ui::State::SEARCH && state_copy.flags["search"] == services::Player::Flags::Done) {
             ui::buildSearch(&state_copy, main_content_items, main_content, on_item_press);
 
         } else if(current_state == ui::State::QUEUE) {
@@ -301,14 +301,14 @@ int main(int argc, char *argv[]) {
                 }) | flex
             }) | flex,
 
-            (playback_bar_data.is_playing  && state_copy.loading["paused"] == services::Player::LoadingState::Ongoing) ||
-            (!playback_bar_data.is_playing && state_copy.loading["paused"] == services::Player::LoadingState::Done)
+            (playback_bar_data.is_playing  && state_copy.flags["paused"] == services::Player::Flags::False) ||
+            (!playback_bar_data.is_playing && state_copy.flags["paused"] == services::Player::Flags::True)
                 ? playback_bar->Render()
                 : emptyElement()
         });
     });
 
-    ui = CatchEvent(ui, [&search_bar, &sidebar_hidden, &sidebar, &sidebar_container, &audio_playing, &current_state](Event event){
+    ui = CatchEvent(ui, [&search_bar, &sidebar_hidden, &sidebar, &sidebar_container, &audio_playing, &current_state, &player](Event event){
         if(search_bar->Focused()) {
             return false;
         }
@@ -327,6 +327,17 @@ int main(int argc, char *argv[]) {
 
         if(event == Event::a && audio_playing) {
             current_state = ui::State::QUEUE;
+            return true;
+        }
+
+        if(event == Event::z) {
+            player.skipBackward();
+            return true;
+        }
+
+        if(event == Event::x) {
+            player.skipForward();
+            return true;
         }
 
         return false;

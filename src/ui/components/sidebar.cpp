@@ -37,7 +37,7 @@ void ui::getSidebarData(services::Player::PlayerState* state, ui::SidebarData* d
         data->entries.emplace_back(ui::SimpleEntry{ playlist.ref.title, playlist.ref.author });
     }
 
-    data->is_loading = state->loading["library_playlists"] == services::Player::LoadingState::Ongoing;
+    data->is_loading = state->flags["library_playlists"] == services::Player::Flags::Ongoing;
 }
 
 Component ui::Sidebar(ui::SidebarData* data, int* selected, bool* focused) {

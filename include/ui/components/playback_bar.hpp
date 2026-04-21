@@ -16,6 +16,8 @@ struct PlaybackData {
     int dimx = 0;
 
     bool is_playing = false;
+    bool can_skip_forwards  = true;
+    bool can_skip_backwards = true;
 };
 
 void getPlaybackData(services::Player::PlayerState* state, PlaybackData* data, int dimx);
