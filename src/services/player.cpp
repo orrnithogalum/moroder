@@ -725,7 +725,6 @@ void services::Player::skipForward() {
     {
         std::lock_guard lock(state_mutex);
         if (state.queue_position + 1 >= state.user_queue.size() && state.radio_queue.empty()) {
-            state.flags["audio"] = Flags::Done;
             should_skip = false;
 
             spdlog::warn("PLAYER: tried to skip to next song, but queue is done");

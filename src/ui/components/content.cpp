@@ -314,7 +314,7 @@ void ui::buildQueue(services::Player::PlayerState* state, std::deque<ContentEntr
         queue_container->Add(entry.component);
     }
 
-    if(queue_container->ChildCount() > state->queue_position + 2) {
+    if(queue_container->ChildCount() > state->queue_position + 1) {
         queue_container->SetActiveChild(queue_container->ChildAt(state->queue_position + 1));
     }
 
