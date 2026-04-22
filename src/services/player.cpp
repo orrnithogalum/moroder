@@ -170,7 +170,13 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
 
     mpv_service->setOnStreamEnd([this] {
         spdlog::info("PLAYER: Stream end");
-        this->stopPositionTick();
+
+        {
+            std::lock_guard lock(position_tick_mutex);
+            position_tick_running = false;
+        }
+        position_tick_cv.notify_all();
+
         mpris_service->setPlaybackStatus(services::PlaybackStatus::Stopped);
 
         std::shared_ptr<music::IStreamable> radio_next;
@@ -935,7 +941,16 @@ void services::Player::removeFromRadioQueue(uint16_t index) {
 }
 
 void services::Player::startPositionTick() {
-    stopPositionTick();
+    {
+        std::lock_guard lock(position_tick_mutex);
+        position_tick_running = false;
+    }
+
+    position_tick_cv.notify_all();
+
+    if (position_tick_thread.joinable()) {
+        position_tick_thread.join();
+    }
 
     {
         std::lock_guard lock(position_tick_mutex);
@@ -945,13 +960,11 @@ void services::Player::startPositionTick() {
     position_tick_thread = std::thread([this] {
         while (true) {
             std::unique_lock lock(position_tick_mutex);
-
             position_tick_cv.wait_for(lock, std::chrono::seconds(1), [this] {
                 return !position_tick_running;
             });
 
             if (!position_tick_running) break;
-
             lock.unlock();
 
             uint64_t duration = mpv_service->getStreamDuration();
@@ -967,11 +980,22 @@ void services::Player::startPositionTick() {
 void services::Player::stopPositionTick() {
     {
         std::lock_guard lock(position_tick_mutex);
+        if (!position_tick_running) {
+            if (position_tick_thread.joinable())
+                position_tick_thread.join();
+            return;
+        }
         position_tick_running = false;
     }
 
     position_tick_cv.notify_all();
 
-    if (position_tick_thread.joinable())
-        position_tick_thread.join();
+    if (position_tick_thread.joinable()) {
+        // Never join from within the position tick thread itself
+        if (position_tick_thread.get_id() != std::this_thread::get_id()) {
+            position_tick_thread.join();
+        } else {
+            position_tick_thread.detach();
+        }
+    }
 }
