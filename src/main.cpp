@@ -71,9 +71,6 @@ int main(int argc, char *argv[]) {
 
     auto current_state = ui::State::HOME;
 
-    ui::SidebarData sidebar_data = {};
-    auto sidebar = ui::Sidebar(&sidebar_data, &sidebar_selected, &sidebar_focused);
-
     ui::SearchBarData search_bar_data = {};
     auto search_bar = ui::SearchBar(&search_bar_data);
 
@@ -106,6 +103,77 @@ int main(int argc, char *argv[]) {
 
     std::deque<ui::ContentEntry> main_content_items;
     auto main_content = Container::Vertical({ Renderer([]{ return emptyElement(); }) });
+
+    std::function<bool(const ftxui::Event&, const music::ApiResult&)> on_item_press = [&current_state, &player, &main_content_items, &main_content, &screen](const ftxui::Event& event, const music::ApiResult& result) {
+        if(event != Event::q && event != Event::Return) {
+            return false;
+        }
+
+        spdlog::info("ITEM: enter pressed on result, " + result.resultType);
+        bool sould_queue = event == Event::q;
+
+        std::visit([&](auto&& data) {
+            using T = std::decay_t<decltype(data)>;
+
+            auto make_streamable = [&](auto&& obj) {
+                obj.setRef(data);
+                return std::make_shared<std::decay_t<decltype(obj)>>(std::move(obj));
+            };
+
+            if constexpr (std::is_same_v<T, music::SongRef>) {
+                auto streamable = make_streamable(music::Song{});
+                player.queue(streamable, !sould_queue, !sould_queue);
+
+            } else if constexpr (std::is_same_v<T, music::AlbumRef>) {
+                auto container = make_streamable(music::Album{});
+                player.queue(container, !sould_queue, !sould_queue);
+
+            } else if constexpr (std::is_same_v<T, music::EpisodeRef>) {
+                auto streamable = make_streamable(music::Episode{});
+                player.queue(streamable, !sould_queue, !sould_queue);
+
+            } else if constexpr (std::is_same_v<T, music::PlaylistRef>) {
+                auto container = make_streamable(music::Playlist{});
+                player.queue(container, !sould_queue, !sould_queue);
+            }
+
+        }, result.data);
+
+        current_state = ui::State::QUEUE;
+
+        main_content_items.clear();
+        main_content->DetachAllChildren();
+        main_content->Add(Renderer([] { return emptyElement(); }));
+
+        screen.PostEvent(Event::Custom);
+
+        return true;
+    };
+
+    std::function<bool(const ftxui::Event&, const music::Playlist&)> on_sidebar_press = [&current_state, &player, &main_content_items, &main_content, &screen](const ftxui::Event& event, const music::Playlist& playlist) {
+        if(event != Event::q && event != Event::Return) {
+            return false;
+        }
+
+        spdlog::info("SIDEBAR: enter pressed on playlist, " + playlist.ref.title);
+        bool sould_queue = event == Event::q;
+
+        auto container = std::make_shared<music::Playlist>(playlist);
+        player.queue(container, !sould_queue, !sould_queue);
+
+        current_state = ui::State::QUEUE;
+
+        main_content_items.clear();
+        main_content->DetachAllChildren();
+        main_content->Add(Renderer([] { return emptyElement(); }));
+
+        screen.PostEvent(Event::Custom);
+
+        return true;
+    };
+
+    ui::SidebarData sidebar_data = {};
+    auto sidebar = ui::Sidebar(&sidebar_data, &sidebar_selected, &sidebar_focused, on_sidebar_press);
 
     auto sidebar_container = Container::Horizontal({
         sidebar
@@ -153,52 +221,6 @@ int main(int argc, char *argv[]) {
         main_content->Add(Renderer([] { return emptyElement(); }));
 
         screen.PostEvent(Event::Custom);
-    };
-
-    std::function<bool(const ftxui::Event&, const music::ApiResult&)> on_item_press = [&current_state, &player, &main_content_items, &main_content, &screen](const ftxui::Event& event, const music::ApiResult& result) {
-        if(event != Event::q && event != Event::Return) {
-            return false;
-        }
-
-        spdlog::info("SEARCH: enter pressed on result, " + result.resultType);
-        bool sould_queue = event == Event::q;
-
-        std::visit([&](auto&& data) {
-            using T = std::decay_t<decltype(data)>;
-
-            auto make_streamable = [&](auto&& obj) {
-                obj.setRef(data);
-                return std::make_shared<std::decay_t<decltype(obj)>>(std::move(obj));
-            };
-
-            if constexpr (std::is_same_v<T, music::SongRef>) {
-                auto streamable = make_streamable(music::Song{});
-                player.queue(streamable, !sould_queue, !sould_queue);
-
-            } else if constexpr (std::is_same_v<T, music::AlbumRef>) {
-                auto container = make_streamable(music::Album{});
-                player.queue(container, !sould_queue, !sould_queue);
-
-            } else if constexpr (std::is_same_v<T, music::EpisodeRef>) {
-                auto streamable = make_streamable(music::Episode{});
-                player.queue(streamable, !sould_queue, !sould_queue);
-
-            } else if constexpr (std::is_same_v<T, music::PlaylistRef>) {
-                auto container = make_streamable(music::Playlist{});
-                player.queue(container, !sould_queue, !sould_queue);
-            }
-
-        }, result.data);
-
-        current_state = ui::State::QUEUE;
-
-        main_content_items.clear();
-        main_content->DetachAllChildren();
-        main_content->Add(Renderer([] { return emptyElement(); }));
-
-        screen.PostEvent(Event::Custom);
-
-        return true;
     };
 
     auto ui = Renderer(layout, [&] {

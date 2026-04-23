@@ -20,6 +20,6 @@ struct SidebarData {
 };
 
 void getSidebarData(services::Player::PlayerState* state, SidebarData* data);
-ftxui::Component Sidebar(SidebarData* data, int* selected, bool* focused);
+ftxui::Component Sidebar(SidebarData* data, int* selected, bool* focused, std::function<bool(const ftxui::Event&, const music::Playlist&)> on_press);
 
 }
