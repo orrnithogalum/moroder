@@ -21,6 +21,6 @@ struct CarouselData {
 };
 
 void getCarouselData(services::Player::PlayerState* state, std::string category, CarouselData* data);
-ftxui::Component Carousel(CarouselData* data, int* selected, bool* focused);
+ftxui::Component Carousel(CarouselData* data, int* selected, bool* focused, std::function<bool(const ftxui::Event&, const music::ApiResult&)> on_press);
 
 }

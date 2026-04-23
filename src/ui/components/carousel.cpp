@@ -1,10 +1,10 @@
 #include "../../../include/ui/components/carousel.hpp"
 #include "../../../include/ui/constants/colors.hpp"
-#include "spdlog/spdlog.h"
 #include "image_view.hpp"
 
 #include <ftxui/component/component_base.hpp>
 #include <ftxui/component/component.hpp>
+#include <ftxui/component/event.hpp>
 #include <ftxui/dom/elements.hpp>
 
 using namespace ftxui;
@@ -83,7 +83,7 @@ void ui::getCarouselData(services::Player::PlayerState* state, std::string categ
     data->category_name = category;
 }
 
-ftxui::Component ui::Carousel(CarouselData* data, int* selected, bool* focused) {
+ftxui::Component ui::Carousel(CarouselData* data, int* selected, bool* focused, std::function<bool(const ftxui::Event&, const music::ApiResult&)> on_press) {
     MenuOption options;
     options.direction = Direction::Right;
     options.Horizontal();
@@ -124,10 +124,14 @@ ftxui::Component ui::Carousel(CarouselData* data, int* selected, bool* focused) 
     };
 
     options.on_enter = [data, selected] () {
-        spdlog::info("CAROUSEL: enter pressed on item, " + data->entries[*selected].top + " " + data->entries[*selected].bottom + " " + data->results[*selected].resultType);
+        // spdlog::info("CAROUSEL: enter pressed on item, " + data->entries[*selected].top + " " + data->entries[*selected].bottom + " " + data->results[*selected].resultType);
     };
 
     auto menu = Menu(&data->entries_spoof, selected, options);
+
+    menu = CatchEvent(menu, [data, selected, on_press](const ftxui::Event& event) {
+        return on_press(event, data->results[*selected]);
+    });
 
     return Renderer(menu, [menu, data] {
         return vbox({

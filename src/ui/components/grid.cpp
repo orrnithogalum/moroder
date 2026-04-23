@@ -6,6 +6,7 @@
 #include "image_view.hpp"
 
 #include <ftxui/component/component.hpp>
+#include <ftxui/component/event.hpp>
 #include <ftxui/dom/elements.hpp>
 
 using namespace ftxui;
@@ -74,7 +75,7 @@ void ui::getGridData(services::Player::PlayerState* state, std::string category,
     data->is_loading = state->flags["home"] == services::Player::Flags::Ongoing;
 }
 
-ftxui::Component ui::Grid(GridData* data, int* selected, bool* focused, int rows) {
+ftxui::Component ui::Grid(GridData* data, int* selected, bool* focused, int rows, std::function<bool(const ftxui::Event&, const music::ApiResult&)> on_press) {
 
     int total = data->entries.size();
     if (total == 0) {
@@ -124,7 +125,11 @@ ftxui::Component ui::Grid(GridData* data, int* selected, bool* focused, int rows
             spdlog::info("GRID: enter pressed on item, " + item.top + " " + item.bottom + " " + result.resultType);
         };
 
-        grid_components[r].push_back(Button(option));
+        grid_components[r].push_back(
+            CatchEvent(Button(option), [result, on_press](const ftxui::Event& event) {
+                return on_press(event, result);
+            })
+        );
     }
 
     auto grid = GridContainer(grid_components);

@@ -104,12 +104,13 @@ int main(int argc, char *argv[]) {
     std::deque<ui::ContentEntry> main_content_items;
     auto main_content = Container::Vertical({ Renderer([]{ return emptyElement(); }) });
 
-    std::function<bool(const ftxui::Event&, const music::ApiResult&)> on_item_press = [&current_state, &player, &main_content_items, &main_content, &screen](const ftxui::Event& event, const music::ApiResult& result) {
+    std::function<bool(const ftxui::Event&, const music::ApiResult&)> on_item_press =
+    [&current_state, &player, &main_content_items, &main_content, &screen](const ftxui::Event& event, const music::ApiResult& result) {
         if(event != Event::q && event != Event::Return) {
             return false;
         }
 
-        spdlog::info("ITEM: enter pressed on result, " + result.resultType);
+        spdlog::info("ITEM: key pressed on result, " + result.resultType);
         bool sould_queue = event == Event::q;
 
         std::visit([&](auto&& data) {
@@ -150,12 +151,13 @@ int main(int argc, char *argv[]) {
         return true;
     };
 
-    std::function<bool(const ftxui::Event&, const music::Playlist&)> on_sidebar_press = [&current_state, &player, &main_content_items, &main_content, &screen](const ftxui::Event& event, const music::Playlist& playlist) {
+    std::function<bool(const ftxui::Event&, const music::Playlist&)> on_sidebar_press =
+    [&current_state, &player, &main_content_items, &main_content, &screen](const ftxui::Event& event, const music::Playlist& playlist) {
         if(event != Event::q && event != Event::Return) {
             return false;
         }
 
-        spdlog::info("SIDEBAR: enter pressed on playlist, " + playlist.ref.title);
+        spdlog::info("SIDEBAR: key pressed on playlist, " + playlist.ref.title);
         bool sould_queue = event == Event::q;
 
         auto container = std::make_shared<music::Playlist>(playlist);
@@ -254,7 +256,7 @@ int main(int argc, char *argv[]) {
         ui::getPlaybackData(&state_copy, &playback_bar_data, screen.dimx());
 
         if(current_state == ui::State::HOME) {
-            ui::buildHome(&state_copy, main_content_items, main_content);
+            ui::buildHome(&state_copy, main_content_items, main_content, on_item_press);
 
         } else if(current_state == ui::State::SEARCH && state_copy.flags["search"] == services::Player::Flags::Done) {
             ui::buildSearch(&state_copy, main_content_items, main_content, on_item_press);

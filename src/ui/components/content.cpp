@@ -12,7 +12,7 @@
 
 using namespace ftxui;
 
-void ui::buildHome(services::Player::PlayerState* state, std::deque<ContentEntry>& main_content_items, ftxui::Component main_content) {
+void ui::buildHome(services::Player::PlayerState* state, std::deque<ContentEntry>& main_content_items, ftxui::Component main_content, std::function<bool(const ftxui::Event&, const music::ApiResult&)> on_press) {
     for (auto& [category, _] : state->home) {
         const std::string& category_ref = category;
 
@@ -33,9 +33,9 @@ void ui::buildHome(services::Player::PlayerState* state, std::deque<ContentEntry
 
             if (utils::lower(category) == "quick picks") {
                 ui::getGridData(state, category, &item.grid_data);
-                item.component = Grid(&item.grid_data, &item.selected, &item.focused, 4);
+                item.component = Grid(&item.grid_data, &item.selected, &item.focused, 4, on_press);
             } else {
-                item.component = Carousel(&item.data, &item.selected, &item.focused);
+                item.component = Carousel(&item.data, &item.selected, &item.focused, on_press);
             }
 
             main_content->Add(item.component);
@@ -48,7 +48,7 @@ void ui::buildHome(services::Player::PlayerState* state, std::deque<ContentEntry
     }
 }
 
-void ui::buildSearch(services::Player::PlayerState* state, std::deque<ContentEntry>& main_content_items, ftxui::Component main_content, std::function<bool(const ftxui::Event&, const music::ApiResult&)> on_search_result_press) {
+void ui::buildSearch(services::Player::PlayerState* state, std::deque<ContentEntry>& main_content_items, ftxui::Component main_content, std::function<bool(const ftxui::Event&, const music::ApiResult&)> on_press) {
     std::vector<std::string> incoming_categories;
 
     for (auto& search_result : state->search_results) {
@@ -157,8 +157,8 @@ void ui::buildSearch(services::Player::PlayerState* state, std::deque<ContentEnt
 
         auto button = Button("", [] {}, opt);
 
-        item.component = CatchEvent(button, [on_search_result_press, result = search_result](ftxui::Event event) {
-            return on_search_result_press(event, result);
+        item.component = CatchEvent(button, [on_press, result = search_result](ftxui::Event event) {
+            return on_press(event, result);
         });
 
         item.focused = false;

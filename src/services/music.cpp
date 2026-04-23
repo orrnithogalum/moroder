@@ -214,7 +214,7 @@ template <typename Request, typename Response> Response services::Music::sendStr
                 auto j = nlohmann::json::parse(line);
 
                 // Useful for debug but pollutes log
-                spdlog::info(j.dump(4));
+                // spdlog::info(j.dump(4));
 
                 if (j.contains("data") && j["data"].is_null()) {
                     break;

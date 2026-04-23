@@ -20,6 +20,6 @@ struct GridData {
 };
 
 void getGridData(services::Player::PlayerState* state, std::string category, GridData* data);
-ftxui::Component Grid(GridData* data, int* selected, bool* focused, int rows);
+ftxui::Component Grid(GridData* data, int* selected, bool* focused, int rows, std::function<bool(const ftxui::Event&, const music::ApiResult&)> on_press);
 
 }
