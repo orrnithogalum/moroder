@@ -6,7 +6,7 @@
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from server import MusicServer
+    from main import MusicServer
 
 from ytmusicapi.exceptions import YTMusicServerError
 from ytmusicapi.parsers.playlists import validate_playlist_id

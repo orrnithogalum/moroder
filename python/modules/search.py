@@ -6,7 +6,7 @@
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from server import MusicServer
+    from main import MusicServer
 
 async def search(server: MusicServer, query: str, limit: int):
     try:

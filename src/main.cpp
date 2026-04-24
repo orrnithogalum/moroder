@@ -106,12 +106,12 @@ int main(int argc, char *argv[]) {
 
     std::function<bool(const ftxui::Event&, const music::ApiResult&)> on_item_press =
     [&current_state, &player, &main_content_items, &main_content, &screen](const ftxui::Event& event, const music::ApiResult& result) {
-        if(event != Event::q && event != Event::Return) {
+        if(event != Event::d && event != Event::Return) {
             return false;
         }
 
         spdlog::info("ITEM: key pressed on result, " + result.resultType);
-        bool sould_queue = event == Event::q;
+        bool sould_queue = event == Event::d;
 
         std::visit([&](auto&& data) {
             using T = std::decay_t<decltype(data)>;
@@ -153,12 +153,12 @@ int main(int argc, char *argv[]) {
 
     std::function<bool(const ftxui::Event&, const music::Playlist&)> on_sidebar_press =
     [&current_state, &player, &main_content_items, &main_content, &screen](const ftxui::Event& event, const music::Playlist& playlist) {
-        if(event != Event::q && event != Event::Return) {
+        if(event != Event::d && event != Event::Return) {
             return false;
         }
 
         spdlog::info("SIDEBAR: key pressed on playlist, " + playlist.ref.title);
-        bool sould_queue = event == Event::q;
+        bool sould_queue = event == Event::d;
 
         auto container = std::make_shared<music::Playlist>(playlist);
         player.queue(container, !sould_queue, !sould_queue);

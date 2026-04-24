@@ -6,12 +6,12 @@
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from server import MusicServer
+    from main import MusicServer
 
 
 async def playlist(server: "MusicServer", playlist_id: str):
     try:
-        data = server.ytm.get_playlist(playlist_id, limit=None)
+        data = server.ytm.get_playlist(playlist_id, limit=500)
 
         tracks = data.get("tracks", []) or []
 

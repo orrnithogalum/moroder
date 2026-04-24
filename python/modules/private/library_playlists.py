@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from ytmusicapi.exceptions import YTMusicUserError
 
 if TYPE_CHECKING:
-    from server import MusicServer
+    from main import MusicServer
 
 
 async def library_playlists(server: "MusicServer"):

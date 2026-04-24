@@ -6,7 +6,7 @@
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from server import MusicServer
+    from main import MusicServer
 
 
 async def album(server: "MusicServer", album_id: str):
