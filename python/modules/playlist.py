@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 async def playlist(server: "MusicServer", playlist_id: str):
     try:
-        data = server.ytm.get_playlist(playlist_id, limit=500)
+        data = server.ytm.get_playlist(playlist_id, limit=None)
 
         tracks = data.get("tracks", []) or []
 

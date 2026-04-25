@@ -332,9 +332,14 @@ int main(int argc, char *argv[]) {
         });
     });
 
-    ui = CatchEvent(ui, [&search_bar, &sidebar_hidden, &sidebar, &sidebar_container, &audio_playing, &current_state, &player](Event event){
+    ui = CatchEvent(ui, [&search_bar, &screen, &sidebar_hidden, &sidebar, &sidebar_container, &audio_playing, &current_state, &player](Event event){
         if(search_bar->Focused()) {
             return false;
+        }
+
+        if(event == Event::q) {
+            screen.Exit();
+            return true;
         }
 
         if(event == Event::s) {
