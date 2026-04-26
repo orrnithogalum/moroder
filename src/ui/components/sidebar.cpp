@@ -29,8 +29,11 @@ void ui::getSidebarData(services::Player::PlayerState* state, ui::SidebarData* d
 
     if(state->is_logged_in) {
         data->entries.push_back({"  New playlist", ""});
-        data->entries_spoof.push_back("03");
+    } else {
+        data->entries.push_back({"  Sign in", ""});
     }
+
+    data->entries_spoof.push_back("03");
 
     for (auto& playlist : state->library_playlists) {
         data->results.emplace_back(playlist);
