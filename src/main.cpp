@@ -342,6 +342,11 @@ int main(int argc, char *argv[]) {
             return true;
         }
 
+        if(event == Event::a && audio_playing) {
+            current_state = ui::State::QUEUE;
+            return true;
+        }
+
         if(event == Event::s) {
             sidebar_hidden = !sidebar_hidden;
 
@@ -354,8 +359,8 @@ int main(int argc, char *argv[]) {
             return true;
         }
 
-        if(event == Event::a && audio_playing) {
-            current_state = ui::State::QUEUE;
+        if(event == Event::f) {
+            search_bar->TakeFocus();
             return true;
         }
 
