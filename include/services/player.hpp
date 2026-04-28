@@ -104,6 +104,7 @@ public:
     */
     void skipForward();
     void skipBackward();
+    void skipTo(uint16_t index);
 
     void getHome();
     void isLoggedIn();
@@ -112,9 +113,7 @@ public:
 
     void queue(std::shared_ptr<music::IStreamable> streamable, const bool fresh = true, const bool radio = true);
     void queue(std::shared_ptr<music::IStreamableContainer> container, const bool fresh = true, const bool radio = true);
-
-    void removeFromUserQueue(uint16_t index);
-    void removeFromRadioQueue(uint16_t index);
+    void removeAt(uint16_t index);
 
     void setOnStreamStart(std::function<void()> cb) {
         on_stream_start = std::move(cb);
@@ -178,6 +177,8 @@ private:
     void updateSocialData();
 
     void resetMprisData();
+    void removeFromUserQueue(uint16_t index);
+    void removeFromRadioQueue(uint16_t index);
 
     std::function<void()> on_stream_start;
     std::function<void()> on_stream_end;

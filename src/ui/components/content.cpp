@@ -5,10 +5,10 @@
 #include <ftxui/component/event.hpp>
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/screen/color.hpp>
+#include <string>
 #include <type_traits>
 
 #include "image_view.hpp"
-#include "spdlog/spdlog.h"
 
 using namespace ftxui;
 
@@ -170,8 +170,10 @@ void ui::buildSearch(services::Player::PlayerState* state, std::deque<ContentEnt
     }
 }
 
-void ui::buildQueue(services::Player::PlayerState* state, std::deque<ContentEntry>& main_content_items, ftxui::Component main_content) {
-    static std::string last_current_id;
+void ui::buildQueue(services::Player::PlayerState* state, std::deque<ContentEntry>& main_content_items, ftxui::Component main_content, std::function<bool(const ftxui::Event&, const int)> on_queue_press) {
+    static std::string last_current_id = "";
+    static int focus_override = -1;
+
     std::string current_id;
 
     if (state->current) {
@@ -256,7 +258,9 @@ void ui::buildQueue(services::Player::PlayerState* state, std::deque<ContentEntr
     main_content_items.clear();
     main_content->DetachAllChildren();
 
+    int  queue_index = 0;
     auto queue_container = Container::Vertical({});
+    bool first_divider = true;
 
     for (auto& row : incoming_rows) {
         main_content_items.push_back(ContentEntry{});
@@ -269,14 +273,16 @@ void ui::buildQueue(services::Player::PlayerState* state, std::deque<ContentEntr
         if (row.is_divider) {
             std::string label = row.divider_label;
 
-            entry.component = Renderer([label] {
+            entry.component = Renderer([label, first_divider] {
                 return vbox({
-                    text(" "),
-                    text(" "),
+                    first_divider ? emptyElement() : text(" "),
+                    first_divider ? emptyElement() : text(" "),
                     text(label) | color(ui::GetColor(ui::MColor::TEXT_TOP_PRIMARY)),
                     separator() | color(ui::GetColor(ui::MColor::SEPARATOR_SECONDARY)),
                 });
             });
+
+            first_divider = false;
 
         } else {
             ButtonOption opt;
@@ -306,15 +312,40 @@ void ui::buildQueue(services::Player::PlayerState* state, std::deque<ContentEntr
                 });
             };
 
-            entry.component = Button("", [] {
-                spdlog::info("QUEUE: clicked item");
-            }, opt);
+            auto button = Button(opt);
+            button = CatchEvent(button, [on_queue_press, queue_index](const ftxui::Event& event) {
+                if (event == Event::Character('c')) {
+                    focus_override = queue_index;
+                }
+                return on_queue_press(event, queue_index);
+            });
+
+            entry.component = button;
+            queue_index++;
         }
 
         queue_container->Add(entry.component);
     }
 
-    if(queue_container->ChildCount() > state->queue_position + 1) {
+    if (focus_override >= 0) {
+        int child_index = std::min(focus_override + 1, (int)queue_container->ChildCount() - 1);
+
+        if(state->user_queue.size() >= child_index) {
+            child_index -=1;
+        }
+
+        if(child_index == state->user_queue.size() + 1) {
+            child_index -=1;
+        }
+
+        if(child_index <= 0) {
+            child_index = 1;
+        }
+
+        queue_container->SetActiveChild(queue_container->ChildAt(child_index));
+        focus_override = -1;
+
+    } else if (queue_container->ChildCount() > state->queue_position + 1) {
         queue_container->SetActiveChild(queue_container->ChildAt(state->queue_position + 1));
     }
 
@@ -328,6 +359,8 @@ void ui::buildQueue(services::Player::PlayerState* state, std::deque<ContentEntr
             }),
             filler(),
             vbox({
+                text(" "),
+                text(" "),
                 queue_container->Render() | yframe | yflex | size(WIDTH, ftxui::GREATER_THAN, 30),
             }) | yflex,
         }) | yflex;

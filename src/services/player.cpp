@@ -754,6 +754,10 @@ void services::Player::skipForward() {
         } else if (state.queue_position < state.user_queue.size() && !state.radio_queue.empty()){
             state.queue_position++;
             state.current = state.user_queue[state.queue_position];
+
+        } else if (state.queue_position < 0) {
+            state.queue_position = 0;
+            state.current = state.user_queue[state.queue_position];
         }
     }
 
@@ -765,8 +769,6 @@ void services::Player::skipForward() {
     if(should_skip) {
         spdlog::info("PLAYER: skipping to next song");
 
-        mpv_service->skipForward();
-
         /* skipping
         - We keep these even if onSongStart handles skipping
         - because they don't wait for file load.
@@ -775,6 +777,8 @@ void services::Player::skipForward() {
         this->updateMprisControls();
         this->updateMprisData();
         this->updateSocialData();
+
+        mpv_service->skipForward();
     }
 }
 
@@ -913,9 +917,9 @@ void services::Player::removeFromUserQueue(uint16_t index) {
 
         if(index < state.queue_position) {
             state.queue_position -= 1;
-        }
 
-        if(index == state.queue_position) {
+        } else if(index == state.queue_position) {
+            state.queue_position -= 1;
             should_skip = true;
         }
     }
@@ -991,11 +995,85 @@ void services::Player::stopPositionTick() {
     position_tick_cv.notify_all();
 
     if (position_tick_thread.joinable()) {
-        // Never join from within the position tick thread itself
         if (position_tick_thread.get_id() != std::this_thread::get_id()) {
             position_tick_thread.join();
         } else {
             position_tick_thread.detach();
+        }
+    }
+}
+
+void services::Player::skipTo(uint16_t index) {
+    bool should_skip = true;
+    bool to_radio_skip = false;
+    std::shared_ptr<music::IStreamable> radio_next;
+
+    {
+        std::lock_guard lock(state_mutex);
+
+        const size_t user_size = state.user_queue.size();
+        const size_t radio_size = state.radio_queue.size();
+        const size_t total_size = user_size + radio_size;
+
+        if (index >= total_size) {
+            spdlog::warn("PLAYER: skipTo {}, but total queue size is {}.", index, total_size);
+            should_skip = false;
+
+        } else if (index < user_size) {
+            state.queue_position = index;
+            state.current = state.user_queue[index];
+
+        } else {
+            size_t radio_index = index - user_size;
+
+            radio_next = state.radio_queue[radio_index];
+            state.current = radio_next;
+            state.queue_position = index;
+
+            for (size_t i = 0; i <= radio_index; i++) {
+                state.user_queue.push_back(state.radio_queue.front());
+                state.radio_queue.pop_front();
+
+                mpv_service->load(state.user_queue.back()->getStreamUrl());
+            }
+        }
+    }
+
+    if (should_skip) {
+        spdlog::info("PLAYER: skipping to index {}", index);
+
+        mpv_service->skipTo(index);
+
+        mpris_service->setPlaybackStatus(services::PlaybackStatus::Stopped);
+        this->updateMprisControls();
+        this->updateMprisData();
+        this->updateSocialData();
+    }
+}
+
+void services::Player::removeAt(uint16_t index) {
+    size_t user_queue_size;
+
+    {
+        std::lock_guard lock(state_mutex);
+        user_queue_size = state.user_queue.size();
+    }
+
+    if (index < user_queue_size) {
+        this->removeFromUserQueue(index);
+    } else {
+        this->removeFromRadioQueue(index - user_queue_size);
+    }
+
+    {
+        std::lock_guard lock(state_mutex);
+
+        if(state.user_queue.size() == 0 && state.radio_queue.size() == 0) {
+            this->resetMprisData();
+            social_service->removeStatus();
+
+            mpris_service->setPlaybackStatus(services::PlaybackStatus::Stopped);
+            state.flags["audio"] = Flags::Done;
         }
     }
 }

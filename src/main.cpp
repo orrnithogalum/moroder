@@ -111,7 +111,7 @@ int main(int argc, char *argv[]) {
         }
 
         spdlog::info("ITEM: key pressed on result, " + result.resultType);
-        bool sould_queue = event == Event::d;
+        bool should_queue = event == Event::d;
 
         std::visit([&](auto&& data) {
             using T = std::decay_t<decltype(data)>;
@@ -123,19 +123,19 @@ int main(int argc, char *argv[]) {
 
             if constexpr (std::is_same_v<T, music::SongRef>) {
                 auto streamable = make_streamable(music::Song{});
-                player.queue(streamable, !sould_queue, !sould_queue);
+                player.queue(streamable, !should_queue, !should_queue);
 
             } else if constexpr (std::is_same_v<T, music::AlbumRef>) {
                 auto container = make_streamable(music::Album{});
-                player.queue(container, !sould_queue, !sould_queue);
+                player.queue(container, !should_queue, !should_queue);
 
             } else if constexpr (std::is_same_v<T, music::EpisodeRef>) {
                 auto streamable = make_streamable(music::Episode{});
-                player.queue(streamable, !sould_queue, !sould_queue);
+                player.queue(streamable, !should_queue, !should_queue);
 
             } else if constexpr (std::is_same_v<T, music::PlaylistRef>) {
                 auto container = make_streamable(music::Playlist{});
-                player.queue(container, !sould_queue, !sould_queue);
+                player.queue(container, !should_queue, !should_queue);
             }
 
         }, result.data);
@@ -158,12 +158,37 @@ int main(int argc, char *argv[]) {
         }
 
         spdlog::info("SIDEBAR: key pressed on playlist, " + playlist.ref.title);
-        bool sould_queue = event == Event::d;
+        bool should_queue = event == Event::d;
 
         auto container = std::make_shared<music::Playlist>(playlist);
-        player.queue(container, !sould_queue, !sould_queue);
+        player.queue(container, !should_queue, !should_queue);
 
         current_state = ui::State::QUEUE;
+
+        main_content_items.clear();
+        main_content->DetachAllChildren();
+        main_content->Add(Renderer([] { return emptyElement(); }));
+
+        screen.PostEvent(Event::Custom);
+
+        return true;
+    };
+
+    std::function<bool(const ftxui::Event&, const int)> on_queue_press =
+    [&current_state, &player, &main_content_items, &main_content, &screen](const ftxui::Event& event, const int queue_index) {
+        if(event != Event::c && event != Event::Return) {
+            return false;
+        }
+
+        spdlog::info("QUEUE: key pressed on item, " + std::to_string(queue_index));
+        bool should_remove = event == Event::c;
+
+        if(!should_remove) {
+            player.skipTo(queue_index);
+
+        } else {
+            player.removeAt(queue_index);
+        }
 
         main_content_items.clear();
         main_content->DetachAllChildren();
@@ -262,8 +287,12 @@ int main(int argc, char *argv[]) {
             ui::buildSearch(&state_copy, main_content_items, main_content, on_item_press);
 
         } else if(current_state == ui::State::QUEUE) {
-            ui::buildQueue(&state_copy, main_content_items, main_content);
+            ui::buildQueue(&state_copy, main_content_items, main_content, on_queue_press);
+
         }
+        // else if(current_state == ui::State::LIBRARY) {
+            // ui::buildLibrary(&state_copy, main_content_items, main_content)
+        // }
 
         return vbox({
             hbox({
@@ -324,6 +353,8 @@ int main(int argc, char *argv[]) {
 
                 }) | flex
             }) | flex,
+
+            // text(std::to_string(state_copy.queue_position) + " " + (state_copy.current ? state_copy.current->getStreamUrl() : "")),
 
             (playback_bar_data.is_playing  && state_copy.flags["paused"] == services::Player::Flags::False) ||
             (!playback_bar_data.is_playing && state_copy.flags["paused"] == services::Player::Flags::True)
