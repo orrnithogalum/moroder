@@ -302,7 +302,7 @@ int main(int argc, char *argv[]) {
                         hbox({
                             text("") | color(Color::Red1),
                             text("  "),
-                            text(APP_NAME_HUMAN)
+                            text(APP_NAME_HUMAN) | color(ui::GetColor(ui::MColor::TEXT_TOP_PRIMARY))
                         }) | bold | center,
 
                         text(" "),

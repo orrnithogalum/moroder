@@ -57,7 +57,7 @@ Component ui::PlaybackBar(PlaybackData* data) {
             text("  "),
             text("") | ((data->can_skip_backwards) ? color(ui::GetColor(ui::MColor::TEXT_TOP_PRIMARY)) : color(ui::GetColor(ui::MColor::TEXT_BOTTOM_SECONDARY))),
             text("  "),
-            text(data->is_playing ? "" : ""),
+            text(data->is_playing ? "" : "") | color(ui::GetColor(ui::MColor::TEXT_TOP_PRIMARY)),
             text("  "),
             text("") | ((data->can_skip_forwards)  ? color(ui::GetColor(ui::MColor::TEXT_TOP_PRIMARY)) : color(ui::GetColor(ui::MColor::TEXT_BOTTOM_SECONDARY)))
         });
