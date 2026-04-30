@@ -33,7 +33,7 @@ FetchContent_MakeAvailable(nlohmann_json)
 FetchContent_Declare(
     ftxui
     GIT_REPOSITORY https://github.com/ArthurSonzogni/ftxui.git
-    GIT_TAG v6.1.9
+    GIT_TAG v7.0.3
 )
 FetchContent_MakeAvailable(ftxui)
 

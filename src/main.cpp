@@ -54,9 +54,16 @@ int main(int argc, char *argv[]) {
         screen.PostEvent(Event::Custom);
     });
 
-    ftxui::setImageCacheMaxSize(200);
-    ftxui::setImageResizeCacheMaxSize(200);
-    ftxui::setImageCharCacheMaxSize(20000);
+    ftxui::setImageCacheMaxSize(500);
+    ftxui::setImageResizeCacheMaxSize(500);
+    ftxui::setImageCharCacheMaxSize(50000);
+
+    // Caps concurrent background image-loader threads (default is 6).
+    // With 40+ thumbnails potentially uncached at once (grid + carousels +
+    // queue + playback bar), leave this in place rather than letting every
+    // uncached image spawn its own thread simultaneously.
+    ftxui::setMaxConcurrentImageLoads(100);
+
 
     player.isLoggedIn();
     player.getLibraryPlaylists();
