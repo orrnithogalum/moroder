@@ -1,6 +1,7 @@
 /* MUSIC
-- Service responsible for all communications between cpp and the python server
-- Uses all requests and reponse classes as communication objects
+- Service responsible for all communications with the YouTube Music API
+- Talks to InnerTube directly; no Python process, no pipes, no IPC framing
+- Still builds models through the existing ipc::*Response classes
 - Everything is logged
 */
 
@@ -8,19 +9,27 @@
 
 #include "../models/api_result.hpp"
 #include "../models/radio.hpp"
-#include "../ipc/request.hpp"
 
-#include <unordered_map>
-#include <sys/types.h>
+#include "../ytm/ytmusic.hpp"
+#include "../ytm/http.hpp"
+
+#include <nlohmann/json.hpp>
+
+#include <memory>
 #include <string_view>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace services {
 
 class Music {
 public:
-    Music(const std::string_view& app_name);
+    /* app_name
+    - Retained for source compatibility only
+    - It used to name the Python IPC socket, which no longer exists
+    */
+    Music(const std::string_view& app_name = {});
     ~Music();
 
     bool isLoggedIn();
@@ -44,40 +53,20 @@ public:
     music::Playlist getPlaylist(const music::PlaylistRef& playlist);
 
 private:
-    /* python_server_path
-    - Path to the python script
-    - Defined by cmake, will vary depending on if user builds with --install or not
-    - will be overridable
+    /* ytm
+    - The InnerTube client: transport, auth, endpoints, continuations
+    - Reads the same browser.json ytmusicapi's setup writes
     */
-    std::string python_server_path;
+    std::unique_ptr<ytm::YTMusic> ytm;
 
-    /* pipes
-    - Used to send / receive data from python
+    /* metadata_http
+    - last.fm / iTunes only, for the album-name enrichment in getSong
+    - This never went through ytmusicapi
     */
-    int pipe_stdin[2];
-    int pipe_stdout[2];
+    ytm::Http   metadata_http;
+    std::string lastfm_api_key;
 
-    /* buffer
-    - temporary storage for the python json response
-    */
-    char buffer[8192];
-
-    /* python_pid
-    - PID of the python server (ran in a separate process)
-    */
-    pid_t python_pid;
-
-    bool song_finished = false;
-
-    /* send
-    - serialized any request, send it, return the response
-    */
-    template<typename ResponseType> ResponseType send(const ipc::Request& request, const std::string& log);
-    template <typename Request, typename Response> Response sendStreamed(
-        const Request& request,
-        const std::function<void(nlohmann::json&, Response&)>& handleResponse,
-        const std::string& doneType
-    );
+    void logIfError(const char* what);
 
     music::Radio getRadio(const std::string id, const std::string type);
 };
