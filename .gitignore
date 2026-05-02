@@ -16,5 +16,5 @@ logs/*
 # extra
 tests/
 env/
-*.sh
 gen/
+*.sh
