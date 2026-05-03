@@ -1,20 +1,25 @@
-# libs
+# Third-party libraries that aren't safe to distribute (e.g. Discord SDK)
 lib/*
 
-# build files
+# Cache files
 __pycache__/
 .cache/
+
+# Build files
 build/
 
-# editor
+# IDE Files
 .vscode/
 .zed/
 
-# logs
+# Application logs
 logs/*
 
-# extra
+# Historical test probes and development code that has since been integrated
+# Test / reference data used to avoid repeatedly hitting external APIs during testing
 tests/
 env/
+
+# Extra
 gen/
 *.sh
