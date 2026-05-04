@@ -16,6 +16,7 @@
 #include <fstream>
 #include <cstdlib>
 #include <string>
+#include <vector>
 
 namespace fs = std::filesystem;
 
@@ -33,6 +34,8 @@ public:
     int RADIO_RESULT_LIMIT;
 
     bool FETCH_ALBUMS;
+
+    std::vector<std::string> HOME_ORDER;
 
     /* Lazy initialization using a lambda:
     - Ensures config is loaded once at first access
@@ -99,6 +102,14 @@ public:
                 } else if (key == "RADIO_RESULT_LIMIT") {
                     new_config << "RADIO_RESULT_LIMIT=" << RADIO_RESULT_LIMIT << "\n";
 
+                } else if (key == "HOME_ORDER") {
+                    new_config << "HOME_ORDER=\"";
+                    for (size_t i = 0; i < HOME_ORDER.size(); i++) {
+                        if (i) new_config << ", ";
+                        new_config << HOME_ORDER[i];
+                    }
+                    new_config << "\"\n";
+
                 } else {
                     new_config << line << "\n";
                 }
@@ -126,6 +137,29 @@ private:
             }
         }
         return fs::path(path);
+    }
+
+    // Splits "a, b, c" into a lower-cased, trimmed list
+    inline static std::vector<std::string> parse_list(const std::string& value) {
+        std::vector<std::string> out;
+        size_t start = 0;
+
+        while (start <= value.size()) {
+            size_t comma = value.find(',', start);
+            std::string item = value.substr(start, comma == std::string::npos ? std::string::npos : comma - start);
+
+            size_t b = item.find_first_not_of(" \t");
+            if (b != std::string::npos) {
+                item = item.substr(b, item.find_last_not_of(" \t") - b + 1);
+                for (char& c : item) c = std::tolower(static_cast<unsigned char>(c));
+                out.push_back(item);
+            }
+
+            if (comma == std::string::npos) break;
+            start = comma + 1;
+        }
+
+        return out;
     }
 
     // Returns path to ~/.config/moroder/moroder.conf or empty string if HOME not set
@@ -217,6 +251,9 @@ private:
 
                 else if(key == "FETCH_ALBUMS")
                     cfg.FETCH_ALBUMS = (value == "true");
+
+                else if(key == "HOME_ORDER")
+                    cfg.HOME_ORDER = parse_list(value.substr(1, value.size() - 2));
 
             } catch (...) {
                 return std::nullopt;

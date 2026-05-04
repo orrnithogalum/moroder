@@ -1,14 +1,30 @@
 #include "../../../include/ui/components/content.hpp"
 #include "../../../include/ui/constants/colors.hpp"
 
+#include "../../../include/config/config.hpp"
+#include "image_view.hpp"
+
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/event.hpp>
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/screen/color.hpp>
-#include <string>
 #include <type_traits>
+#include <string>
 
-#include "image_view.hpp"
+namespace {
+
+int homeCategoryRank(const std::string& category) {
+    const auto& order = Config::get().HOME_ORDER;
+    const std::string key = utils::lower(category);
+
+    for (size_t i = 0; i < order.size(); i++) {
+        if (order[i] == key) return static_cast<int>(i);
+    }
+
+    return std::numeric_limits<int>::max();
+}
+
+}
 
 using namespace ftxui;
 
@@ -23,23 +39,58 @@ void ui::buildHome(services::Player::PlayerState* state, std::deque<ContentEntry
             }
         );
 
-        if (!already_exists) {
-            main_content_items.push_back(ContentEntry{});
-            ContentEntry& item = main_content_items.back();
+        if (already_exists) continue;
 
-            item.category = category;
-            item.selected = 0;
-            item.focused = false;
+        // Push_back keeps references to existing elements valid, which matters
+        // because Grid/Carousel capture &item.grid_data, &item.selected and
+        // &item.focused. Nothing may ever reorder or middle-insert this deque.
+        main_content_items.push_back(ContentEntry{});
+        ContentEntry& item = main_content_items.back();
 
-            if (utils::lower(category) == "quick picks") {
-                ui::getGridData(state, category, &item.grid_data);
-                item.component = Grid(&item.grid_data, &item.selected, &item.focused, 4, on_press);
-            } else {
-                item.component = Carousel(&item.data, &item.selected, &item.focused, on_press);
-            }
+        item.category = category;
+        item.selected = 0;
+        item.focused = false;
 
-            main_content->Add(item.component);
+        if (utils::lower(category) == "quick picks") {
+            ui::getGridData(state, category, &item.grid_data);
+            item.component = Grid(&item.grid_data, &item.selected, &item.focused, 4, on_press);
+        } else {
+            item.component = Carousel(&item.data, &item.selected, &item.focused, on_press);
         }
+    }
+
+    // Display order lives in a pointer list so the deque itself never moves.
+    std::vector<std::pair<int, ContentEntry*>> ordered;
+    ordered.reserve(main_content_items.size());
+
+    for (auto& item : main_content_items) {
+        ordered.push_back({ homeCategoryRank(item.category), &item });
+    }
+
+    // Stable, so categories sharing a rank (i.e. all the unlisted ones) keep
+    // their API order instead of shuffling between frames.
+    std::stable_sort(ordered.begin(), ordered.end(),
+        [](const auto& a, const auto& b) { return a.first < b.first; });
+
+    bool matches = (main_content->ChildCount() == ordered.size());
+    if (matches) {
+        for (size_t i = 0; i < ordered.size(); i++) {
+            if (main_content->ChildAt(i) != ordered[i].second->component) { matches = false; break; }
+        }
+    }
+
+    // Only rebuild when the order actually changed, DetachAllChildren resets
+    // the active child, so focus has to be saved and restored around it. This is in case we plan to change order at runtime...
+    if (!matches && !ordered.empty()) {
+        Component focused_child;
+        for (auto& [rank, item] : ordered) {
+            if (item->component->Focused()) focused_child = item->component;
+        }
+
+        main_content->DetachAllChildren();
+        for (auto& [rank, item] : ordered) main_content->Add(item->component);
+
+        if (focused_child) main_content->SetActiveChild(focused_child);
     }
 
     for (auto& item : main_content_items) {
