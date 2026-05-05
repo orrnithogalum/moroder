@@ -3,6 +3,7 @@
 - It provides default values if the file doesn't exist
 - Singleton pattern ensures only one Config object exists at runtime
 - The parser reads key=value lines, trims whitespace, and converts to the appropriate type
+- Every field is declared once in fieldTable(); parsing and saving both derive from it
 */
 
 #pragma once
@@ -11,10 +12,14 @@
 
 #include <string_view>
 #include <filesystem>
+#include <functional>
 #include <stdexcept>
+#include <iterator>
 #include <optional>
 #include <fstream>
+#include <sstream>
 #include <cstdlib>
+#include <cctype>
 #include <string>
 #include <vector>
 
@@ -30,11 +35,12 @@ public:
     fs::path YTM_COOKIES_PATH;
     fs::path MPV_COOKIES_PATH;
 
-    int SEARCH_RESULT_LIMIT;
-    int RADIO_RESULT_LIMIT;
+    int SEARCH_RESULT_LIMIT = 20;
+    int RADIO_RESULT_LIMIT  = 20;
 
-    bool FETCH_ALBUMS;
+    bool FETCH_ALBUMS = true;
 
+    // Home categories in display order, lower-cased. Empty = keep API order.
     std::vector<std::string> HOME_ORDER;
 
     /* Lazy initialization using a lambda:
@@ -54,116 +60,55 @@ public:
         return instance;
     }
 
-    /* Save the config file */
+    /* Save the config file:
+    - Starts from the embedded default config, not from the user's file, so keys
+      added in newer versions (and their comments) appear after an upgrade
+    - Passthrough fields keep the user's value verbatim, quotes, ~ and all
+    - Any field this class can change at runtime is written from memory instead
+    */
     bool writeToFile() const {
         std::string path = getUserConfigPath();
-        if (path.empty()) return false;
+        if (path.empty())
+            return false;
 
         std::ifstream in(path);
-        if (!in.is_open()) return false;
+        if (!in.is_open())
+            return false;
 
-        std::string line;
-        std::ostringstream new_config;
+        std::string user_config(
+            (std::istreambuf_iterator<char>(in)),
+            std::istreambuf_iterator<char>()
+        );
+        in.close();
 
-        // Read the existing file line by line
-        while (std::getline(in, line)) {
-            std::string trimmed_line = line;
-            trimmed_line.erase(0, trimmed_line.find_first_not_of(" \t"));
+        std::string config(
+            reinterpret_cast<const char*>(moroder_default),
+            moroder_default_len
+        );
 
-            // Skip comments and empty lines
-            if (trimmed_line.empty() || trimmed_line[0] == '#') {
-                new_config << line << "\n";
-                continue;
-            }
-
-            size_t eq = trimmed_line.find('=');
-            if (eq != std::string::npos) {
-                std::string key = trimmed_line.substr(0, eq);
-                key.erase(key.find_last_not_of(" \t") + 1);
-
-                if (key == "LASTFM_API_KEY") {
-                    new_config << "LASTFM_API_KEY=\"" << LASTFM_API_KEY << "\"\n";
-
-                } else if (key == "FETCH_ALBUMS") {
-                    new_config << "FETCH_ALBUMS=" << (FETCH_ALBUMS ? "true" : "false") << "\n";
-
-                } else if (key == "PYTHON_PATH") {
-                    new_config << "PYTHON_PATH=\"" << PYTHON_PATH.string() << "\"\n";
-
-                } else if (key == "YTM_COOKIES_PATH") {
-                    new_config << "YTM_COOKIES_PATH=\"" << YTM_COOKIES_PATH.string() << "\"\n";
-
-                } else if (key == "MPV_COOKIES_PATH") {
-                    new_config << "MPV_COOKIES_PATH=\"" << MPV_COOKIES_PATH.string() << "\"\n";
-
-                } else if (key == "SEARCH_RESULT_LIMIT") {
-                    new_config << "SEARCH_RESULT_LIMIT=" << SEARCH_RESULT_LIMIT << "\n";
-
-                } else if (key == "RADIO_RESULT_LIMIT") {
-                    new_config << "RADIO_RESULT_LIMIT=" << RADIO_RESULT_LIMIT << "\n";
-
-                } else if (key == "HOME_ORDER") {
-                    new_config << "HOME_ORDER=\"";
-                    for (size_t i = 0; i < HOME_ORDER.size(); i++) {
-                        if (i) new_config << ", ";
-                        new_config << HOME_ORDER[i];
-                    }
-                    new_config << "\"\n";
-
-                } else {
-                    new_config << line << "\n";
-                }
-            } else {
-                new_config << line << "\n";
+        // Every field's key lives in fieldTable() exactly once; passthrough
+        // fields get copied verbatim from the user's existing file.
+        for (const auto& field : fieldTable()) {
+            if (field.passthrough) {
+                copyValue(config, user_config, field.key);
             }
         }
 
-        in.close();
+        // Nothing is runtime-mutable yet. When something is, flip its
+        // passthrough to false and write it from memory here, e.g.:
+        // copyValue(config, "SEARCH_RESULT_LIMIT=" + std::to_string(SEARCH_RESULT_LIMIT), "SEARCH_RESULT_LIMIT");
 
-        std::ofstream out(path, std::ios::trunc);
-        if (!out.is_open()) return false;
+        std::ofstream out(path, std::ios::binary | std::ios::trunc);
+        if (!out.is_open())
+            return false;
 
-        out << new_config.str();
-        return true;
+        out.write(config.data(), static_cast<std::streamsize>(config.size()));
+        return out.good();
     }
 
 private:
-    // handles ~ in paths
-    inline static fs::path expand_user(const std::string& path) {
-        if (!path.empty() && path[0] == '~') {
-            const char* home = std::getenv("HOME");
-            if (home) {
-                return fs::path(home) / path.substr(2);
-            }
-        }
-        return fs::path(path);
-    }
-
-    // Splits "a, b, c" into a lower-cased, trimmed list
-    inline static std::vector<std::string> parse_list(const std::string& value) {
-        std::vector<std::string> out;
-        size_t start = 0;
-
-        while (start <= value.size()) {
-            size_t comma = value.find(',', start);
-            std::string item = value.substr(start, comma == std::string::npos ? std::string::npos : comma - start);
-
-            size_t b = item.find_first_not_of(" \t");
-            if (b != std::string::npos) {
-                item = item.substr(b, item.find_last_not_of(" \t") - b + 1);
-                for (char& c : item) c = std::tolower(static_cast<unsigned char>(c));
-                out.push_back(item);
-            }
-
-            if (comma == std::string::npos) break;
-            start = comma + 1;
-        }
-
-        return out;
-    }
-
     // Returns path to ~/.config/moroder/moroder.conf or empty string if HOME not set
-    inline static std::string getUserConfigPath() {
+    static std::string getUserConfigPath() {
         const char* home = getenv("HOME");
         if (!home) { return ""; }
 
@@ -171,7 +116,7 @@ private:
     }
 
     // Writes the default configuration binary to the given path
-    inline static bool writeDefaultConfig(const std::string& path) {
+    static bool writeDefaultConfig(const std::string& path) {
         std::ofstream out(path, std::ios::binary);
         if (!out.is_open()) { return false; }
 
@@ -184,7 +129,7 @@ private:
     - Writes default config if file doesn't exist
     - Returns true if file is ready
     */
-    inline static bool ensureConfigFile() {
+    static bool ensureConfigFile() {
         std::string config_path = getUserConfigPath();
         fs::path config_dir = fs::path(config_path).parent_path();
 
@@ -194,32 +139,208 @@ private:
         return true;
     }
 
+    static void trim(std::string& s) {
+        size_t start = s.find_first_not_of(" \t\r");
+        if (start == std::string::npos) { s.clear(); return; }
+        size_t end = s.find_last_not_of(" \t\r");
+        s = s.substr(start, end - start + 1);
+    }
+
+    /* Finds the value for a given key in a config string
+    - Returns the starting index of the value and its length
+    - for example, findValueSpan("PORT=8080", "PORT") would return <5, 4>
+    - Matching is line-anchored: the key must be the whole left-hand side of a
+      non-comment line, so comments mentioning a key and keys that are
+      substrings of other keys can't produce a false hit
+    */
+    static std::pair<size_t, size_t> findValueSpan(const std::string& source, const std::string& key) {
+        size_t line_start = 0;
+
+        while (line_start <= source.size()) {
+            size_t line_end = source.find('\n', line_start);
+            if (line_end == std::string::npos) line_end = source.size();
+
+            size_t key_start = line_start;
+            while (key_start < line_end &&
+                   (source[key_start] == ' ' || source[key_start] == '\t')) {
+                ++key_start;
+            }
+
+            size_t eq = source.find('=', key_start);
+
+            if (key_start < line_end && source[key_start] != '#' &&
+                eq != std::string::npos && eq < line_end) {
+
+                size_t key_end = eq;
+                while (key_end > key_start &&
+                       (source[key_end - 1] == ' ' || source[key_end - 1] == '\t')) {
+                    --key_end;
+                }
+
+                if (key_end - key_start == key.size() &&
+                    source.compare(key_start, key.size(), key) == 0) {
+
+                    size_t value_start = eq + 1;
+                    while (value_start < line_end &&
+                           (source[value_start] == ' ' || source[value_start] == '\t')) {
+                        ++value_start;
+                    }
+
+                    size_t value_end = line_end;
+                    while (value_end > value_start &&
+                           (source[value_end - 1] == ' ' ||
+                            source[value_end - 1] == '\t' ||
+                            source[value_end - 1] == '\r')) {
+                        --value_end;
+                    }
+
+                    return {value_start, value_end - value_start};
+                }
+            }
+
+            if (line_end == source.size()) break;
+            line_start = line_end + 1;
+        }
+
+        return {std::string::npos, 0};
+    }
+
+    /* Replaces the value for a given key in config with that key's value from source
+    - for example, copyValue("PORT=8080", "PORT=3000", "PORT") would change "PORT=8080" to "PORT=3000"
+    - Returns false when either side lacks the key, leaving config untouched
+    */
+    static bool copyValue(std::string& config, const std::string& source, const std::string& key) {
+        auto [source_start, source_len] = findValueSpan(source, key);
+        if (source_start == std::string::npos) return false;
+        std::string value = source.substr(source_start, source_len);
+
+        auto [config_start, config_len] = findValueSpan(config, key);
+        if (config_start == std::string::npos) return false;
+
+        config.replace(config_start, config_len, value);
+        return true;
+    }
+
+    static std::string unquote(const std::string& value) {
+        if (value.size() >= 2 && value.front() == '"' && value.back() == '"') {
+            return value.substr(1, value.size() - 2);
+        }
+        return value;
+    }
+
+    // handles ~ in paths
+    static fs::path expand_user(const std::string& path) {
+        if (path == "~" || path.rfind("~/", 0) == 0) {
+            if (const char* home = std::getenv("HOME")) {
+                return path.size() > 2 ? fs::path(home) / path.substr(2) : fs::path(home);
+            }
+        }
+        return fs::path(path);
+    }
+
+    // Splits "a, b, c" into a lower-cased, trimmed list
+    static std::vector<std::string> parse_list(const std::string& value) {
+        std::vector<std::string> out;
+        std::stringstream ss(value);
+        std::string item;
+
+        while (std::getline(ss, item, ',')) {
+            trim(item);
+            if (item.empty()) continue;
+
+            for (char& c : item) c = std::tolower(static_cast<unsigned char>(c));
+            out.push_back(item);
+        }
+
+        return out;
+    }
+
+    /* Declarative field table
+    - Source for every "simple" config field (as in anything that is one key = one value)
+    - Previously this lived as separate hand-written lists in parseConfigFile()
+      and writeToFile() that had to be kept in sync by hand
+    */
+    static int parseValue(int*, const std::string& v) {
+        return std::stoi(v);
+    }
+
+    static double parseValue(double*, const std::string& v) {
+        return std::stod(v);
+    }
+
+    static bool parseValue(bool*, const std::string& v) {
+        return v == "true";
+    }
+
+    static std::string parseValue(std::string*, const std::string& v) {
+        return unquote(v);
+    }
+
+    static fs::path parseValue(fs::path*, const std::string& v) {
+        return expand_user(unquote(v));
+    }
+
+    static std::vector<std::string> parseValue(std::vector<std::string>*, const std::string& v) {
+        return parse_list(unquote(v));
+    }
+
+    using Setter = std::function<void(Config&, const std::string&)>;
+
+    struct FieldSpec {
+        const char* key;
+        Setter setter;
+        bool passthrough;
+    };
+
+    /* Builds a Setter for `member` with zero repetition of its type.
+    - T is deduced from the member pointer.
+    - parseValue() is picked by overload resolution on that same T.
+    */
+    template <typename T> static Setter makeSetter(T Config::* member) {
+        return [member](Config& c, const std::string& v) {
+            c.*member = parseValue(static_cast<T*>(nullptr), v);
+        };
+    }
+
+    static const std::vector<FieldSpec>& fieldTable() {
+        static const std::vector<FieldSpec> table = {
+            {"LASTFM_API_KEY",      makeSetter(&Config::LASTFM_API_KEY),      true},
+            {"PYTHON_PATH",         makeSetter(&Config::PYTHON_PATH),         true},
+            {"YTM_COOKIES_PATH",    makeSetter(&Config::YTM_COOKIES_PATH),    true},
+            {"MPV_COOKIES_PATH",    makeSetter(&Config::MPV_COOKIES_PATH),    true},
+            {"SEARCH_RESULT_LIMIT", makeSetter(&Config::SEARCH_RESULT_LIMIT), true},
+            {"RADIO_RESULT_LIMIT",  makeSetter(&Config::RADIO_RESULT_LIMIT),  true},
+            {"FETCH_ALBUMS",        makeSetter(&Config::FETCH_ALBUMS),        true},
+            {"HOME_ORDER",          makeSetter(&Config::HOME_ORDER),          true},
+        };
+        return table;
+    }
+
+    static const FieldSpec* findField(const std::string& key) {
+        for (const auto& field : fieldTable()) {
+            if (key == field.key) return &field;
+        }
+        return nullptr;
+    }
+
     /* Reads a config file and populates a Config object:
     - Ignores empty lines and comments (#)
     - Splits lines by '=' into key/value
     - Trims leading/trailing spaces and tabs
-    - Converts values to int, double, or string as appropriate
-    - Special handling for CHART_COLORS array block
+    - Converts values via the field table's setters
+    - Unknown keys are silently ignored
     */
-    inline static std::optional<Config> parseConfigFile(const std::string& config_path) {
+    static std::optional<Config> parseConfigFile(const std::string& config_path) {
         std::ifstream in(config_path);
         if (!in.is_open()) return std::nullopt;
 
         Config cfg;
         std::string line;
 
-        // Trim leading and trailing whitespace
-        auto trim = [](std::string& s) {
-            s.erase(0, s.find_first_not_of(" \t"));
-            s.erase(s.find_last_not_of(" \t") + 1);
-        };
-
         while (std::getline(in, line)) {
-            // Skip comments and empty lines
             if (line.empty() || line[0] == '#')
                 continue;
 
-            // Skip malformed lines
             size_t eq = line.find('=');
             if (eq == std::string::npos)
                 continue;
@@ -231,30 +352,9 @@ private:
             trim(value);
 
             try {
-                if (key == "LASTFM_API_KEY")
-                    cfg.LASTFM_API_KEY = value.substr(1, value.size() - 2);
-
-                else if(key == "PYTHON_PATH")
-                    cfg.PYTHON_PATH = expand_user(value.substr(1, value.size() - 2));
-
-                else if(key == "YTM_COOKIES_PATH")
-                    cfg.YTM_COOKIES_PATH = expand_user(value.substr(1, value.size() - 2));
-
-                else if(key == "MPV_COOKIES_PATH")
-                    cfg.MPV_COOKIES_PATH = expand_user(value.substr(1, value.size() - 2));
-
-                else if(key == "SEARCH_RESULT_LIMIT")
-                    cfg.SEARCH_RESULT_LIMIT = std::stoi(value);
-
-                else if(key == "RADIO_RESULT_LIMIT")
-                    cfg.RADIO_RESULT_LIMIT = std::stoi(value);
-
-                else if(key == "FETCH_ALBUMS")
-                    cfg.FETCH_ALBUMS = (value == "true");
-
-                else if(key == "HOME_ORDER")
-                    cfg.HOME_ORDER = parse_list(value.substr(1, value.size() - 2));
-
+                if (const FieldSpec* field = findField(key)) {
+                    field->setter(cfg, value);
+                }
             } catch (...) {
                 return std::nullopt;
             }
