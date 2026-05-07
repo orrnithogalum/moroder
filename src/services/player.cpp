@@ -1077,3 +1077,64 @@ void services::Player::removeAt(uint16_t index) {
         }
     }
 }
+
+void services::Player::pause() {
+    {
+        std::lock_guard lock(state_mutex);
+
+        if (!state.current || state.flags["audio"] != Flags::Ongoing) {
+            spdlog::warn("PLAYER: tried to pause, but nothing is playing");
+            return;
+        }
+
+        state.flags["audio"]  = Flags::Done;
+        state.flags["paused"] = Flags::True;
+    }
+
+    mpv_service->pause();
+    social_service->pause();
+
+    uint64_t position = mpv_service->getStreamPosition();
+
+    social_service->setPosition(position);
+    mpris_service->setPosition(position);
+    mpris_service->setPlaybackStatus(services::PlaybackStatus::Paused);
+}
+
+void services::Player::resume() {
+    {
+        std::lock_guard lock(state_mutex);
+
+        if (!state.current || state.flags["audio"] == Flags::Ongoing) {
+            spdlog::warn("PLAYER: tried to resume, but nothing is paused");
+            return;
+        }
+
+        state.flags["audio"]  = Flags::Ongoing;
+        state.flags["paused"] = Flags::False;
+    }
+
+    mpv_service->resume();
+    social_service->resume();
+
+    uint64_t position = mpv_service->getStreamPosition();
+
+    social_service->setPosition(position);
+    mpris_service->setPosition(position);
+    mpris_service->setPlaybackStatus(services::PlaybackStatus::Playing);
+}
+
+void services::Player::togglePause() {
+    bool is_playing;
+
+    {
+        std::lock_guard lock(state_mutex);
+        is_playing = state.flags["audio"] == Flags::Ongoing;
+    }
+
+    if (is_playing) {
+        pause();
+    } else {
+        resume();
+    }
+}

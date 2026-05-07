@@ -412,6 +412,11 @@ int main(int argc, char *argv[]) {
             return true;
         }
 
+        if(event == Event::Character(" ")) {
+            player.togglePause();
+            return true;
+        }
+
         return false;
     });
 

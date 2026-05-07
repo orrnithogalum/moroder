@@ -115,6 +115,10 @@ public:
     void queue(std::shared_ptr<music::IStreamableContainer> container, const bool fresh = true, const bool radio = true);
     void removeAt(uint16_t index);
 
+    void pause();
+    void resume();
+    void togglePause();
+
     void setOnStreamStart(std::function<void()> cb) {
         on_stream_start = std::move(cb);
     }
