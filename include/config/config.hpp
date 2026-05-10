@@ -10,6 +10,7 @@
 
 #include "gen/defaults.hpp"
 
+#include <ftxui/component/event.hpp>
 #include <string_view>
 #include <filesystem>
 #include <functional>
@@ -43,6 +44,22 @@ public:
     // Home categories in display order, lower-cased. Empty = keep API order.
     std::vector<std::string> HOME_ORDER;
 
+    /* Keybinds
+    - Single printable characters ("q", "/", "1") or a named key from keyEvent()
+    - Prefix with "ctrl+" for a control combo, e.g. "ctrl+n"
+    - An empty value unbinds the action
+    */
+    std::string KEY_QUIT              = "q";
+    std::string KEY_QUEUE_VIEW        = "a";
+    std::string KEY_TOGGLE_SIDEBAR    = "s";
+    std::string KEY_FOCUS_SEARCH      = "f";
+    std::string KEY_SKIP_BACKWARD     = "z";
+    std::string KEY_SKIP_FORWARD      = "x";
+    std::string KEY_TOGGLE_PAUSE      = "space";
+    std::string KEY_PLAY_NOW          = "enter";
+    std::string KEY_ADD_TO_QUEUE      = "d";
+    std::string KEY_REMOVE_FROM_QUEUE = "c";
+
     /* Lazy initialization using a lambda:
     - Ensures config is loaded once at first access
     - If the config file does not exist, create it with defaults
@@ -58,6 +75,50 @@ public:
             return *config;
         }();
         return instance;
+    }
+
+    /* Turns a config keybind string into an ftxui event
+    - Named keys are matched case-insensitively
+    - "ctrl+<letter>" maps to the corresponding control character
+    - Anything else is taken as a literal character sequence
+    - An empty bind returns a sentinel that no real key can produce
+    */
+    static ftxui::Event keyEvent(const std::string& bind) {
+        if (bind.empty()) return ftxui::Event::Special("__moroder_unbound__");
+
+        std::string key = bind;
+        for (char& c : key) c = std::tolower(static_cast<unsigned char>(c));
+
+        if (key == "space")     return ftxui::Event::Character(" ");
+        if (key == "enter")     return ftxui::Event::Return;
+        if (key == "tab")       return ftxui::Event::Tab;
+        if (key == "escape")    return ftxui::Event::Escape;
+        if (key == "backspace") return ftxui::Event::Backspace;
+        if (key == "delete")    return ftxui::Event::Delete;
+        if (key == "up")        return ftxui::Event::ArrowUp;
+        if (key == "down")      return ftxui::Event::ArrowDown;
+        if (key == "left")      return ftxui::Event::ArrowLeft;
+        if (key == "right")     return ftxui::Event::ArrowRight;
+        if (key == "home")      return ftxui::Event::Home;
+        if (key == "end")       return ftxui::Event::End;
+        if (key == "pageup")    return ftxui::Event::PageUp;
+        if (key == "pagedown")  return ftxui::Event::PageDown;
+
+        // Ctrl combos are Special events holding the raw control byte,
+        // so ctrl+a is 0x01, ctrl+b is 0x02, and so on.
+        if (key.rfind("ctrl+", 0) == 0 && key.size() == 6) {
+            char c = key[5];
+            if (c >= 'a' && c <= 'z') {
+                return ftxui::Event::Special(std::string(1, static_cast<char>(c - 'a' + 1)));
+            }
+        }
+
+        return ftxui::Event::Character(bind);
+    }
+
+    // Convenience for call sites: `if (Config::isKey(event, cfg.KEY_QUIT))`
+    static bool isKey(const ftxui::Event& event, const std::string& bind) {
+        return event == keyEvent(bind);
     }
 
     /* Save the config file:
@@ -146,6 +207,15 @@ private:
         s = s.substr(start, end - start + 1);
     }
 
+    static void stripComment(std::string& s) {
+        bool in_quotes = false;
+
+        for (size_t i = 0; i < s.size(); i++) {
+            if (s[i] == '"') in_quotes = !in_quotes;
+            else if (s[i] == '#' && !in_quotes) { s.resize(i); return; }
+        }
+    }
+
     /* Finds the value for a given key in a config string
     - Returns the starting index of the value and its length
     - for example, findValueSpan("PORT=8080", "PORT") would return <5, 4>
@@ -186,9 +256,17 @@ private:
                         ++value_start;
                     }
 
-                    size_t value_end = line_end;
+                    size_t value_end = value_start;
+                    bool in_quotes = false;
+
+                    while (value_end < line_end) {
+                        if (source[value_end] == '"') in_quotes = !in_quotes;
+                        else if (source[value_end] == '#' && !in_quotes) break;
+                        ++value_end;
+                    }
+
                     while (value_end > value_start &&
-                           (source[value_end - 1] == ' ' ||
+                            (source[value_end - 1] == ' ' ||
                             source[value_end - 1] == '\t' ||
                             source[value_end - 1] == '\r')) {
                         --value_end;
@@ -304,15 +382,26 @@ private:
 
     static const std::vector<FieldSpec>& fieldTable() {
         static const std::vector<FieldSpec> table = {
-            {"LASTFM_API_KEY",      makeSetter(&Config::LASTFM_API_KEY),      true},
-            {"PYTHON_PATH",         makeSetter(&Config::PYTHON_PATH),         true},
-            {"YTM_COOKIES_PATH",    makeSetter(&Config::YTM_COOKIES_PATH),    true},
-            {"MPV_COOKIES_PATH",    makeSetter(&Config::MPV_COOKIES_PATH),    true},
-            {"SEARCH_RESULT_LIMIT", makeSetter(&Config::SEARCH_RESULT_LIMIT), true},
-            {"RADIO_RESULT_LIMIT",  makeSetter(&Config::RADIO_RESULT_LIMIT),  true},
-            {"FETCH_ALBUMS",        makeSetter(&Config::FETCH_ALBUMS),        true},
-            {"HOME_ORDER",          makeSetter(&Config::HOME_ORDER),          true},
+            {"LASTFM_API_KEY",       makeSetter(&Config::LASTFM_API_KEY),        true},
+            {"PYTHON_PATH",          makeSetter(&Config::PYTHON_PATH),           true},
+            {"YTM_COOKIES_PATH",     makeSetter(&Config::YTM_COOKIES_PATH),      true},
+            {"MPV_COOKIES_PATH",     makeSetter(&Config::MPV_COOKIES_PATH),      true},
+            {"SEARCH_RESULT_LIMIT",  makeSetter(&Config::SEARCH_RESULT_LIMIT),   true},
+            {"RADIO_RESULT_LIMIT",   makeSetter(&Config::RADIO_RESULT_LIMIT),    true},
+            {"FETCH_ALBUMS",         makeSetter(&Config::FETCH_ALBUMS),          true},
+            {"HOME_ORDER",           makeSetter(&Config::HOME_ORDER),            true},
+            {"KEY_QUIT",             makeSetter(&Config::KEY_QUIT),              true},
+            {"KEY_QUEUE_VIEW",       makeSetter(&Config::KEY_QUEUE_VIEW),        true},
+            {"KEY_TOGGLE_SIDEBAR",   makeSetter(&Config::KEY_TOGGLE_SIDEBAR),    true},
+            {"KEY_FOCUS_SEARCH",     makeSetter(&Config::KEY_FOCUS_SEARCH),      true},
+            {"KEY_SKIP_BACKWARD",    makeSetter(&Config::KEY_SKIP_BACKWARD),     true},
+            {"KEY_SKIP_FORWARD",     makeSetter(&Config::KEY_SKIP_FORWARD),      true},
+            {"KEY_TOGGLE_PAUSE",     makeSetter(&Config::KEY_TOGGLE_PAUSE),      true},
+            {"KEY_PLAY_NOW",         makeSetter(&Config::KEY_PLAY_NOW),          true},
+            {"KEY_ADD_TO_QUEUE",     makeSetter(&Config::KEY_ADD_TO_QUEUE),      true},
+            {"KEY_REMOVE_FROM_QUEUE",makeSetter(&Config::KEY_REMOVE_FROM_QUEUE), true},
         };
+
         return table;
     }
 
@@ -349,6 +438,8 @@ private:
             std::string value = line.substr(eq + 1);
 
             trim(key);
+
+            stripComment(value);
             trim(value);
 
             try {

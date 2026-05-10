@@ -111,14 +111,16 @@ int main(int argc, char *argv[]) {
     std::deque<ui::ContentEntry> main_content_items;
     auto main_content = Container::Vertical({ Renderer([]{ return emptyElement(); }) });
 
+    const Config& cfg = Config::get();
+
     std::function<bool(const ftxui::Event&, const music::ApiResult&)> on_item_press =
-    [&current_state, &player, &main_content_items, &main_content, &screen](const ftxui::Event& event, const music::ApiResult& result) {
-        if(event != Event::d && event != Event::Return) {
+    [&current_state, &player, &main_content_items, &main_content, &screen, &cfg](const ftxui::Event& event, const music::ApiResult& result) {
+        if(!Config::isKey(event, cfg.KEY_ADD_TO_QUEUE) && !Config::isKey(event, cfg.KEY_PLAY_NOW)) {
             return false;
         }
 
         spdlog::info("ITEM: key pressed on result, " + result.resultType);
-        bool should_queue = event == Event::d;
+        bool should_queue = Config::isKey(event, cfg.KEY_ADD_TO_QUEUE);
 
         std::visit([&](auto&& data) {
             using T = std::decay_t<decltype(data)>;
@@ -159,13 +161,13 @@ int main(int argc, char *argv[]) {
     };
 
     std::function<bool(const ftxui::Event&, const music::Playlist&)> on_sidebar_press =
-    [&current_state, &player, &main_content_items, &main_content, &screen](const ftxui::Event& event, const music::Playlist& playlist) {
-        if(event != Event::d && event != Event::Return) {
+    [&current_state, &player, &main_content_items, &main_content, &screen, &cfg](const ftxui::Event& event, const music::Playlist& playlist) {
+        if(!Config::isKey(event, cfg.KEY_ADD_TO_QUEUE) && !Config::isKey(event, cfg.KEY_PLAY_NOW)) {
             return false;
         }
 
         spdlog::info("SIDEBAR: key pressed on playlist, " + playlist.ref.title);
-        bool should_queue = event == Event::d;
+        bool should_queue = Config::isKey(event, cfg.KEY_ADD_TO_QUEUE);
 
         auto container = std::make_shared<music::Playlist>(playlist);
         player.queue(container, !should_queue, !should_queue);
@@ -182,13 +184,13 @@ int main(int argc, char *argv[]) {
     };
 
     std::function<bool(const ftxui::Event&, const int)> on_queue_press =
-    [&current_state, &player, &main_content_items, &main_content, &screen](const ftxui::Event& event, const int queue_index) {
-        if(event != Event::c && event != Event::Return) {
+    [&current_state, &player, &main_content_items, &main_content, &screen, &cfg](const ftxui::Event& event, const int queue_index) {
+        if(!Config::isKey(event, cfg.KEY_REMOVE_FROM_QUEUE) && !Config::isKey(event, cfg.KEY_PLAY_NOW)) {
             return false;
         }
 
         spdlog::info("QUEUE: key pressed on item, " + std::to_string(queue_index));
-        bool should_remove = event == Event::c;
+        bool should_remove = Config::isKey(event, cfg.KEY_REMOVE_FROM_QUEUE);
 
         if(!should_remove) {
             player.skipTo(queue_index);
@@ -370,22 +372,23 @@ int main(int argc, char *argv[]) {
         });
     });
 
-    ui = CatchEvent(ui, [&search_bar, &screen, &sidebar_hidden, &sidebar, &sidebar_container, &audio_playing, &current_state, &player](Event event){
+    ui = CatchEvent(ui, [&search_bar, &screen, &sidebar_hidden, &sidebar, &sidebar_container, &audio_playing, &current_state, &player, &cfg](Event event){
         if(search_bar->Focused()) {
             return false;
         }
 
-        if(event == Event::q) {
+        if(Config::isKey(event, cfg.KEY_QUIT)) {
             screen.Exit();
             return true;
         }
 
-        if(event == Event::a && audio_playing) {
+
+        if(Config::isKey(event, cfg.KEY_QUEUE_VIEW) && audio_playing) {
             current_state = ui::State::QUEUE;
             return true;
         }
 
-        if(event == Event::s) {
+        if(Config::isKey(event, cfg.KEY_TOGGLE_SIDEBAR)) {
             sidebar_hidden = !sidebar_hidden;
 
             if(sidebar_hidden) {
@@ -397,22 +400,22 @@ int main(int argc, char *argv[]) {
             return true;
         }
 
-        if(event == Event::f) {
+        if(Config::isKey(event, cfg.KEY_FOCUS_SEARCH)) {
             search_bar->TakeFocus();
             return true;
         }
 
-        if(event == Event::z) {
+        if(Config::isKey(event, cfg.KEY_SKIP_BACKWARD)) {
             player.skipBackward();
             return true;
         }
 
-        if(event == Event::x) {
+        if(Config::isKey(event, cfg.KEY_SKIP_FORWARD)) {
             player.skipForward();
             return true;
         }
 
-        if(event == Event::Character(" ")) {
+        if(Config::isKey(event, cfg.KEY_TOGGLE_PAUSE)) {
             player.togglePause();
             return true;
         }

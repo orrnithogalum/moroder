@@ -365,9 +365,12 @@ void ui::buildQueue(services::Player::PlayerState* state, std::deque<ContentEntr
 
             auto button = Button(opt);
             button = CatchEvent(button, [on_queue_press, queue_index](const ftxui::Event& event) {
-                if (event == Event::Character('c')) {
+                const Config& cfg = Config::get();
+
+                if (Config::isKey(event, cfg.KEY_REMOVE_FROM_QUEUE)) {
                     focus_override = queue_index;
                 }
+
                 return on_queue_press(event, queue_index);
             });
 
