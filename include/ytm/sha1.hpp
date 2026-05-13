@@ -1,3 +1,9 @@
+/* SHA-1
+- needed only to build the SAPISIDHASH authorization header.
+- Kept self-contained so the project doesn't pick up a libcrypto dependency for one hash.
+- This is the standard FIPS 180-1 construction.
+*/
+
 #pragma once
 
 #include <string>
