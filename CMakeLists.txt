@@ -74,6 +74,13 @@ set(SOURCES
     src/ui/components/search_bar.cpp
     src/ui/components/sidebar.cpp
 
+    src/ytm/http.cpp
+    src/ytm/metadata.cpp
+    src/ytm/nav.cpp
+    src/ytm/parsers.cpp
+    src/ytm/sha1.cpp
+    src/ytm/ytmusic.cpp
+
     src/main.cpp
 )
 
@@ -108,7 +115,6 @@ target_link_libraries(${PROJECT_NAME}
 
     spdlog::spdlog
     nlohmann_json::nlohmann_json
-    sdbus-c++
 
     ftxui::screen
     ftxui::dom
@@ -117,6 +123,8 @@ target_link_libraries(${PROJECT_NAME}
     ftxui-grid-container
 
     mpv
+    curl
+    sdbus-c++
 
     ${DISCORD_LIB_PATH}
 )
@@ -127,18 +135,12 @@ set(CMAKE_INSTALL_RPATH "$ORIGIN")
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(${PROJECT_NAME}
         PRIVATE
-        MORODER_PYTHON_PATH="${CMAKE_SOURCE_DIR}/python"
         MORODER_LOG_PATH="${CMAKE_SOURCE_DIR}/logs"
-
-        MORODER_CACHE_PATH=".cache/moroder"
     )
 else()
     target_compile_definitions(${PROJECT_NAME}
         PRIVATE
-        MORODER_PYTHON_PATH=".local/share/moroder/python"
         MORODER_LOG_PATH=".local/state/moroder/logs"
-
-        MORODER_CACHE_PATH=".cache/moroder"
     )
 endif()
 
