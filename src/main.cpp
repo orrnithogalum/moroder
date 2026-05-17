@@ -33,7 +33,6 @@ using namespace ftxui;
 int main(int argc, char *argv[]) {
     Config::app_name = APP_NAME;
 
-    utils::ensure_dir(utils::resolve_path(MORODER_PYTHON_PATH));
     utils::ensure_dir(utils::resolve_path(MORODER_LOG_PATH));
 
     auto logger = spdlog::basic_logger_mt(APP_NAME, utils::resolve_path(MORODER_LOG_PATH).string() + "/" + APP_NAME + ".log", true);
