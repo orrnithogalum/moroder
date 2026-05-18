@@ -124,6 +124,7 @@ public:
     }
 
     void setOnRequestCompletedCallback(std::function<void()> cb) {
+        std::lock_guard lock(callback_mutex);
         on_request_completed = std::move(cb);
     }
 
@@ -131,10 +132,13 @@ public:
         on_position_tick = std::move(cb);
     }
 
+    void detachUI();
+
 private:
     std::string app_name;
 
     std::condition_variable command_cv;
+    std::mutex callback_mutex;
     std::mutex command_mutex;
 
     using Command = std::variant<

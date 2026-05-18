@@ -415,4 +415,5 @@ int main(int argc, char *argv[]) {
     });
 
     screen.Loop(ui);
+    player.detachUI();
 }

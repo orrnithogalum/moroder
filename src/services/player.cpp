@@ -630,14 +630,19 @@ void services::Player::worker_loop() {
 
         }, cmd);
 
-        if (on_request_completed) {
-            on_request_completed();
-        };
+        {
+            std::lock_guard lock(callback_mutex);
+
+            if (on_request_completed) {
+                on_request_completed();
+            }
+        }
     }
 }
 
 services::Player::~Player() {
     this->stopPositionTick();
+    this->detachUI();
 
     {
         std::lock_guard lock(command_mutex);
@@ -1076,4 +1081,9 @@ void services::Player::removeAt(uint16_t index) {
             state.flags["audio"] = Flags::Done;
         }
     }
+}
+
+void services::Player::detachUI() {
+    std::lock_guard lock(callback_mutex);
+    on_request_completed = nullptr;
 }
