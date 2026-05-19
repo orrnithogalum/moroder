@@ -69,6 +69,7 @@ set(SOURCES
 
     src/ui/components/carousel.cpp
     src/ui/components/content.cpp
+    src/ui/components/error.cpp
     src/ui/components/grid.cpp
     src/ui/components/playback_bar.cpp
     src/ui/components/search_bar.cpp
