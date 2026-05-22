@@ -16,6 +16,37 @@
 
 namespace ytm {
 
+struct Error {
+    enum class Kind {
+        None,
+        Cancelled,
+        Network,
+        Auth,
+        NotFound,
+        RateLimit,
+        Server,
+        Request,
+        Parse,
+    };
+
+    Kind kind = Kind::None;
+    std::string detail;
+
+    bool ok() const { return kind == Kind::None; }
+
+    bool retryable() const {
+        switch (kind) {
+            case Kind::Network:
+            case Kind::RateLimit:
+            case Kind::Server:
+            case Kind::Parse:
+                return true;
+            default:
+                return false;
+        }
+    }
+};
+
 /* WatchPlaylist
 - The result of a "next" (watch playlist / radio) request.
 */
@@ -40,7 +71,9 @@ public:
     /* lastError
     - Empty when the last call succeeded.
     */
-    const std::string& lastError() const { return last_error; }
+    const std::string& lastError() const { return last_error.detail; }
+
+    const Error& lastErrorInfo() const { return last_error; }
 
     /* debugHeaderNames
     - Names only, never values; The cookie and authorization headers are secrets.
@@ -93,6 +126,8 @@ private:
     json sendRequest(const std::string& endpoint, const json& body, const std::string& additionalParams = "");
     std::vector<std::string> buildHeaders();
 
+    void setError(Error::Kind kind, std::string detail);
+
     void ensureVisitorId();
     void loadAuth(const std::filesystem::path& path);
 
@@ -112,7 +147,7 @@ private:
     std::string location;
 
     bool        authenticated = false;
-    std::string last_error;
+    Error       last_error;
 };
 
 }

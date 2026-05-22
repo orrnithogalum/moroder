@@ -134,6 +134,11 @@ const json* libraryContents(const json& response) {
 
 
 
+void YTMusic::setError(Error::Kind kind, std::string detail) {
+    last_error.kind = kind;
+    last_error.detail = std::move(detail);
+}
+
 YTMusic::YTMusic(const std::filesystem::path& browserJson, std::string lang, std::string loc)
     : language(std::move(lang)), location(std::move(loc)) {
 
@@ -149,7 +154,7 @@ YTMusic::YTMusic(const std::filesystem::path& browserJson, std::string lang, std
 void YTMusic::loadAuth(const std::filesystem::path& path) {
     std::ifstream in(path);
     if (!in) {
-        last_error = "could not open " + path.string();
+        setError(Error::Kind::Auth, "could not open " + path.string());
         return;
     }
 
@@ -157,12 +162,12 @@ void YTMusic::loadAuth(const std::filesystem::path& path) {
     try {
         in >> raw;
     } catch (const std::exception& e) {
-        last_error = std::string("invalid auth JSON: ") + e.what();
+        setError(Error::Kind::Auth, std::string("invalid auth JSON: ") + e.what());
         return;
     }
 
     if (!raw.is_object()) {
-        last_error = "auth file is not a header object";
+        setError(Error::Kind::Auth, "auth file is not a header object");
         return;
     }
 
@@ -172,7 +177,7 @@ void YTMusic::loadAuth(const std::filesystem::path& path) {
 
     std::string cookie = auth_headers.value("cookie", std::string());
     if (cookie.empty()) {
-        last_error = "auth file has no cookie header";
+        setError(Error::Kind::Auth, "auth file has no cookie header");
         auth_headers = json::object();
         return;
     }
@@ -181,7 +186,7 @@ void YTMusic::loadAuth(const std::filesystem::path& path) {
     if (sapisid.empty()) sapisid = cookieValue(cookie, "SAPISID");
 
     if (sapisid.empty()) {
-        last_error = "cookie has no SAPISID";
+        setError(Error::Kind::Auth, "cookie has no SAPISID");
         auth_headers = json::object();
         return;
     }
@@ -292,30 +297,39 @@ json YTMusic::sendRequest(const std::string& endpoint, const json& body, const s
     Http::Response r = http.post(url, payload.dump(), buildHeaders());
 
     if (!r.error.empty()) {
-        last_error = "transport: " + r.error;
+        setError(r.error == "aborted" ? Error::Kind::Cancelled : Error::Kind::Network, "transport: " + r.error);
         return json::object();
     }
 
     if (r.status < 200 || r.status >= 300) {
-        last_error = "HTTP " + std::to_string(r.status) + " from " + endpoint;
+        std::string detail = "HTTP " + std::to_string(r.status) + " from " + endpoint;
 
-        // YouTube puts a useful message in the error body; surface it.
         json err = json::parse(r.body, nullptr, false);
         if (!err.is_discarded()) {
             std::string message = str(nav(err, {"error", "message"}));
-            if (!message.empty()) last_error += ": " + message;
+            if (!message.empty()) detail += ": " + message;
         }
+
+        Error::Kind kind;
+
+        if (r.status == 401 || r.status == 403)  kind = Error::Kind::Auth;
+        else if (r.status == 404)                kind = Error::Kind::NotFound;
+        else if (r.status == 429)                kind = Error::Kind::RateLimit;
+        else if (r.status >= 500)                kind = Error::Kind::Server;
+        else                                     kind = Error::Kind::Request;
+
+        setError(kind, detail);
 
         return json::object();
     }
 
     json parsed = json::parse(r.body, nullptr, false);
     if (parsed.is_discarded()) {
-        last_error = "invalid JSON from " + endpoint;
+        setError(Error::Kind::Parse, "invalid JSON from " + endpoint);
         return json::object();
     }
 
-    last_error.clear();
+    last_error = Error{};
     return parsed;
 }
 
@@ -513,7 +527,7 @@ json YTMusic::getHome(int limit) {
 
 json YTMusic::getAlbum(const std::string& browseId) {
     if (browseId.empty() || !startsWith(browseId, "MPRE")) {
-        last_error = "invalid album browseId, must start with MPRE: " + browseId;
+        setError(Error::Kind::Request, "invalid album browseId, must start with MPRE: " + browseId);
         return json::object();
     }
 
@@ -639,7 +653,7 @@ json YTMusic::getPlaylist(const std::string& playlistId, int limit) {
 
 json YTMusic::getLibraryPlaylists(int limit) {
     if (!authenticated) {
-        last_error = "not authenticated";
+        setError(Error::Kind::Auth, "not authenticated");
         return json::array();
     }
 
@@ -717,9 +731,11 @@ WatchPlaylist YTMusic::getWatchPlaylist(const std::string& videoId, const std::s
     const json* results = nav(watchNext, TAB_CONTENT + Path{"musicQueueRenderer", "content", "playlistPanelRenderer"});
 
     if (!results || !results->contains("contents")) {
-        if (last_error.empty()) {
-            last_error = "no radio content returned";
-            if (!playlistId.empty()) last_error += " for " + playlistId + " (private playlist?)";
+        if (last_error.ok()) {
+            std::string detail = "no radio content returned";
+            if (!playlistId.empty()) detail += " for " + playlistId + " (private playlist?)";
+
+            setError(Error::Kind::Parse, detail);
         }
         return out;
     }
