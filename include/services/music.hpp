@@ -23,6 +23,14 @@
 
 namespace services {
 
+struct RequestError {
+    bool failed = false;
+    bool retryable = false;
+    bool cancelled = false;
+    std::string message;
+    std::string detail;
+};
+
 class Music {
 public:
     /* app_name
@@ -33,6 +41,8 @@ public:
     ~Music();
 
     bool isLoggedIn();
+
+    const RequestError& lastError() const { return last_error; }
 
     std::vector<music::Playlist>  getLibraryPlaylists();
     std::vector<music::ApiResult> getSearch(const std::string& query);
@@ -66,7 +76,8 @@ private:
     ytm::Http   metadata_http;
     std::string lastfm_api_key;
 
-    void logIfError(const char* what);
+    RequestError last_error;
+    void captureError(const char* what);
 
     music::Radio getRadio(const std::string id, const std::string type);
 };

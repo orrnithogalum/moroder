@@ -32,6 +32,27 @@ bool startsWith(const std::string& s, const std::string& p) {
     return s.size() >= p.size() && s.compare(0, p.size(), p) == 0;
 }
 
+std::string userMessage(ytm::Error::Kind kind) {
+    switch (kind) {
+        case ytm::Error::Kind::Network:
+            return "Couldn't reach YouTube Music. Check your connection.";
+        case ytm::Error::Kind::Auth:
+            return "Your YouTube Music session has expired. Re-run the cookie setup to sign in again.";
+        case ytm::Error::Kind::RateLimit:
+            return "YouTube Music is rate limiting requests. Give it a moment.";
+        case ytm::Error::Kind::Server:
+            return "YouTube Music is having trouble right now.";
+        case ytm::Error::Kind::Request:
+            return "YouTube Music rejected the request. This is probably a bug in moroder.";
+        case ytm::Error::Kind::Parse:
+            return "Couldn't make sense of YouTube Music's response. The API may have changed.";
+        case ytm::Error::Kind::NotFound:
+            return "That doesn't seem to exist anymore.";
+        default:
+            return "Something went wrong.";
+    }
+}
+
 /* tryAdd
 - The parsers emit JSON null for absent fields, matching ytmusicapi exactly.
 - Several *Ref::from_json helpers read those with j.value(key, ""), which throws type_error.302 on null rather than falling back.
@@ -81,17 +102,32 @@ services::Music::Music(const std::string_view& app_name) {
 
 services::Music::~Music() = default;
 
-void services::Music::logIfError(const char* what) {
-    if (!ytm->lastError().empty()) {
-        spdlog::warn("MUSIC: {} failed, {}", what, ytm->lastError());
+void services::Music::captureError(const char* what) {
+    const ytm::Error& err = ytm->lastErrorInfo();
+
+    last_error = RequestError{};
+
+    if (err.ok()) return;
+
+    last_error.failed = true;
+    last_error.cancelled = (err.kind == ytm::Error::Kind::Cancelled);
+    last_error.retryable = err.retryable();
+    last_error.detail = err.detail;
+    last_error.message = userMessage(err.kind);
+
+    if (last_error.cancelled) {
+        spdlog::info("MUSIC: {} cancelled", what);
+        return;
     }
+
+    spdlog::warn("MUSIC: {} failed, {}", what, err.detail);
 }
 
 std::vector<music::ApiResult> services::Music::getSearch(const std::string& query) {
     ipc::SearchResponse response;
 
     nlohmann::json results = ytm->search(query, SEARCH_LIMIT);
-    logIfError("search");
+    captureError("search");
 
     for (const nlohmann::json& item : results) {
         tryAdd(item, "search", [&] { response.addItem(item); });
@@ -105,6 +141,8 @@ std::vector<music::ApiResult> services::Music::getSearch(const std::string& quer
 music::Radio services::Music::getRadio(const std::string id, const std::string type) {
     music::Radio r;
     r.type = type;
+
+    last_error = RequestError{};
 
     if (id.empty()) return r;
 
@@ -125,6 +163,15 @@ music::Radio services::Music::getRadio(const std::string id, const std::string t
             std::string    audio = album.value("audioPlaylistId", std::string());
 
             if (audio.empty()) {
+                captureError("radio");
+
+                if (!last_error.failed) {
+                    last_error.failed = true;
+                    last_error.retryable = false;
+                    last_error.detail = "album " + pid + " has no audioPlaylistId";
+                    last_error.message = "That album can't be used to start a radio.";
+                }
+
                 spdlog::warn("MUSIC: could not resolve audio playlist for album {}", pid);
                 return r;
             }
@@ -141,7 +188,7 @@ music::Radio services::Music::getRadio(const std::string id, const std::string t
         wp = ytm->getWatchPlaylist("", "RDAM" + pid, -1);
     }
 
-    logIfError("radio");
+    captureError("radio");
 
     ipc::RadioResponse response;
 
@@ -184,13 +231,15 @@ music::Radio services::Music::getRadioNext(const music::Radio& radio) {
     // took the song-radio path regardless of what the queue actually was.
     r.type = radio.type;
 
+    last_error = RequestError{};
+
     if (radio.continuation.empty()) return r;
 
     ytm::WatchPlaylist wp = (radio.type == "song")
         ? ytm->getWatchPlaylistNext(radio.seed_id, "", radio.continuation, RADIO_LIMIT)
         : ytm->getWatchPlaylistNext("", radio.seed_id, radio.continuation, RADIO_LIMIT);
 
-    logIfError("radio continuation");
+    captureError("radio continuation");
 
     ipc::RadioNextResponse response;
 
@@ -212,7 +261,7 @@ music::Radio services::Music::getRadioNext(const music::Radio& radio) {
 
 music::Album services::Music::getAlbum(const music::AlbumRef& album) {
     nlohmann::json data = ytm->getAlbum(album.id);
-    logIfError("album");
+    captureError("album");
 
     ipc::AlbumResponse response;
 
@@ -234,7 +283,7 @@ music::Album services::Music::getAlbum(const music::AlbumRef& album) {
 
 music::Playlist services::Music::getPlaylist(const music::PlaylistRef& playlist) {
     nlohmann::json data = ytm->getPlaylist(playlist.id, -1);
-    logIfError("playlist");
+    captureError("playlist");
 
     ipc::PlaylistResponse response;
 
@@ -256,7 +305,7 @@ music::Playlist services::Music::getPlaylist(const music::PlaylistRef& playlist)
 
 std::unordered_map<std::string, std::vector<music::ApiResult>> services::Music::getHome() {
     nlohmann::json sections = ytm->getHome(HOME_LIMIT);
-    logIfError("home");
+    captureError("home");
 
     ipc::HomeResponse response;
 
@@ -280,11 +329,13 @@ std::unordered_map<std::string, std::vector<music::ApiResult>> services::Music::
 std::vector<music::Playlist> services::Music::getLibraryPlaylists() {
     if (!ytm->isAuthenticated()) {
         spdlog::info("MUSIC: not logged in, no library playlists");
+
+        last_error = RequestError{};
         return {};
     }
 
     nlohmann::json playlists = ytm->getLibraryPlaylists(LIBRARY_LIMIT);
-    logIfError("library playlists");
+    captureError("library playlists");
 
     ipc::LibraryPlaylistsResponse response;
 
@@ -296,6 +347,8 @@ std::vector<music::Playlist> services::Music::getLibraryPlaylists() {
 }
 
 bool services::Music::isLoggedIn() {
+    last_error = RequestError{};
+
     return ytm->isAuthenticated();
 }
 
@@ -306,9 +359,15 @@ music::Song services::Music::getSong(const music::SongRef& song) {
 
     nlohmann::json payload = ytm::lookupAlbum(metadata_http, lastfm_api_key, song.title, artist);
 
+    last_error = RequestError{};
+
     if (payload.value("status", std::string()) != "ok") {
-        spdlog::warn("MUSIC: album lookup failed for '{}', {}",
-                     song.title, payload.value("message", std::string()));
+        last_error.failed = true;
+        last_error.retryable = true;
+        last_error.detail = payload.value("message", std::string());
+        last_error.message = "Couldn't look up album details for this track.";
+
+        spdlog::warn("MUSIC: album lookup failed for '{}', {}", song.title, last_error.detail);
     }
 
     ipc::SongResponse response(payload.dump());
@@ -318,6 +377,8 @@ music::Song services::Music::getSong(const music::SongRef& song) {
 }
 
 music::Episode services::Music::getEpisode(const music::EpisodeRef& episode) {
+    last_error = RequestError{};
+
     // No request needed, we already have the data.
     music::Episode e;
     e.setRef(episode);
