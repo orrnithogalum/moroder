@@ -68,9 +68,15 @@ public:
     enum class Flags {
         Ongoing,
         Done,
+        Error,
 
         True,
         False
+    };
+
+    struct ErrorInfo {
+        std::string message;
+        bool retryable = false;
     };
 
     struct PlayerState {
@@ -86,6 +92,7 @@ public:
         std::vector<music::ApiResult> search_results;
 
         std::unordered_map<std::string, Flags> flags;
+        std::unordered_map<std::string, ErrorInfo> errors;
 
         bool is_logged_in = false;
         bool autoplay = true;

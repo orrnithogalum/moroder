@@ -310,15 +310,24 @@ void services::Player::worker_loop() {
                 {
                     std::lock_guard lock(state_mutex);
                     state.flags["search"] = Flags::Ongoing;
+                    state.errors.erase("search");
                     state.search_results.clear();
                 }
 
                 std::vector<music::ApiResult> res = music_service->getSearch(c.query);
+                const services::RequestError& err = music_service->lastError();
 
                 {
                     std::lock_guard lock(state_mutex);
-                    state.flags["search"] = Flags::Done;
-                    state.search_results = res;
+
+                    if (err.failed && !err.cancelled) {
+                        state.flags["search"] = Flags::Error;
+                        state.errors["search"] = { err.message, err.retryable };
+
+                    } else if (!err.failed) {
+                        state.flags["search"] = Flags::Done;
+                        state.search_results = res;
+                    }
                 }
             }
 
@@ -589,15 +598,24 @@ void services::Player::worker_loop() {
                 {
                     std::lock_guard lock(state_mutex);
                     state.flags["home"] = Flags::Ongoing;
+                    state.errors.erase("home");
                     state.home.clear();
                 }
 
                 std::unordered_map<std::string, std::vector<music::ApiResult>> user_home = music_service->getHome();
+                const services::RequestError& err = music_service->lastError();
 
                 {
                     std::lock_guard lock(state_mutex);
-                    state.flags["home"] = Flags::Done;
-                    state.home = user_home;
+
+                    if (err.failed && !err.cancelled) {
+                        state.flags["home"] = Flags::Error;
+                        state.errors["home"] = { err.message, err.retryable };
+
+                    } else if (!err.failed) {
+                        state.flags["home"] = Flags::Done;
+                        state.home = user_home;
+                    }
                 }
 
             } else if constexpr (std::is_same_v<T, LibraryPlaylistsCommand>) {
@@ -606,15 +624,24 @@ void services::Player::worker_loop() {
                 {
                     std::lock_guard lock(state_mutex);
                     state.flags["library_playlists"] = Flags::Ongoing;
+                    state.errors.erase("library_playlists");
                     state.library_playlists.clear();
                 }
 
                 std::vector<music::Playlist> user_playlists = music_service->getLibraryPlaylists();
+                const services::RequestError& err = music_service->lastError();
 
                 {
                     std::lock_guard lock(state_mutex);
-                    state.flags["library_playlists"] = Flags::Done;
-                    state.library_playlists = user_playlists;
+
+                    if (err.failed && !err.cancelled) {
+                        state.flags["library_playlists"] = Flags::Error;
+                        state.errors["library_playlists"] = { err.message, err.retryable };
+
+                    } else if (!err.failed) {
+                        state.flags["library_playlists"] = Flags::Done;
+                        state.library_playlists = user_playlists;
+                    }
                 }
 
             } else if constexpr (std::is_same_v<T, IsLoggedInCommand>) {
