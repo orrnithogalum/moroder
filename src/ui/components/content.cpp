@@ -1,4 +1,5 @@
 #include "../../../include/ui/components/content.hpp"
+#include "../../../include/ui/components/error.hpp"
 #include "../../../include/ui/constants/colors.hpp"
 
 #include <ftxui/component/component.hpp>
@@ -12,7 +13,53 @@
 
 using namespace ftxui;
 
-void ui::buildHome(services::Player::PlayerState* state, std::deque<ContentEntry>& main_content_items, ftxui::Component main_content, std::function<bool(const ftxui::Event&, const music::ApiResult&)> on_press) {
+namespace {
+
+bool buildError(services::Player::PlayerState* state, const std::string& key, std::deque<ui::ContentEntry>& main_content_items, ftxui::Component main_content, std::function<void()> on_retry) {
+    auto error = state->errors.find(key);
+
+    if (error == state->errors.end()) {
+        if (!main_content_items.empty() && main_content_items.front().category.rfind("__error__", 0) == 0) {
+            main_content_items.clear();
+            main_content->DetachAllChildren();
+            main_content->Add(Renderer([] { return emptyElement(); }));
+        }
+
+        return false;
+    }
+
+    const std::string id = "__error__" + error->second.message;
+
+    if (main_content_items.size() == 1 && main_content_items.front().category == id) {
+        return true;
+    }
+
+    main_content_items.clear();
+    main_content->DetachAllChildren();
+    main_content->Add(Renderer([] { return emptyElement(); }));
+
+    main_content_items.push_back(ui::ContentEntry{});
+    ui::ContentEntry& item = main_content_items.back();
+
+    item.category = id;
+    item.selected = -1;
+    item.focused = false;
+    item.component = ui::ErrorBox(error->second.message, error->second.retryable ? on_retry : nullptr);
+
+    main_content->DetachAllChildren();
+    main_content->Add(item.component);
+    item.component->TakeFocus();
+
+    return true;
+}
+
+}
+
+void ui::buildHome(services::Player::PlayerState* state, std::deque<ContentEntry>& main_content_items, ftxui::Component main_content, std::function<bool(const ftxui::Event&, const music::ApiResult&)> on_press, std::function<void()> on_retry) {
+    if (buildError(state, "home", main_content_items, main_content, on_retry)) {
+        return;
+    }
+
     for (auto& [category, _] : state->home) {
         const std::string& category_ref = category;
 
@@ -48,7 +95,11 @@ void ui::buildHome(services::Player::PlayerState* state, std::deque<ContentEntry
     }
 }
 
-void ui::buildSearch(services::Player::PlayerState* state, std::deque<ContentEntry>& main_content_items, ftxui::Component main_content, std::function<bool(const ftxui::Event&, const music::ApiResult&)> on_press) {
+void ui::buildSearch(services::Player::PlayerState* state, std::deque<ContentEntry>& main_content_items, ftxui::Component main_content, std::function<bool(const ftxui::Event&, const music::ApiResult&)> on_press, std::function<void()> on_retry) {
+    if (buildError(state, "search", main_content_items, main_content, on_retry)) {
+        return;
+    }
+
     std::vector<std::string> incoming_categories;
 
     for (auto& search_result : state->search_results) {
