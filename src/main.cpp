@@ -287,10 +287,27 @@ int main(int argc, char *argv[]) {
         ui::getPlaybackData(&state_copy, &playback_bar_data, screen.dimx());
 
         if(current_state == ui::State::HOME) {
-            ui::buildHome(&state_copy, main_content_items, main_content, on_item_press);
+            ui::buildHome(&state_copy, main_content_items, main_content, on_item_press, [&player, &main_content, &main_content_items, &screen]{
+                player.getHome();
+                player.getLibraryPlaylists();
+
+                main_content_items.clear();
+                main_content->DetachAllChildren();
+                main_content->Add(Renderer([] { return emptyElement(); }));
+
+                screen.PostEvent(Event::Custom);
+            });
 
         } else if(current_state == ui::State::SEARCH && state_copy.flags["search"] == services::Player::Flags::Done) {
-            ui::buildSearch(&state_copy, main_content_items, main_content, on_item_press);
+            ui::buildSearch(&state_copy, main_content_items, main_content, on_item_press, [&player, &search_bar_data, &main_content, &main_content_items, &screen] {
+                player.search(search_bar_data.value);
+
+                main_content_items.clear();
+                main_content->DetachAllChildren();
+                main_content->Add(Renderer([] { return emptyElement(); }));
+
+                screen.PostEvent(Event::Custom);
+            });
 
         } else if(current_state == ui::State::QUEUE) {
             ui::buildQueue(&state_copy, main_content_items, main_content, on_queue_press);
@@ -342,9 +359,20 @@ int main(int argc, char *argv[]) {
 
                     hbox({
                         text(" "),
-                        current_state != ui::State::QUEUE
-                            ? main_content->Render() | yframe | yflex
-                            : main_content->Render() | xflex
+                        [&] {
+                            const std::string error_key =
+                                  current_state == ui::State::HOME   ? "home"
+                                : current_state == ui::State::SEARCH ? "search"
+                                                                     : "";
+
+                            const bool has_error = !error_key.empty() && state_copy.errors.count(error_key) > 0;
+
+                            return has_error
+                                ? main_content->Render() | yframe | flex
+                                : current_state != ui::State::QUEUE
+                                    ? main_content->Render() | yframe | yflex
+                                    : main_content->Render() | xflex;
+                        }(),
                     }) | yflex,
 
                     ((main_content_items.empty() || sidebar_data.is_loading) && state_copy.is_logged_in) ?
