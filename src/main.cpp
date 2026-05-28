@@ -42,6 +42,10 @@ int main(int argc, char *argv[]) {
     spdlog::set_default_logger(logger);
 
     services::Player player(APP_NAME, APP_NAME_HUMAN, 1481401025964540125);
+    if(!player.isInitialized()) {
+        return 1;
+    }
+
     auto screen = ScreenInteractive::Fullscreen();
 
     screen.TrackMouse(false);

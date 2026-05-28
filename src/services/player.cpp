@@ -22,11 +22,20 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
 
     if (!mpris_service) {
         spdlog::error("PLAYER: mpris service initialisation failed.");
-    } else if (!music_service) {
-        spdlog::error("PLAYER: music service initialisation failed.");
-    } else if (!social_service) {
-        spdlog::error("PLAYER: social service initialisation failed.");
+        return;
     }
+
+    if (!music_service) {
+        spdlog::error("PLAYER: music service initialisation failed.");
+        return;
+    }
+
+    if (!social_service) {
+        spdlog::error("PLAYER: social service initialisation failed.");
+        return;
+    }
+
+    this->initialised = true;
 
     worker_thread = std::thread(&Player::worker_loop, this);
 
@@ -1137,4 +1146,8 @@ void services::Player::togglePause() {
     } else {
         resume();
     }
+}
+
+bool services::Player::isInitialized() {
+    return this->initialised;
 }

@@ -135,6 +135,8 @@ public:
         on_position_tick = std::move(cb);
     }
 
+    bool isInitialized();
+
 private:
     std::string app_name;
 
@@ -165,6 +167,7 @@ private:
 
     std::thread worker_thread;
 
+    bool initialised = false;
     bool running = true;
 
     void worker_loop();
