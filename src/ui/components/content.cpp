@@ -55,7 +55,7 @@ void ui::buildHome(services::Player::PlayerState* state, std::deque<ContentEntry
             ui::getGridData(state, category, &item.grid_data);
             item.component = Grid(&item.grid_data, &item.selected, &item.focused, 4, on_press);
         } else {
-            item.component = Carousel(&item.data, &item.selected, &item.focused, on_press);
+            item.component = Carousel(&item.carousel_data, &item.selected, &item.focused, on_press);
         }
     }
 
@@ -94,7 +94,7 @@ void ui::buildHome(services::Player::PlayerState* state, std::deque<ContentEntry
     }
 
     for (auto& item : main_content_items) {
-        ui::getCarouselData(state, item.category, &item.data);
+        ui::getCarouselData(state, item.category, &item.carousel_data);
         item.focused = item.component->Focused();
     }
 }
@@ -421,6 +421,37 @@ void ui::buildQueue(services::Player::PlayerState* state, std::deque<ContentEntr
     });
 
     main_content->Add(queue_wrapper);
+
+    for (auto& entry : main_content_items) {
+        entry.focused = entry.component->Focused();
+    }
+}
+
+void ui::buildLibrary(services::Player::PlayerState* state, std::deque<ContentEntry>& main_content_items, ftxui::Component main_content, std::function<bool(const ftxui::Event&, const ui::ChipEntry&)> on_chip_press) {
+
+    if (main_content_items.empty()) {
+        main_content_items.push_back(ContentEntry{});
+        ContentEntry& entry = main_content_items.back();
+
+        entry.category = "__library_filters__";
+        entry.selected = 0;
+        entry.focused  = false;
+
+        entry.chips_data.exclusive = true;
+
+        ui::setChipsData(&entry.chips_data, {
+            {"playlists", "Playlists"},
+            {"albums", "Albums"},
+            {"songs", "Songs"},
+            {"artists", "Artists"},
+            {"podcasts", "Podcasts"},
+        });
+
+        entry.component = Chips(&entry.chips_data, &entry.selected, &entry.focused, on_chip_press);
+
+        main_content->DetachAllChildren();
+        main_content->Add(entry.component);
+    }
 
     for (auto& entry : main_content_items) {
         entry.focused = entry.component->Focused();

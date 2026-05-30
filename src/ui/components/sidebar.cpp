@@ -93,8 +93,8 @@ Component ui::Sidebar(ui::SidebarData* data, int* selected, bool* focused, std::
         if(data->entries_spoof[*selected] == "01") {
             data->onHome();
 
-        // } else if(data->entries_spoof[*selected] == "02") {
-        //     data->onLibrary();
+        } else if(data->entries_spoof[*selected] == "02") {
+            data->onLibrary();
 
         } else if (*selected > 2) {
             spdlog::info("SIDEBAR: pressed enter on playlist, " + data->results[*selected].ref.title);

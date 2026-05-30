@@ -212,6 +212,25 @@ int main(int argc, char *argv[]) {
         return true;
     };
 
+    std::function<bool(const ftxui::Event&, const ui::ChipEntry&)> on_chip_press =
+    [&main_content_items, &screen, &cfg](const ftxui::Event& event, const ui::ChipEntry& chip) {
+        if(!Config::isKey(event, cfg.KEY_PLAY_NOW)) {
+            return false;
+        }
+
+        spdlog::info("CHIPS: pressed chip, " + chip.id + " (" + chip.label + ")");
+
+        for (auto& entry : main_content_items) {
+            if (entry.category == "__library_filters__") {
+                ui::toggleChip(&entry.chips_data, chip.id);
+                break;
+            }
+        }
+
+        screen.PostEvent(Event::Custom);
+        return true;
+    };
+
     ui::SidebarData sidebar_data = {};
     auto sidebar = ui::Sidebar(&sidebar_data, &sidebar_selected, &sidebar_focused, on_sidebar_press);
 
@@ -242,6 +261,17 @@ int main(int argc, char *argv[]) {
         spdlog::info("SIDEBAR: Home pressed");
 
         current_state = ui::State::HOME;
+
+        main_content_items.clear();
+        main_content->DetachAllChildren();
+        main_content->Add(Renderer([] { return emptyElement(); }));
+
+        screen.PostEvent(Event::Custom);
+    };
+
+    sidebar_data.onLibrary = [&current_state, &main_content_items, &main_content, &screen] {
+        spdlog::info("SIDEBAR: Library pressed");
+        current_state = ui::State::LIBRARY;
 
         main_content_items.clear();
         main_content->DetachAllChildren();
@@ -302,10 +332,9 @@ int main(int argc, char *argv[]) {
         } else if(current_state == ui::State::QUEUE) {
             ui::buildQueue(&state_copy, main_content_items, main_content, on_queue_press);
 
+        } else if(current_state == ui::State::LIBRARY) {
+            ui::buildLibrary(&state_copy, main_content_items, main_content, on_chip_press);
         }
-        // else if(current_state == ui::State::LIBRARY) {
-            // ui::buildLibrary(&state_copy, main_content_items, main_content)
-        // }
 
         return vbox({
             hbox({

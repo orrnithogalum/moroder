@@ -67,6 +67,7 @@ set(SOURCES
     src/ui/constants/colors.cpp
 
     src/ui/components/carousel.cpp
+    src/ui/components/chips.cpp
     src/ui/components/content.cpp
     src/ui/components/grid.cpp
     src/ui/components/playback_bar.cpp

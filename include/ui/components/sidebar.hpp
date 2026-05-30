@@ -17,6 +17,7 @@ struct SidebarData {
     bool is_loading = true;
 
     std::function<void()> onHome;
+    std::function<void()> onLibrary;
 };
 
 void getSidebarData(services::Player::PlayerState* state, SidebarData* data);
