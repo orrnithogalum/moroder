@@ -88,7 +88,7 @@ ftxui::Component ui::Chips(ChipsData* data, int* selected, bool* focused, std::f
 void ui::toggleChip(ChipsData* data, const std::string& id) {
     for (auto& entry : data->entries) {
         if (entry.id == id) {
-            entry.enabled = data->exclusive ? true : !entry.enabled;
+            entry.enabled = !entry.enabled;
 
         } else if (data->exclusive) {
             entry.enabled = false;
