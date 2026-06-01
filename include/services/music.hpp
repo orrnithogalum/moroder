@@ -15,6 +15,7 @@
 #include <string_view>
 #include <string>
 #include <vector>
+#include <memory>
 
 namespace services {
 
@@ -26,6 +27,11 @@ public:
     bool isLoggedIn();
 
     std::vector<music::Playlist>  getLibraryPlaylists();
+    std::vector<music::Album>     getLibraryAlbums();
+    std::vector<std::shared_ptr<music::IStreamable>> getLibrarySongs();
+    std::vector<music::ArtistRef> getLibraryArtists();
+    std::vector<music::PodcastRef> getLibraryPodcasts();
+
     std::vector<music::ApiResult> getSearch(const std::string& query);
 
     std::unordered_map<std::string, std::vector<music::ApiResult>> getHome();

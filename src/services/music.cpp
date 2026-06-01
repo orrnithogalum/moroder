@@ -13,8 +13,19 @@
 #include "../../include/ipc/radio/radio_response.hpp"
 #include "../../include/ipc/radio/radio_request.hpp"
 
+#include "../../include/ipc/album/library_albums_response.hpp"
+#include "../../include/ipc/album/library_albums_request.hpp"
 #include "../../include/ipc/album/album_response.hpp"
 #include "../../include/ipc/album/album_request.hpp"
+
+#include "../../include/ipc/artist/library_artists_response.hpp"
+#include "../../include/ipc/artist/library_artists_request.hpp"
+
+#include "../../include/ipc/song/library_songs_response.hpp"
+#include "../../include/ipc/song/library_songs_request.hpp"
+
+#include "../../include/ipc/podcast/library_podcasts_response.hpp"
+#include "../../include/ipc/podcast/library_podcasts_request.hpp"
 
 #include "../../include/ipc/browse/is_logged_in_response.hpp"
 #include "../../include/ipc/browse/is_logged_in_request.hpp"
@@ -430,6 +441,70 @@ std::vector<music::Playlist> services::Music::getLibraryPlaylists() {
             }
         },
         "library-playlists-done"
+    );
+
+    return response.results;
+}
+
+std::vector<music::Album> services::Music::getLibraryAlbums() {
+    ipc::LibraryAlbumsRequest request;
+
+    ipc::LibraryAlbumsResponse response = this->sendStreamed<ipc::LibraryAlbumsRequest, ipc::LibraryAlbumsResponse>(
+        request,
+        [](nlohmann::json& j, ipc::LibraryAlbumsResponse& response) {
+            if (j["type"] == "library-albums-item") {
+                response.addItem(j["data"]);
+            }
+        },
+        "library-albums-done"
+    );
+
+    return response.results;
+}
+
+std::vector<std::shared_ptr<music::IStreamable>> services::Music::getLibrarySongs() {
+    ipc::LibrarySongsRequest request;
+
+    ipc::LibrarySongsResponse response = this->sendStreamed<ipc::LibrarySongsRequest, ipc::LibrarySongsResponse>(
+        request,
+        [](nlohmann::json& j, ipc::LibrarySongsResponse& response) {
+            if (j["type"] == "library-songs-item") {
+                response.addItem(j["data"]);
+            }
+        },
+        "library-songs-done"
+    );
+
+    return response.results;
+}
+
+std::vector<music::ArtistRef> services::Music::getLibraryArtists() {
+    ipc::LibraryArtistsRequest request;
+
+    ipc::LibraryArtistsResponse response = this->sendStreamed<ipc::LibraryArtistsRequest, ipc::LibraryArtistsResponse>(
+        request,
+        [](nlohmann::json& j, ipc::LibraryArtistsResponse& response) {
+            if (j["type"] == "library-artists-item") {
+                response.addItem(j["data"]);
+            }
+        },
+        "library-artists-done"
+    );
+
+    return response.results;
+}
+
+std::vector<music::PodcastRef> services::Music::getLibraryPodcasts() {
+    ipc::LibraryPodcastsRequest request;
+
+    ipc::LibraryPodcastsResponse response = this->sendStreamed<ipc::LibraryPodcastsRequest, ipc::LibraryPodcastsResponse>(
+        request,
+        [](nlohmann::json& j, ipc::LibraryPodcastsResponse& response) {
+            if (j["type"] == "library-podcasts-item") {
+                response.addItem(j["data"]);
+            }
+        },
+        "library-podcasts-done"
     );
 
     return response.results;

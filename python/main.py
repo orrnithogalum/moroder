@@ -4,6 +4,10 @@
 # - Maintains player state and optionally a logged-in user instance
 
 from modules.private.library_playlists import library_playlists
+from modules.private.library_albums import library_albums
+from modules.private.library_songs import library_songs
+from modules.private.library_artists import library_artists
+from modules.private.library_podcasts import library_podcasts
 
 from modules.radio import radio_next
 from modules.radio import radio
@@ -158,6 +162,26 @@ class MusicServer:
 
         elif action == "get_library_playlists":
             async for result in library_playlists(self):
+                print((json.dumps(result) + "\n"), flush=True)
+
+
+        elif action == "get_library_albums":
+            async for result in library_albums(self):
+                print((json.dumps(result) + "\n"), flush=True)
+
+
+        elif action == "get_library_songs":
+            async for result in library_songs(self):
+                print((json.dumps(result) + "\n"), flush=True)
+
+
+        elif action == "get_library_artists":
+            async for result in library_artists(self):
+                print((json.dumps(result) + "\n"), flush=True)
+
+
+        elif action == "get_library_podcasts":
+            async for result in library_podcasts(self):
                 print((json.dumps(result) + "\n"), flush=True)
 
 
