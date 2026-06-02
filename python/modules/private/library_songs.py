@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 async def library_songs(server: "MusicServer"):
     try:
-        songs = server.ytm.get_library_songs() or []
+        songs = server.ytm.get_library_songs(limit=None) or []
 
         for song in songs:
             yield {

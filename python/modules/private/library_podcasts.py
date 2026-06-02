@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 async def library_podcasts(server: "MusicServer"):
     try:
-        podcasts = server.ytm.get_library_podcasts() or []
+        podcasts = server.ytm.get_library_podcasts(limit=None) or []
 
         for podcast in podcasts:
             yield {
