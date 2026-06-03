@@ -9,6 +9,16 @@
 
 namespace ui {
 
+enum class GridStyle {
+    List,
+    Tile
+};
+
+constexpr int GRID_TILE_COVER_WIDTH = 20;
+constexpr int GRID_TILE_COVER_HEIGHT = 10;
+constexpr int GRID_TILE_WIDTH = 23;
+constexpr int GRID_TILE_HEIGHT = 14;
+
 struct GridData {
     std::string category_name;
 
@@ -20,6 +30,7 @@ struct GridData {
 };
 
 void getGridData(services::Player::PlayerState* state, std::string category, GridData* data);
-ftxui::Component Grid(GridData* data, int* selected, bool* focused, int rows, std::function<bool(const ftxui::Event&, const music::ApiResult&)> on_press);
+void getLibraryGridData(services::Player::PlayerState* state, const std::string& filter, GridData* data);
 
+ftxui::Component Grid(GridData* data, int* selected, bool* focused, int rows, std::function<bool(const ftxui::Event&, const music::ApiResult&)> on_press, GridStyle style = GridStyle::List);
 }
