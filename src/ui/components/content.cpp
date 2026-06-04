@@ -24,6 +24,32 @@ int homeCategoryRank(const std::string& category) {
     return std::numeric_limits<int>::max();
 }
 
+/* activeLibraryFilter
+- Chips are exclusive, so at most one is ever enabled
+- Empty means "no filter", which shows everything except songs
+*/
+std::string activeLibraryFilter(ui::ChipsData* chips) {
+    for (const auto& chip : chips->entries) {
+        if (chip.enabled) return chip.id;
+    }
+
+    return "";
+}
+
+/* librarySignature
+- Identifies what the library grid is currently showing
+- Rebuilding the Grid component is only needed when this changes, which is
+  either the user picking a filter or an async library fetch landing
+*/
+std::string librarySignature(services::Player::PlayerState* state, const std::string& filter) {
+    return "__library_grid__:" + filter
+        + ":" + std::to_string(state->library_playlists.size())
+        + ":" + std::to_string(state->library_albums.size())
+        + ":" + std::to_string(state->library_songs.size())
+        + ":" + std::to_string(state->library_artists.size())
+        + ":" + std::to_string(state->library_podcasts.size());
+}
+
 }
 
 using namespace ftxui;
@@ -41,9 +67,6 @@ void ui::buildHome(services::Player::PlayerState* state, std::deque<ContentEntry
 
         if (already_exists) continue;
 
-        // Push_back keeps references to existing elements valid, which matters
-        // because Grid/Carousel capture &item.grid_data, &item.selected and
-        // &item.focused. Nothing may ever reorder or middle-insert this deque.
         main_content_items.push_back(ContentEntry{});
         ContentEntry& item = main_content_items.back();
 
@@ -59,7 +82,6 @@ void ui::buildHome(services::Player::PlayerState* state, std::deque<ContentEntry
         }
     }
 
-    // Display order lives in a pointer list so the deque itself never moves.
     std::vector<std::pair<int, ContentEntry*>> ordered;
     ordered.reserve(main_content_items.size());
 
@@ -67,10 +89,7 @@ void ui::buildHome(services::Player::PlayerState* state, std::deque<ContentEntry
         ordered.push_back({ homeCategoryRank(item.category), &item });
     }
 
-    // Stable, so categories sharing a rank (i.e. all the unlisted ones) keep
-    // their API order instead of shuffling between frames.
-    std::stable_sort(ordered.begin(), ordered.end(),
-        [](const auto& a, const auto& b) { return a.first < b.first; });
+    std::stable_sort(ordered.begin(), ordered.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
 
     bool matches = (main_content->ChildCount() == ordered.size());
     if (matches) {
@@ -79,8 +98,6 @@ void ui::buildHome(services::Player::PlayerState* state, std::deque<ContentEntry
         }
     }
 
-    // Only rebuild when the order actually changed, DetachAllChildren resets
-    // the active child, so focus has to be saved and restored around it. This is in case we plan to change order at runtime...
     if (!matches && !ordered.empty()) {
         Component focused_child;
         for (auto& [rank, item] : ordered) {
@@ -427,19 +444,19 @@ void ui::buildQueue(services::Player::PlayerState* state, std::deque<ContentEntr
     }
 }
 
-void ui::buildLibrary(services::Player::PlayerState* state, std::deque<ContentEntry>& main_content_items, ftxui::Component main_content, std::function<bool(const ftxui::Event&, const ui::ChipEntry&)> on_chip_press) {
+void ui::buildLibrary(services::Player::PlayerState* state, std::deque<ContentEntry>& main_content_items, ftxui::Component main_content, int rows, std::function<bool(const ftxui::Event&, const ui::ChipEntry&)> on_chip_press, std::function<bool(const ftxui::Event&, const music::ApiResult&)> on_item_press) {
 
     if (main_content_items.empty()) {
         main_content_items.push_back(ContentEntry{});
-        ContentEntry& entry = main_content_items.back();
+        ContentEntry& filters = main_content_items.back();
 
-        entry.category = "__library_filters__";
-        entry.selected = 0;
-        entry.focused  = false;
+        filters.category = "__library_filters__";
+        filters.selected = 0;
+        filters.focused = false;
 
-        entry.chips_data.exclusive = true;
+        filters.chips_data.exclusive = true;
 
-        ui::setChipsData(&entry.chips_data, {
+        ui::setChipsData(&filters.chips_data, {
             {"playlists", "Playlists"},
             {"albums", "Albums"},
             {"songs", "Songs"},
@@ -447,10 +464,37 @@ void ui::buildLibrary(services::Player::PlayerState* state, std::deque<ContentEn
             {"podcasts", "Podcasts"},
         });
 
-        entry.component = Chips(&entry.chips_data, &entry.selected, &entry.focused, on_chip_press);
+        filters.component = Chips(&filters.chips_data, &filters.selected, &filters.focused, on_chip_press);
+
+        main_content_items.push_back(ContentEntry{});
+        ContentEntry& grid = main_content_items.back();
+
+        grid.category = "";
+        grid.selected = 0;
+        grid.focused  = false;
+        grid.component = Renderer([] { return emptyElement(); });
 
         main_content->DetachAllChildren();
-        main_content->Add(entry.component);
+        main_content->Add(filters.component);
+        main_content->Add(grid.component);
+    }
+
+    ContentEntry& filters = main_content_items[0];
+    ContentEntry& grid = main_content_items[1];
+
+    const std::string filter = activeLibraryFilter(&filters.chips_data);
+    const std::string signature = librarySignature(state, filter);
+
+    if (grid.category != signature) {
+        grid.category = signature;
+        grid.selected = 0;
+
+        ui::getLibraryGridData(state, filter, &grid.grid_data);
+        grid.component = Grid(&grid.grid_data, &grid.selected, &grid.focused, rows, on_item_press, ui::GridStyle::Tile);
+
+        main_content->DetachAllChildren();
+        main_content->Add(filters.component);
+        main_content->Add(grid.component);
     }
 
     for (auto& entry : main_content_items) {

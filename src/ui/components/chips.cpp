@@ -47,7 +47,12 @@ ftxui::Component ui::Chips(ChipsData* data, int* selected, bool* focused, std::f
         Element label = text(" " + utils::trimSuffix(chip.label, 24, "...") + " ");
 
         if (chip.enabled || active) {
-            label = label | bold | color(ui::GetColor(ui::MColor::TEXT_TOP_PRIMARY));
+            if(active) {
+                label = label | bold;
+            }
+
+            label = label | color(ui::GetColor(ui::MColor::TEXT_TOP_PRIMARY));
+
         } else {
             label = label | color(ui::GetColor(ui::MColor::TEXT_TOP_SECONDARY));
         }
@@ -61,7 +66,7 @@ ftxui::Component ui::Chips(ChipsData* data, int* selected, bool* focused, std::f
             pill = label | borderStyled(BorderStyle::ROUNDED) | color(ui::GetColor(ui::MColor::SEPARATOR_PRIMARY));
 
         } else {
-            pill = label | borderStyled(BorderStyle::EMPTY);
+            pill = label | borderStyled(BorderStyle::ROUNDED) | color(ui::GetColor(ui::MColor::SEPARATOR_SECONDARY));
         }
 
         return hbox({ pill });

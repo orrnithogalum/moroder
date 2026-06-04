@@ -70,8 +70,12 @@ int main(int argc, char *argv[]) {
 
 
     player.isLoggedIn();
-    player.getLibraryPlaylists();
     player.getHome();
+    player.getLibraryPlaylists();
+    player.getLibraryAlbums();
+    player.getLibraryArtists();
+    player.getLibraryPodcasts();
+    player.getLibrarySongs();
 
     int spinner_frame    = 0;
     int sidebar_selected = 0;
@@ -126,6 +130,8 @@ int main(int argc, char *argv[]) {
         spdlog::info("ITEM: key pressed on result, " + result.resultType);
         bool should_queue = Config::isKey(event, cfg.KEY_ADD_TO_QUEUE);
 
+        bool queued = false;
+
         std::visit([&](auto&& data) {
             using T = std::decay_t<decltype(data)>;
 
@@ -137,21 +143,30 @@ int main(int argc, char *argv[]) {
             if constexpr (std::is_same_v<T, music::SongRef>) {
                 auto streamable = make_streamable(music::Song{});
                 player.queue(streamable, !should_queue, !should_queue);
+                queued = true;
 
             } else if constexpr (std::is_same_v<T, music::AlbumRef>) {
                 auto container = make_streamable(music::Album{});
                 player.queue(container, !should_queue, !should_queue);
+                queued = true;
 
             } else if constexpr (std::is_same_v<T, music::EpisodeRef>) {
                 auto streamable = make_streamable(music::Episode{});
                 player.queue(streamable, !should_queue, !should_queue);
+                queued = true;
 
             } else if constexpr (std::is_same_v<T, music::PlaylistRef>) {
                 auto container = make_streamable(music::Playlist{});
                 player.queue(container, !should_queue, !should_queue);
+                queued = true;
             }
 
         }, result.data);
+
+        if (!queued) {
+            spdlog::info("ITEM: nothing queued for result type, " + result.resultType);
+            return true;
+        }
 
         current_state = ui::State::QUEUE;
 
@@ -333,7 +348,13 @@ int main(int argc, char *argv[]) {
             ui::buildQueue(&state_copy, main_content_items, main_content, on_queue_press);
 
         } else if(current_state == ui::State::LIBRARY) {
-            ui::buildLibrary(&state_copy, main_content_items, main_content, on_chip_press);
+            /* The library grid uses cover-first tiles and fills columns top to
+            bottom, so the row count decides how much of main_content gets used
+            before it starts scrolling sideways. The subtracted rows account for
+            the search bar, the filter chips and the playback bar. */
+            int library_rows = std::max(1, (screen.dimy() - 12) / ui::GRID_TILE_HEIGHT);
+
+            ui::buildLibrary(&state_copy, main_content_items, main_content, library_rows, on_chip_press, on_item_press);
         }
 
         return vbox({
