@@ -20,7 +20,7 @@ void ui::getPlaybackData(services::Player::PlayerState* state, PlaybackData* dat
         data->image_url = song_ptr->ref.thumbnail_small;
 
     } else if (auto episode_ptr = std::dynamic_pointer_cast<music::Episode>(state->current)) {
-        data->title = song_ptr->ref.title;
+        data->title = episode_ptr->ref.title;
         data->artist = episode_ptr->ref.podcast.name;
         data->image_url = episode_ptr->ref.thumbnail_small;
     }
