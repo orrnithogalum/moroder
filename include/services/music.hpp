@@ -44,7 +44,12 @@ public:
 
     const RequestError& lastError() const { return last_error; }
 
-    std::vector<music::Playlist>  getLibraryPlaylists();
+    std::vector<music::Playlist>   getLibraryPlaylists();
+    std::vector<music::Album>      getLibraryAlbums();
+    std::vector<music::ArtistRef>  getLibraryArtists();
+    std::vector<music::PodcastRef> getLibraryPodcasts();
+
+    std::vector<std::shared_ptr<music::IStreamable>> getLibrarySongs();
     std::vector<music::ApiResult> getSearch(const std::string& query);
 
     std::unordered_map<std::string, std::vector<music::ApiResult>> getHome();
@@ -77,6 +82,7 @@ private:
     std::string lastfm_api_key;
 
     RequestError last_error;
+
     void captureError(const char* what);
 
     music::Radio getRadio(const std::string id, const std::string type);

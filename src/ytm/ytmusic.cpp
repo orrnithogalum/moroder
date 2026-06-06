@@ -110,9 +110,11 @@ std::string continuationToken(const json& items) {
 }
 
 /* libraryContents
-- library.py get_library_contents, GRID branch only.
+- library.py get_library_contents.
+- "renderer" is GRID for the tiled pages (playlists, albums, podcasts) or
+  MUSIC_SHELF for the list pages (songs, artists).
 */
-const json* libraryContents(const json& response) {
+const json* libraryContents(const json& response, const Path& renderer) {
     const json* section = nav(response, SINGLE_COLUMN_TAB + SECTION_LIST);
 
     if (!section) {
@@ -121,13 +123,13 @@ const json* libraryContents(const json& response) {
         size_t n = (tabs && tabs->is_array()) ? tabs->size() : 0;
 
         const Path& libraryTab = (n < 3) ? TAB_1_CONTENT : TAB_2_CONTENT;
-        return nav(response, SINGLE_COLUMN + libraryTab + SECTION_LIST_ITEM + GRID);
+        return nav(response, SINGLE_COLUMN + libraryTab + SECTION_LIST_ITEM + renderer);
     }
 
     const json* results = findObjectByKey(section, "itemSectionRenderer");
-    if (!results) return nav(response, SINGLE_COLUMN_TAB + SECTION_LIST_ITEM + GRID);
+    if (!results) return nav(response, SINGLE_COLUMN_TAB + SECTION_LIST_ITEM + renderer);
 
-    return nav(results, ITEM_SECTION + GRID);
+    return nav(results, ITEM_SECTION + renderer);
 }
 
 }
@@ -662,7 +664,7 @@ json YTMusic::getLibraryPlaylists(int limit) {
 
     json response = sendRequest("browse", body);
 
-    const json* results = libraryContents(response);
+    const json* results = libraryContents(response, GRID);
     if (!results || !results->contains("items")) return json::array();
 
     const json& items = (*results)["items"];
@@ -685,6 +687,133 @@ json YTMusic::getLibraryPlaylists(int limit) {
     }
 
     return playlists;
+}
+
+
+
+json YTMusic::getLibraryAlbums(int limit) {
+    if (!authenticated) {
+        setError(Error::Kind::Auth, "not authenticated");
+        return json::array();
+    }
+
+    json body = json::object();
+    body["browseId"] = "FEmusic_liked_albums";
+
+    json response = sendRequest("browse", body);
+
+    const json* results = libraryContents(response, GRID);
+    if (!results || !results->contains("items")) return json::array();
+
+    // Albums have no "add" tile to skip, unlike playlists and podcasts.
+    json albums = parse::libraryAlbums((*results)["items"]);
+
+    if (results->contains("continuations")) {
+        int remaining = limit < 0 ? -1 : limit - static_cast<int>(albums.size());
+
+        json more = getContinuations(*results, "gridContinuation", remaining, "browse", body, [](const json& contents) { return parse::libraryAlbums(contents); });
+
+        for (json& a : more) albums.push_back(std::move(a));
+    }
+
+    return albums;
+}
+
+json YTMusic::getLibrarySongs(int limit) {
+    if (!authenticated) {
+        setError(Error::Kind::Auth, "not authenticated");
+        return json::array();
+    }
+
+    json body = json::object();
+    body["browseId"] = "FEmusic_liked_videos";
+
+    json response = sendRequest("browse", body);
+
+    const json* results = libraryContents(response, MUSIC_SHELF);
+    if (!results || !results->contains("contents")) return json::array();
+
+    json contents = (*results)["contents"];
+
+    // pop_songs_random_mix: a shuffle tile sometimes leads the list.
+    if (contents.is_array() && contents.size() >= 2) contents.erase(contents.begin());
+
+    json songs = parse::playlistItems(contents);
+
+    if (results->contains("continuations")) {
+        int remaining = limit < 0 ? -1 : limit - static_cast<int>(songs.size());
+
+        json more = getContinuations(*results, "musicShelfContinuation", remaining, "browse", body,
+                                     [](const json& c) { return parse::playlistItems(c); });
+
+        for (json& song : more) songs.push_back(std::move(song));
+    }
+
+    return songs;
+}
+
+json YTMusic::getLibraryArtists(int limit) {
+    if (!authenticated) {
+        setError(Error::Kind::Auth, "not authenticated");
+        return json::array();
+    }
+
+    json body = json::object();
+    body["browseId"] = "FEmusic_library_corpus_track_artists";
+
+    json response = sendRequest("browse", body);
+
+    const json* results = libraryContents(response, MUSIC_SHELF);
+    if (!results || !results->contains("contents")) return json::array();
+
+    json artists = parse::libraryArtists((*results)["contents"]);
+
+    if (results->contains("continuations")) {
+        int remaining = limit < 0 ? -1 : limit - static_cast<int>(artists.size());
+
+        json more = getContinuations(*results, "musicShelfContinuation", remaining, "browse", body, [](const json& c) { return parse::libraryArtists(c); });
+
+        for (json& a : more) artists.push_back(std::move(a));
+    }
+
+    return artists;
+}
+
+json YTMusic::getLibraryPodcasts(int limit) {
+    if (!authenticated) {
+        setError(Error::Kind::Auth, "not authenticated");
+        return json::array();
+    }
+
+    json body = json::object();
+    body["browseId"] = "FEmusic_library_non_music_audio_list";
+
+    json response = sendRequest("browse", body);
+
+    const json* results = libraryContents(response, GRID);
+    if (!results || !results->contains("items")) return json::array();
+
+    const json& items = (*results)["items"];
+
+    // The first tile is "Add podcast", same as the playlists page.
+    json rest = json::array();
+    for (size_t i = 1; i < items.size(); ++i) rest.push_back(items[i]);
+
+    auto parsePodcasts = [](const json& contents) {
+        return parse::contentList(contents, [](const json& d) { return parse::podcast(d); });
+    };
+
+    json podcasts = parsePodcasts(rest);
+
+    if (results->contains("continuations")) {
+        int remaining = limit < 0 ? -1 : limit - static_cast<int>(podcasts.size());
+
+        json more = getContinuations(*results, "gridContinuation", remaining, "browse", body, parsePodcasts);
+
+        for (json& p : more) podcasts.push_back(std::move(p));
+    }
+
+    return podcasts;
 }
 
 

@@ -811,6 +811,77 @@ json albumHeader2024(const json& response) {
 
 
 
+json libraryAlbums(const json& results) {
+    json albums = json::array();
+    if (!results.is_array()) return albums;
+
+    for (const json& result : results) {
+        if (!result.is_object() || !result.contains(MTRIR)) continue;
+
+        const json& data = result[MTRIR];
+
+        json album = json::object();
+
+        album["browseId"]   = navJson(data, TITLE + NAVIGATION_BROWSE_ID);
+        album["playlistId"] = navJson(data, MENU_PLAYLIST_ID);
+        album["title"]      = navJson(data, TITLE_TEXT);
+        album["thumbnails"] = navJson(data, THUMBNAIL_RENDERER);
+
+        const json* subtitle = nav(data, {"subtitle"});
+
+        if (subtitle && subtitle->contains("runs")) {
+            album["type"] = navJson(data, SUBTITLE);
+
+            const json& runs = (*subtitle)["runs"];
+
+            json sliced = json::array();
+            for (size_t i = 2; i < runs.size(); ++i) sliced.push_back(runs[i]);
+
+            album.update(songRuns(sliced));
+        }
+
+        albums.push_back(album);
+    }
+
+    return albums;
+}
+
+json libraryArtists(const json& results) {
+    json artists = json::array();
+    if (!results.is_array()) return artists;
+
+    for (const json& result : results) {
+        if (!result.is_object() || !result.contains(MRLIR)) continue;
+
+        const json& data = result[MRLIR];
+
+        json artist = json::object();
+
+        artist["browseId"] = navJson(data, NAVIGATION_BROWSE_ID);
+        artist["artist"]   = itemText(data, 0);
+
+        std::string pageType = str(nav(data, NAVIGATION_BROWSE + PAGE_TYPE));
+
+        if (pageType == "MUSIC_PAGE_TYPE_USER_CHANNEL") artist["type"] = "channel";
+        else if (pageType == "MUSIC_PAGE_TYPE_ARTIST")  artist["type"] = "artist";
+
+        menuPlaylists(data, artist);
+
+        json subtitle = itemText(data, 1);
+
+        if (subtitle.is_string() && !subtitle.get<std::string>().empty()) {
+            std::string text = subtitle.get<std::string>();
+            artist["subscribers"] = text.substr(0, text.find(' '));
+        }
+
+        artist["thumbnails"] = navJson(data, THUMBNAILS);
+
+        artists.push_back(artist);
+    }
+
+    return artists;
+}
+
 std::string validatePlaylistId(const std::string& playlistId) {
     return startsWith(playlistId, "VL") ? playlistId.substr(2) : playlistId;
 }

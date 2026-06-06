@@ -3,6 +3,10 @@
 #include "../../include/ytm/metadata.hpp"
 
 #include "../../include/ipc/playlist/library_playlists_response.hpp"
+#include "../../include/ipc/podcast/library_podcasts_response.hpp"
+#include "../../include/ipc/artist/library_artists_response.hpp"
+#include "../../include/ipc/album/library_albums_response.hpp"
+#include "../../include/ipc/song/library_songs_response.hpp"
 #include "../../include/ipc/playlist/playlist_response.hpp"
 #include "../../include/ipc/search/search_response.hpp"
 #include "../../include/ipc/radio/radio_next_response.hpp"
@@ -28,10 +32,21 @@ constexpr int RADIO_LIMIT    = 50;
 constexpr int HOME_LIMIT     = 10;
 constexpr int LIBRARY_LIMIT  = 25;
 
+/* LIBRARY_ALL
+- The Python endpoints passed limit=None for everything except playlists, so the
+- whole library was paged in. -1 means the same here.
+*/
+constexpr int LIBRARY_ALL = -1;
+
 bool startsWith(const std::string& s, const std::string& p) {
     return s.size() >= p.size() && s.compare(0, p.size(), p) == 0;
 }
 
+/* tryAdd
+- The parsers emit JSON null for absent fields, matching ytmusicapi exactly.
+- Several *Ref::from_json helpers read those with j.value(key, ""), which throws type_error.302 on null rather than falling back.
+- sendStreamed used to swallow that in a catch(...) and abandon the rest of the stream. This keeps the rest of the results and logs what was dropped.
+*/
 std::string userMessage(ytm::Error::Kind kind) {
     switch (kind) {
         case ytm::Error::Kind::Network:
@@ -53,11 +68,6 @@ std::string userMessage(ytm::Error::Kind kind) {
     }
 }
 
-/* tryAdd
-- The parsers emit JSON null for absent fields, matching ytmusicapi exactly.
-- Several *Ref::from_json helpers read those with j.value(key, ""), which throws type_error.302 on null rather than falling back.
-- sendStreamed used to swallow that in a catch(...) and abandon the rest of the stream. This keeps the rest of the results and logs what was dropped.
-*/
 template <typename Fn> bool tryAdd(const nlohmann::json& item, const char* what, Fn&& add) {
     if (item.is_null()) return false;
 
@@ -342,6 +352,94 @@ std::vector<music::Playlist> services::Music::getLibraryPlaylists() {
     for (const nlohmann::json& p : playlists) {
         tryAdd(p, "library playlist", [&] { response.addItem(p); });
     }
+
+    return response.results;
+}
+
+std::vector<music::Album> services::Music::getLibraryAlbums() {
+    if (!ytm->isAuthenticated()) {
+        spdlog::info("MUSIC: not logged in, no library albums");
+
+        last_error = RequestError{};
+        return {};
+    }
+
+    nlohmann::json albums = ytm->getLibraryAlbums(LIBRARY_ALL);
+    captureError("library albums");
+
+    ipc::LibraryAlbumsResponse response;
+
+    for (const nlohmann::json& album : albums) {
+        tryAdd(album, "library album", [&] { response.addItem(album); });
+    }
+
+    spdlog::info("MUSIC: library returned {} albums", albums.size());
+
+    return response.results;
+}
+
+std::vector<std::shared_ptr<music::IStreamable>> services::Music::getLibrarySongs() {
+    if (!ytm->isAuthenticated()) {
+        spdlog::info("MUSIC: not logged in, no library songs");
+
+        last_error = RequestError{};
+        return {};
+    }
+
+    nlohmann::json songs = ytm->getLibrarySongs(LIBRARY_ALL);
+    captureError("library songs");
+
+    ipc::LibrarySongsResponse response;
+
+    for (const nlohmann::json& song : songs) {
+        tryAdd(song, "library song", [&] { response.addItem(song); });
+    }
+
+    spdlog::info("MUSIC: library returned {} songs", songs.size());
+
+    return response.results;
+}
+
+std::vector<music::ArtistRef> services::Music::getLibraryArtists() {
+    if (!ytm->isAuthenticated()) {
+        spdlog::info("MUSIC: not logged in, no library artists");
+
+        last_error = RequestError{};
+        return {};
+    }
+
+    nlohmann::json artists = ytm->getLibraryArtists(LIBRARY_ALL);
+    captureError("library artists");
+
+    ipc::LibraryArtistsResponse response;
+
+    for (const nlohmann::json& artist : artists) {
+        tryAdd(artist, "library artist", [&] { response.addItem(artist); });
+    }
+
+    spdlog::info("MUSIC: library returned {} artists", artists.size());
+
+    return response.results;
+}
+
+std::vector<music::PodcastRef> services::Music::getLibraryPodcasts() {
+    if (!ytm->isAuthenticated()) {
+        spdlog::info("MUSIC: not logged in, no library podcasts");
+
+        last_error = RequestError{};
+        return {};
+    }
+
+    nlohmann::json podcasts = ytm->getLibraryPodcasts(LIBRARY_ALL);
+    captureError("library podcasts");
+
+    ipc::LibraryPodcastsResponse response;
+
+    for (const nlohmann::json& podcast : podcasts) {
+        tryAdd(podcast, "library podcast", [&] { response.addItem(podcast); });
+    }
+
+    spdlog::info("MUSIC: library returned {} podcasts", podcasts.size());
 
     return response.results;
 }

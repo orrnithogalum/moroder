@@ -110,6 +110,15 @@ public:
     */
     json getLibraryPlaylists(int limit = 25);
 
+    /* getLibraryAlbums / Songs / Artists / Podcasts
+    - The rest of the library pages. All require authentication and return [] without it.
+    - Albums and podcasts come back as grids, songs and artists as shelves.
+    */
+    json getLibraryAlbums(int limit = 25);
+    json getLibrarySongs(int limit = 25);
+    json getLibraryArtists(int limit = 25);
+    json getLibraryPodcasts(int limit = 25);
+
     /* getWatchPlaylist
     -  Radio / autoplay queue.
     - Exactly one of videoId and playlistId is used as the seed, matching ytmusicapi's get_watch_playlist.

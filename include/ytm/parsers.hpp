@@ -76,6 +76,15 @@ json albumPlaylistIdIfExists(const json* data);
 
 
 
+/* -> library.py
+- parse_albums (MTRIR, distinct from browsing.py's parse_album) and parse_artists (MRLIR).
+- Podcasts reuse contentList(podcast), songs reuse playlistItems.
+*/
+json libraryAlbums(const json& results);
+json libraryArtists(const json& results);
+
+
+
 // -> playlists.py
 json playlistItems(const json& results, bool isAlbum = false, bool isCollaborative = false);
 json playlistItem(const json& data, bool isAlbum, bool isCollaborative);
