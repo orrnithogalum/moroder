@@ -22,11 +22,20 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
 
     if (!mpris_service) {
         spdlog::error("PLAYER: mpris service initialisation failed.");
-    } else if (!music_service) {
-        spdlog::error("PLAYER: music service initialisation failed.");
-    } else if (!social_service) {
-        spdlog::error("PLAYER: social service initialisation failed.");
+        return;
     }
+
+    if (!music_service) {
+        spdlog::error("PLAYER: music service initialisation failed.");
+        return;
+    }
+
+    if (!social_service) {
+        spdlog::error("PLAYER: social service initialisation failed.");
+        return;
+    }
+
+    this->initialised = true;
 
     worker_thread = std::thread(&Player::worker_loop, this);
 
@@ -653,6 +662,74 @@ void services::Player::worker_loop() {
                     std::lock_guard lock(state_mutex);
                     state.is_logged_in = logged_in;
                 }
+
+            } else if constexpr (std::is_same_v<T, LibraryAlbumsCommand>) {
+                spdlog::info("PLAYER: LibraryAlbumsCommand");
+
+                {
+                    std::lock_guard lock(state_mutex);
+                    state.flags["library_albums"] = Flags::Ongoing;
+                    state.library_albums.clear();
+                }
+
+                std::vector<music::Album> user_albums = music_service->getLibraryAlbums();
+
+                {
+                    std::lock_guard lock(state_mutex);
+                    state.flags["library_albums"] = Flags::Done;
+                    state.library_albums = user_albums;
+                }
+
+            } else if constexpr (std::is_same_v<T, LibrarySongsCommand>) {
+                spdlog::info("PLAYER: LibrarySongsCommand");
+
+                {
+                    std::lock_guard lock(state_mutex);
+                    state.flags["library_songs"] = Flags::Ongoing;
+                    state.library_songs.clear();
+                }
+
+                std::vector<std::shared_ptr<music::IStreamable>> user_songs = music_service->getLibrarySongs();
+
+                {
+                    std::lock_guard lock(state_mutex);
+                    state.flags["library_songs"] = Flags::Done;
+                    state.library_songs = user_songs;
+                }
+
+            } else if constexpr (std::is_same_v<T, LibraryArtistsCommand>) {
+                spdlog::info("PLAYER: LibraryArtistsCommand");
+
+                {
+                    std::lock_guard lock(state_mutex);
+                    state.flags["library_artists"] = Flags::Ongoing;
+                    state.library_artists.clear();
+                }
+
+                std::vector<music::ArtistRef> user_artists = music_service->getLibraryArtists();
+
+                {
+                    std::lock_guard lock(state_mutex);
+                    state.flags["library_artists"] = Flags::Done;
+                    state.library_artists = user_artists;
+                }
+
+            } else if constexpr (std::is_same_v<T, LibraryPodcastsCommand>) {
+                spdlog::info("PLAYER: LibraryPodcastsCommand");
+
+                {
+                    std::lock_guard lock(state_mutex);
+                    state.flags["library_podcasts"] = Flags::Ongoing;
+                    state.library_podcasts.clear();
+                }
+
+                std::vector<music::PodcastRef> user_podcasts = music_service->getLibraryPodcasts();
+
+                {
+                    std::lock_guard lock(state_mutex);
+                    state.flags["library_podcasts"] = Flags::Done;
+                    state.library_podcasts = user_podcasts;
+                }
             }
 
         }, cmd);
@@ -1113,4 +1190,105 @@ void services::Player::removeAt(uint16_t index) {
 void services::Player::detachUI() {
     std::lock_guard lock(callback_mutex);
     on_request_completed = nullptr;
+}
+
+void services::Player::pause() {
+    {
+        std::lock_guard lock(state_mutex);
+
+        if (!state.current || state.flags["audio"] != Flags::Ongoing) {
+            spdlog::warn("PLAYER: tried to pause, but nothing is playing");
+            return;
+        }
+
+        state.flags["audio"]  = Flags::Done;
+        state.flags["paused"] = Flags::True;
+    }
+
+    mpv_service->pause();
+    social_service->pause();
+
+    uint64_t position = mpv_service->getStreamPosition();
+
+    social_service->setPosition(position);
+    mpris_service->setPosition(position);
+    mpris_service->setPlaybackStatus(services::PlaybackStatus::Paused);
+}
+
+void services::Player::resume() {
+    {
+        std::lock_guard lock(state_mutex);
+
+        if (!state.current || state.flags["audio"] == Flags::Ongoing) {
+            spdlog::warn("PLAYER: tried to resume, but nothing is paused");
+            return;
+        }
+
+        state.flags["audio"]  = Flags::Ongoing;
+        state.flags["paused"] = Flags::False;
+    }
+
+    mpv_service->resume();
+    social_service->resume();
+
+    uint64_t position = mpv_service->getStreamPosition();
+
+    social_service->setPosition(position);
+    mpris_service->setPosition(position);
+    mpris_service->setPlaybackStatus(services::PlaybackStatus::Playing);
+}
+
+void services::Player::togglePause() {
+    bool is_playing;
+
+    {
+        std::lock_guard lock(state_mutex);
+        is_playing = state.flags["audio"] == Flags::Ongoing;
+    }
+
+    if (is_playing) {
+        pause();
+    } else {
+        resume();
+    }
+}
+
+bool services::Player::isInitialized() {
+    return this->initialised;
+}
+
+void services::Player::getLibraryAlbums() {
+    {
+        std::lock_guard lock(command_mutex);
+        command_queue.push(LibraryAlbumsCommand{});
+    }
+
+    command_cv.notify_one();
+}
+
+void services::Player::getLibrarySongs() {
+    {
+        std::lock_guard lock(command_mutex);
+        command_queue.push(LibrarySongsCommand{});
+    }
+
+    command_cv.notify_one();
+}
+
+void services::Player::getLibraryArtists() {
+    {
+        std::lock_guard lock(command_mutex);
+        command_queue.push(LibraryArtistsCommand{});
+    }
+
+    command_cv.notify_one();
+}
+
+void services::Player::getLibraryPodcasts() {
+    {
+        std::lock_guard lock(command_mutex);
+        command_queue.push(LibraryPodcastsCommand{});
+    }
+
+    command_cv.notify_one();
 }

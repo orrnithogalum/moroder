@@ -8,7 +8,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(DISCORD_SDK_ROOT "${CMAKE_SOURCE_DIR}/lib/discord_social_sdk")
 set(DISCORD_SDK_LIB_DIR "${DISCORD_SDK_ROOT}/lib/release")
-set(DISCORD_SDK_BIN_DIR "${DISCORD_SDK_ROOT}/bin/release")
 set(DISCORD_SDK_INCLUDE_DIR "${DISCORD_SDK_ROOT}/include")
 
 set(DISCORD_LIB_PATH "${DISCORD_SDK_LIB_DIR}/libdiscord_partner_sdk.so")
@@ -68,6 +67,7 @@ set(SOURCES
     src/ui/constants/colors.cpp
 
     src/ui/components/carousel.cpp
+    src/ui/components/chips.cpp
     src/ui/components/content.cpp
     src/ui/components/error.cpp
     src/ui/components/grid.cpp

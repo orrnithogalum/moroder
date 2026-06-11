@@ -59,6 +59,10 @@ private:
 
     struct HomeCommand {};
     struct LibraryPlaylistsCommand {};
+    struct LibraryAlbumsCommand {};
+    struct LibrarySongsCommand {};
+    struct LibraryArtistsCommand {};
+    struct LibraryPodcastsCommand {};
     struct IsLoggedInCommand {};
 
 public:
@@ -88,7 +92,18 @@ public:
         std::shared_ptr<music::IStreamable> current;
 
         std::unordered_map<std::string, std::vector<music::ApiResult>> home;
+
+        /* library
+        - Filled by the Library*Commands, all require the user to be logged in
+        - library_songs holds IStreamable (music::Song) since library songs are
+          directly playable, unlike the other library entries which are browsable
+        */
         std::vector<music::Playlist> library_playlists;
+        std::vector<music::Album> library_albums;
+        std::vector<std::shared_ptr<music::IStreamable>> library_songs;
+        std::vector<music::ArtistRef> library_artists;
+        std::vector<music::PodcastRef> library_podcasts;
+
         std::vector<music::ApiResult> search_results;
 
         std::unordered_map<std::string, Flags> flags;
@@ -116,11 +131,19 @@ public:
     void getHome();
     void isLoggedIn();
     void getLibraryPlaylists();
+    void getLibraryAlbums();
+    void getLibrarySongs();
+    void getLibraryArtists();
+    void getLibraryPodcasts();
     void search(const std::string& query);
 
     void queue(std::shared_ptr<music::IStreamable> streamable, const bool fresh = true, const bool radio = true);
     void queue(std::shared_ptr<music::IStreamableContainer> container, const bool fresh = true, const bool radio = true);
     void removeAt(uint16_t index);
+
+    void pause();
+    void resume();
+    void togglePause();
 
     void setOnStreamStart(std::function<void()> cb) {
         on_stream_start = std::move(cb);
@@ -140,6 +163,7 @@ public:
     }
 
     void detachUI();
+    bool isInitialized();
 
 private:
     std::string app_name;
@@ -160,6 +184,10 @@ private:
 
         HomeCommand,
         LibraryPlaylistsCommand,
+        LibraryAlbumsCommand,
+        LibrarySongsCommand,
+        LibraryArtistsCommand,
+        LibraryPodcastsCommand,
         IsLoggedInCommand
     >;
 
@@ -172,6 +200,7 @@ private:
 
     std::thread worker_thread;
 
+    bool initialised = false;
     bool running = true;
 
     void worker_loop();

@@ -3,15 +3,21 @@
 #include "../../include/ytm/metadata.hpp"
 
 #include "../../include/ipc/playlist/library_playlists_response.hpp"
+#include "../../include/ipc/playlist/playlist_response.hpp"
+
 #include "../../include/ipc/podcast/library_podcasts_response.hpp"
 #include "../../include/ipc/artist/library_artists_response.hpp"
+
 #include "../../include/ipc/album/library_albums_response.hpp"
+#include "../../include/ipc/album/album_response.hpp"
+
 #include "../../include/ipc/song/library_songs_response.hpp"
-#include "../../include/ipc/playlist/playlist_response.hpp"
-#include "../../include/ipc/search/search_response.hpp"
+
 #include "../../include/ipc/radio/radio_next_response.hpp"
 #include "../../include/ipc/radio/radio_response.hpp"
-#include "../../include/ipc/album/album_response.hpp"
+
+#include "../../include/ipc/search/search_response.hpp"
+
 #include "../../include/ipc/browse/song_response.hpp"
 #include "../../include/ipc/browse/home_response.hpp"
 

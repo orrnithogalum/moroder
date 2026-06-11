@@ -41,6 +41,10 @@ int main(int argc, char *argv[]) {
     spdlog::set_default_logger(logger);
 
     services::Player player(APP_NAME, APP_NAME_HUMAN, 1481401025964540125);
+    if(!player.isInitialized()) {
+        return 1;
+    }
+
     auto screen = ScreenInteractive::Fullscreen();
 
     screen.TrackMouse(false);
@@ -65,8 +69,12 @@ int main(int argc, char *argv[]) {
 
 
     player.isLoggedIn();
-    player.getLibraryPlaylists();
     player.getHome();
+    player.getLibraryPlaylists();
+    player.getLibraryAlbums();
+    player.getLibraryArtists();
+    player.getLibraryPodcasts();
+    player.getLibrarySongs();
 
     int spinner_frame    = 0;
     int sidebar_selected = 0;
@@ -110,14 +118,18 @@ int main(int argc, char *argv[]) {
     std::deque<ui::ContentEntry> main_content_items;
     auto main_content = Container::Vertical({ Renderer([]{ return emptyElement(); }) });
 
+    const Config& cfg = Config::get();
+
     std::function<bool(const ftxui::Event&, const music::ApiResult&)> on_item_press =
-    [&current_state, &player, &main_content_items, &main_content, &screen](const ftxui::Event& event, const music::ApiResult& result) {
-        if(event != Event::d && event != Event::Return) {
+    [&current_state, &player, &main_content_items, &main_content, &screen, &cfg](const ftxui::Event& event, const music::ApiResult& result) {
+        if(!Config::isKey(event, cfg.KEY_ADD_TO_QUEUE) && !Config::isKey(event, cfg.KEY_PLAY_NOW)) {
             return false;
         }
 
         spdlog::info("ITEM: key pressed on result, " + result.resultType);
-        bool should_queue = event == Event::d;
+        bool should_queue = Config::isKey(event, cfg.KEY_ADD_TO_QUEUE);
+
+        bool queued = false;
 
         std::visit([&](auto&& data) {
             using T = std::decay_t<decltype(data)>;
@@ -130,21 +142,30 @@ int main(int argc, char *argv[]) {
             if constexpr (std::is_same_v<T, music::SongRef>) {
                 auto streamable = make_streamable(music::Song{});
                 player.queue(streamable, !should_queue, !should_queue);
+                queued = true;
 
             } else if constexpr (std::is_same_v<T, music::AlbumRef>) {
                 auto container = make_streamable(music::Album{});
                 player.queue(container, !should_queue, !should_queue);
+                queued = true;
 
             } else if constexpr (std::is_same_v<T, music::EpisodeRef>) {
                 auto streamable = make_streamable(music::Episode{});
                 player.queue(streamable, !should_queue, !should_queue);
+                queued = true;
 
             } else if constexpr (std::is_same_v<T, music::PlaylistRef>) {
                 auto container = make_streamable(music::Playlist{});
                 player.queue(container, !should_queue, !should_queue);
+                queued = true;
             }
 
         }, result.data);
+
+        if (!queued) {
+            spdlog::info("ITEM: nothing queued for result type, " + result.resultType);
+            return true;
+        }
 
         current_state = ui::State::QUEUE;
 
@@ -158,13 +179,13 @@ int main(int argc, char *argv[]) {
     };
 
     std::function<bool(const ftxui::Event&, const music::Playlist&)> on_sidebar_press =
-    [&current_state, &player, &main_content_items, &main_content, &screen](const ftxui::Event& event, const music::Playlist& playlist) {
-        if(event != Event::d && event != Event::Return) {
+    [&current_state, &player, &main_content_items, &main_content, &screen, &cfg](const ftxui::Event& event, const music::Playlist& playlist) {
+        if(!Config::isKey(event, cfg.KEY_ADD_TO_QUEUE) && !Config::isKey(event, cfg.KEY_PLAY_NOW)) {
             return false;
         }
 
         spdlog::info("SIDEBAR: key pressed on playlist, " + playlist.ref.title);
-        bool should_queue = event == Event::d;
+        bool should_queue = Config::isKey(event, cfg.KEY_ADD_TO_QUEUE);
 
         auto container = std::make_shared<music::Playlist>(playlist);
         player.queue(container, !should_queue, !should_queue);
@@ -181,13 +202,13 @@ int main(int argc, char *argv[]) {
     };
 
     std::function<bool(const ftxui::Event&, const int)> on_queue_press =
-    [&current_state, &player, &main_content_items, &main_content, &screen](const ftxui::Event& event, const int queue_index) {
-        if(event != Event::c && event != Event::Return) {
+    [&current_state, &player, &main_content_items, &main_content, &screen, &cfg](const ftxui::Event& event, const int queue_index) {
+        if(!Config::isKey(event, cfg.KEY_REMOVE_FROM_QUEUE) && !Config::isKey(event, cfg.KEY_PLAY_NOW)) {
             return false;
         }
 
         spdlog::info("QUEUE: key pressed on item, " + std::to_string(queue_index));
-        bool should_remove = event == Event::c;
+        bool should_remove = Config::isKey(event, cfg.KEY_REMOVE_FROM_QUEUE);
 
         if(!should_remove) {
             player.skipTo(queue_index);
@@ -202,6 +223,25 @@ int main(int argc, char *argv[]) {
 
         screen.PostEvent(Event::Custom);
 
+        return true;
+    };
+
+    std::function<bool(const ftxui::Event&, const ui::ChipEntry&)> on_chip_press =
+    [&main_content_items, &screen, &cfg](const ftxui::Event& event, const ui::ChipEntry& chip) {
+        if(!Config::isKey(event, cfg.KEY_PLAY_NOW)) {
+            return false;
+        }
+
+        spdlog::info("CHIPS: pressed chip, " + chip.id + " (" + chip.label + ")");
+
+        for (auto& entry : main_content_items) {
+            if (entry.category == "__library_filters__") {
+                ui::toggleChip(&entry.chips_data, chip.id);
+                break;
+            }
+        }
+
+        screen.PostEvent(Event::Custom);
         return true;
     };
 
@@ -235,6 +275,17 @@ int main(int argc, char *argv[]) {
         spdlog::info("SIDEBAR: Home pressed");
 
         current_state = ui::State::HOME;
+
+        main_content_items.clear();
+        main_content->DetachAllChildren();
+        main_content->Add(Renderer([] { return emptyElement(); }));
+
+        screen.PostEvent(Event::Custom);
+    };
+
+    sidebar_data.onLibrary = [&current_state, &main_content_items, &main_content, &screen] {
+        spdlog::info("SIDEBAR: Library pressed");
+        current_state = ui::State::LIBRARY;
 
         main_content_items.clear();
         main_content->DetachAllChildren();
@@ -312,10 +363,15 @@ int main(int argc, char *argv[]) {
         } else if(current_state == ui::State::QUEUE) {
             ui::buildQueue(&state_copy, main_content_items, main_content, on_queue_press);
 
+        } else if(current_state == ui::State::LIBRARY) {
+            /* The library grid uses cover-first tiles and fills columns top to
+            bottom, so the row count decides how much of main_content gets used
+            before it starts scrolling sideways. The subtracted rows account for
+            the search bar, the filter chips and the playback bar. */
+            int library_rows = std::max(1, (screen.dimy() - 12) / ui::GRID_TILE_HEIGHT);
+
+            ui::buildLibrary(&state_copy, main_content_items, main_content, library_rows, on_chip_press, on_item_press);
         }
-        // else if(current_state == ui::State::LIBRARY) {
-            // ui::buildLibrary(&state_copy, main_content_items, main_content)
-        // }
 
         return vbox({
             hbox({
@@ -397,22 +453,23 @@ int main(int argc, char *argv[]) {
         });
     });
 
-    ui = CatchEvent(ui, [&search_bar, &screen, &sidebar_hidden, &sidebar, &sidebar_container, &audio_playing, &current_state, &player](Event event){
+    ui = CatchEvent(ui, [&search_bar, &screen, &sidebar_hidden, &sidebar, &sidebar_container, &audio_playing, &current_state, &player, &cfg](Event event){
         if(search_bar->Focused()) {
             return false;
         }
 
-        if(event == Event::q) {
+        if(Config::isKey(event, cfg.KEY_QUIT)) {
             screen.Exit();
             return true;
         }
 
-        if(event == Event::a && audio_playing) {
+
+        if(Config::isKey(event, cfg.KEY_QUEUE_VIEW) && audio_playing) {
             current_state = ui::State::QUEUE;
             return true;
         }
 
-        if(event == Event::s) {
+        if(Config::isKey(event, cfg.KEY_TOGGLE_SIDEBAR)) {
             sidebar_hidden = !sidebar_hidden;
 
             if(sidebar_hidden) {
@@ -424,18 +481,23 @@ int main(int argc, char *argv[]) {
             return true;
         }
 
-        if(event == Event::f) {
+        if(Config::isKey(event, cfg.KEY_FOCUS_SEARCH)) {
             search_bar->TakeFocus();
             return true;
         }
 
-        if(event == Event::z) {
+        if(Config::isKey(event, cfg.KEY_SKIP_BACKWARD)) {
             player.skipBackward();
             return true;
         }
 
-        if(event == Event::x) {
+        if(Config::isKey(event, cfg.KEY_SKIP_FORWARD)) {
             player.skipForward();
+            return true;
+        }
+
+        if(Config::isKey(event, cfg.KEY_TOGGLE_PAUSE)) {
+            player.togglePause();
             return true;
         }
 

@@ -2,14 +2,56 @@
 #include "../../../include/ui/components/error.hpp"
 #include "../../../include/ui/constants/colors.hpp"
 
+#include "../../../include/config/config.hpp"
+#include "image_view.hpp"
+
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/event.hpp>
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/screen/color.hpp>
-#include <string>
 #include <type_traits>
+#include <string>
 
-#include "image_view.hpp"
+namespace {
+
+int homeCategoryRank(const std::string& category) {
+    const auto& order = Config::get().HOME_ORDER;
+    const std::string key = utils::lower(category);
+
+    for (size_t i = 0; i < order.size(); i++) {
+        if (order[i] == key) return static_cast<int>(i);
+    }
+
+    return std::numeric_limits<int>::max();
+}
+
+/* activeLibraryFilter
+- Chips are exclusive, so at most one is ever enabled
+- Empty means "no filter", which shows everything except songs
+*/
+std::string activeLibraryFilter(ui::ChipsData* chips) {
+    for (const auto& chip : chips->entries) {
+        if (chip.enabled) return chip.id;
+    }
+
+    return "";
+}
+
+/* librarySignature
+- Identifies what the library grid is currently showing
+- Rebuilding the Grid component is only needed when this changes, which is
+  either the user picking a filter or an async library fetch landing
+*/
+std::string librarySignature(services::Player::PlayerState* state, const std::string& filter) {
+    return "__library_grid__:" + filter
+        + ":" + std::to_string(state->library_playlists.size())
+        + ":" + std::to_string(state->library_albums.size())
+        + ":" + std::to_string(state->library_songs.size())
+        + ":" + std::to_string(state->library_artists.size())
+        + ":" + std::to_string(state->library_podcasts.size());
+}
+
+}
 
 using namespace ftxui;
 
@@ -70,27 +112,53 @@ void ui::buildHome(services::Player::PlayerState* state, std::deque<ContentEntry
             }
         );
 
-        if (!already_exists) {
-            main_content_items.push_back(ContentEntry{});
-            ContentEntry& item = main_content_items.back();
+        if (already_exists) continue;
 
-            item.category = category;
-            item.selected = 0;
-            item.focused = false;
+        main_content_items.push_back(ContentEntry{});
+        ContentEntry& item = main_content_items.back();
 
-            if (utils::lower(category) == "quick picks") {
-                ui::getGridData(state, category, &item.grid_data);
-                item.component = Grid(&item.grid_data, &item.selected, &item.focused, 4, on_press);
-            } else {
-                item.component = Carousel(&item.data, &item.selected, &item.focused, on_press);
-            }
+        item.category = category;
+        item.selected = 0;
+        item.focused = false;
 
-            main_content->Add(item.component);
+        if (utils::lower(category) == "quick picks") {
+            ui::getGridData(state, category, &item.grid_data);
+            item.component = Grid(&item.grid_data, &item.selected, &item.focused, 4, on_press);
+        } else {
+            item.component = Carousel(&item.carousel_data, &item.selected, &item.focused, on_press);
         }
     }
 
+    std::vector<std::pair<int, ContentEntry*>> ordered;
+    ordered.reserve(main_content_items.size());
+
     for (auto& item : main_content_items) {
-        ui::getCarouselData(state, item.category, &item.data);
+        ordered.push_back({ homeCategoryRank(item.category), &item });
+    }
+
+    std::stable_sort(ordered.begin(), ordered.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+
+    bool matches = (main_content->ChildCount() == ordered.size());
+    if (matches) {
+        for (size_t i = 0; i < ordered.size(); i++) {
+            if (main_content->ChildAt(i) != ordered[i].second->component) { matches = false; break; }
+        }
+    }
+
+    if (!matches && !ordered.empty()) {
+        Component focused_child;
+        for (auto& [rank, item] : ordered) {
+            if (item->component->Focused()) focused_child = item->component;
+        }
+
+        main_content->DetachAllChildren();
+        for (auto& [rank, item] : ordered) main_content->Add(item->component);
+
+        if (focused_child) main_content->SetActiveChild(focused_child);
+    }
+
+    for (auto& item : main_content_items) {
+        ui::getCarouselData(state, item.category, &item.carousel_data);
         item.focused = item.component->Focused();
     }
 }
@@ -365,9 +433,12 @@ void ui::buildQueue(services::Player::PlayerState* state, std::deque<ContentEntr
 
             auto button = Button(opt);
             button = CatchEvent(button, [on_queue_press, queue_index](const ftxui::Event& event) {
-                if (event == Event::Character('c')) {
+                const Config& cfg = Config::get();
+
+                if (Config::isKey(event, cfg.KEY_REMOVE_FROM_QUEUE)) {
                     focus_override = queue_index;
                 }
+
                 return on_queue_press(event, queue_index);
             });
 
@@ -418,6 +489,64 @@ void ui::buildQueue(services::Player::PlayerState* state, std::deque<ContentEntr
     });
 
     main_content->Add(queue_wrapper);
+
+    for (auto& entry : main_content_items) {
+        entry.focused = entry.component->Focused();
+    }
+}
+
+void ui::buildLibrary(services::Player::PlayerState* state, std::deque<ContentEntry>& main_content_items, ftxui::Component main_content, int rows, std::function<bool(const ftxui::Event&, const ui::ChipEntry&)> on_chip_press, std::function<bool(const ftxui::Event&, const music::ApiResult&)> on_item_press) {
+
+    if (main_content_items.empty()) {
+        main_content_items.push_back(ContentEntry{});
+        ContentEntry& filters = main_content_items.back();
+
+        filters.category = "__library_filters__";
+        filters.selected = 0;
+        filters.focused = false;
+
+        filters.chips_data.exclusive = true;
+
+        ui::setChipsData(&filters.chips_data, {
+            {"playlists", "Playlists"},
+            {"albums", "Albums"},
+            {"songs", "Songs"},
+            {"artists", "Artists"},
+            {"podcasts", "Podcasts"},
+        });
+
+        filters.component = Chips(&filters.chips_data, &filters.selected, &filters.focused, on_chip_press);
+
+        main_content_items.push_back(ContentEntry{});
+        ContentEntry& grid = main_content_items.back();
+
+        grid.category = "";
+        grid.selected = 0;
+        grid.focused  = false;
+        grid.component = Renderer([] { return emptyElement(); });
+
+        main_content->DetachAllChildren();
+        main_content->Add(filters.component);
+        main_content->Add(grid.component);
+    }
+
+    ContentEntry& filters = main_content_items[0];
+    ContentEntry& grid = main_content_items[1];
+
+    const std::string filter = activeLibraryFilter(&filters.chips_data);
+    const std::string signature = librarySignature(state, filter);
+
+    if (grid.category != signature) {
+        grid.category = signature;
+        grid.selected = 0;
+
+        ui::getLibraryGridData(state, filter, &grid.grid_data);
+        grid.component = Grid(&grid.grid_data, &grid.selected, &grid.focused, rows, on_item_press, ui::GridStyle::Tile);
+
+        main_content->DetachAllChildren();
+        main_content->Add(filters.component);
+        main_content->Add(grid.component);
+    }
 
     for (auto& entry : main_content_items) {
         entry.focused = entry.component->Focused();
