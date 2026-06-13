@@ -76,12 +76,12 @@ int main(int argc, char *argv[]) {
     player.getLibraryPodcasts();
     player.getLibrarySongs();
 
-    int spinner_frame    = 0;
+    int spinner_frame = 0;
     int sidebar_selected = 0;
 
     bool sidebar_hidden  = false;
     bool sidebar_focused = false;
-    bool audio_playing   = false;
+    bool audio_playing = false;
 
     auto current_state = ui::State::HOME;
 
