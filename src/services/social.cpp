@@ -6,7 +6,12 @@
 
 #include <algorithm>
 
-services::Social::Social(const uint64_t application_id) : app_id(application_id) {
+services::Social::Social(const uint64_t application_id, bool enabled) : app_id(application_id), enabled(enabled) {
+    if (!enabled) {
+        spdlog::info("SOCIAL: rich presence disabled, skipping init.");
+        return;                 // no client, no callbacks, no worker thread
+    }
+
     client = std::make_shared<discordpp::Client>();
     client->SetApplicationId(app_id);
 
@@ -67,6 +72,7 @@ services::Social::~Social() {
 }
 
 void services::Social::setStatus(const std::string& t, const std::string& a, const std::string& alb, const std::string& cover, uint64_t d) {
+    if (!enabled) return;
     std::lock_guard lock(mutex);
 
     this->title = t;
@@ -83,6 +89,7 @@ void services::Social::setStatus(const std::string& t, const std::string& a, con
 }
 
 void services::Social::pause() {
+    if (!enabled) return;
     std::lock_guard lock(mutex);
 
     if (!has_status) return;
@@ -92,6 +99,7 @@ void services::Social::pause() {
 }
 
 void services::Social::resume() {
+    if (!enabled) return;
     std::lock_guard lock(mutex);
 
     if (!has_status) return;
@@ -103,6 +111,7 @@ void services::Social::resume() {
 }
 
 void services::Social::setPosition(const uint64_t p) {
+    if (!enabled) return;
     std::lock_guard lock(mutex);
 
     if (!has_status) return;
@@ -112,6 +121,7 @@ void services::Social::setPosition(const uint64_t p) {
 }
 
 void services::Social::removeStatus() {
+    if (!enabled) return;
     std::lock_guard lock(mutex);
 
     has_status = false;

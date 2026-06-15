@@ -18,7 +18,7 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
     mpris_service = Mpris::make(this->app_name);
     mpv_service = std::make_unique<MPV>();
     music_service = std::make_unique<Music>(this->app_name);
-    social_service = std::make_unique<Social>(app_id);
+    social_service = std::make_unique<Social>(app_id, Config::get().ENABLE_DISCORD_RICH_PRESENCE);
 
     if (!mpris_service) {
         spdlog::error("PLAYER: mpris service initialisation failed.");
@@ -991,9 +991,17 @@ void services::Player::updateSocialData() {
         return;
     }
 
+    const Config& cfg = Config::get();
+
     if (auto song = std::dynamic_pointer_cast<music::Song>(current)) {
+
+        std::string status_label =
+              cfg.RICH_PRESENCE_STATUS_LABEL == "artist" ? song->ref.artists[0].name
+            : cfg.RICH_PRESENCE_STATUS_LABEL == "album"  ? song->album.title
+            :                                              song->ref.title;
+
         social_service->setStatus(
-            song->ref.title,
+            status_label,
             song->ref.artists.empty() ? "" : song->ref.artists[0].name,
             song->album.title,
             song->ref.thumbnail_large,
@@ -1001,8 +1009,14 @@ void services::Player::updateSocialData() {
         );
     }
     else if (auto episode = std::dynamic_pointer_cast<music::Episode>(current)) {
+
+        std::string status_label =
+              cfg.RICH_PRESENCE_STATUS_LABEL == "artist" ? episode->ref.podcast.name
+            : cfg.RICH_PRESENCE_STATUS_LABEL == "album"  ? episode->ref.podcast.name
+            :                                              episode->ref.title;
+
         social_service->setStatus(
-            episode->ref.title,
+            status_label,
             episode->ref.podcast.name,
             episode->ref.podcast.name,
             episode->ref.thumbnail_large,

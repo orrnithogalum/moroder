@@ -57,6 +57,8 @@ int main(int argc, char *argv[]) {
         screen.PostEvent(Event::Custom);
     });
 
+    const Config& cfg = Config::get();
+
     ftxui::setImageCacheMaxSize(500);
     ftxui::setImageResizeCacheMaxSize(500);
     ftxui::setImageCharCacheMaxSize(50000);
@@ -117,8 +119,6 @@ int main(int argc, char *argv[]) {
 
     std::deque<ui::ContentEntry> main_content_items;
     auto main_content = Container::Vertical({ Renderer([]{ return emptyElement(); }) });
-
-    const Config& cfg = Config::get();
 
     std::function<bool(const ftxui::Event&, const music::ApiResult&)> on_item_press =
     [&current_state, &player, &main_content_items, &main_content, &screen, &cfg](const ftxui::Event& event, const music::ApiResult& result) {

@@ -30,6 +30,11 @@ class Config {
 public:
     inline static std::string_view app_name = "";
 
+    int MAX_IMAGE_CACHE_SIZE = 50;
+    int MAX_RESIZED_IMAGE_CACHE_SIZE = 500;
+    int MAX_IMAGE_CHAR_CACHE_SIZE = 50000;
+    int MAX_CONCURRENT_IMAGE_LOADS = 100;
+
     std::string LASTFM_API_KEY;
 
     fs::path PYTHON_PATH;
@@ -40,6 +45,9 @@ public:
     int RADIO_RESULT_LIMIT  = 20;
 
     bool FETCH_ALBUMS = true;
+
+    bool ENABLE_DISCORD_RICH_PRESENCE = true;
+    std::string RICH_PRESENCE_STATUS_LABEL = "song";
 
     // Home categories in display order, lower-cased. Empty = keep API order.
     std::vector<std::string> HOME_ORDER;
@@ -382,6 +390,13 @@ private:
 
     static const std::vector<FieldSpec>& fieldTable() {
         static const std::vector<FieldSpec> table = {
+            {"MAX_IMAGE_CACHE_SIZE",         makeSetter(&Config::MAX_IMAGE_CACHE_SIZE),         true},
+            {"MAX_RESIZED_IMAGE_CACHE_SIZE", makeSetter(&Config::MAX_RESIZED_IMAGE_CACHE_SIZE), true},
+            {"MAX_IMAGE_CHAR_CACHE_SIZE",    makeSetter(&Config::MAX_IMAGE_CHAR_CACHE_SIZE),    true},
+            {"MAX_CONCURRENT_IMAGE_LOADS",   makeSetter(&Config::MAX_CONCURRENT_IMAGE_LOADS),   true},
+            {"ENABLE_DISCORD_RICH_PRESENCE", makeSetter(&Config::ENABLE_DISCORD_RICH_PRESENCE), true},
+            {"RICH_PRESENCE_STATUS_LABEL",   makeSetter(&Config::RICH_PRESENCE_STATUS_LABEL),   true},
+
             {"LASTFM_API_KEY",       makeSetter(&Config::LASTFM_API_KEY),        true},
             {"PYTHON_PATH",          makeSetter(&Config::PYTHON_PATH),           true},
             {"YTM_COOKIES_PATH",     makeSetter(&Config::YTM_COOKIES_PATH),      true},

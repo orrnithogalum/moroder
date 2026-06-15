@@ -19,7 +19,7 @@ public:
     - Initializes the Discord client with the given application ID
     - Starts the worker thread to run the Discord callback loop
     */
-    Social(const uint64_t application_id);
+    Social(const uint64_t application_id, bool enabled);
 
     /* Destructor
     - Stops the worker thread and cleans up the Discord client
@@ -48,6 +48,8 @@ private:
     std::thread worker;
 
     std::mutex mutex;
+
+    bool enabled = true;
 
     bool paused = false;
     bool has_status = false;
