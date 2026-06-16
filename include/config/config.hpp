@@ -45,6 +45,7 @@ public:
     int RADIO_RESULT_LIMIT  = 20;
 
     bool FETCH_ALBUMS = true;
+    bool EXTRA_BOTTOM_PADDING = true;
 
     bool ENABLE_DISCORD_RICH_PRESENCE = true;
     std::string RICH_PRESENCE_STATUS_LABEL = "song";
@@ -404,6 +405,7 @@ private:
             {"SEARCH_RESULT_LIMIT",  makeSetter(&Config::SEARCH_RESULT_LIMIT),   true},
             {"RADIO_RESULT_LIMIT",   makeSetter(&Config::RADIO_RESULT_LIMIT),    true},
             {"FETCH_ALBUMS",         makeSetter(&Config::FETCH_ALBUMS),          true},
+            {"EXTRA_BOTTOM_PADDING", makeSetter(&Config::EXTRA_BOTTOM_PADDING),  true},
             {"HOME_ORDER",           makeSetter(&Config::HOME_ORDER),            true},
             {"KEY_QUIT",             makeSetter(&Config::KEY_QUIT),              true},
             {"KEY_QUEUE_VIEW",       makeSetter(&Config::KEY_QUEUE_VIEW),        true},

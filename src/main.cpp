@@ -449,7 +449,9 @@ int main(int argc, char *argv[]) {
             (playback_bar_data.is_playing  && state_copy.flags["paused"] == services::Player::Flags::False) ||
             (!playback_bar_data.is_playing && state_copy.flags["paused"] == services::Player::Flags::True)
                 ? playback_bar->Render()
-                : emptyElement()
+                : emptyElement(),
+
+            Config::get().EXTRA_BOTTOM_PADDING ? text("") : emptyElement()
         });
     });
 
