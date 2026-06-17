@@ -59,15 +59,15 @@ int main(int argc, char *argv[]) {
 
     const Config& cfg = Config::get();
 
-    ftxui::setImageCacheMaxSize(500);
-    ftxui::setImageResizeCacheMaxSize(500);
-    ftxui::setImageCharCacheMaxSize(50000);
+    ftxui::setImageCacheMaxSize(cfg.MAX_IMAGE_CACHE_SIZE);
+    ftxui::setImageResizeCacheMaxSize(cfg.MAX_RESIZED_IMAGE_CACHE_SIZE);
+    ftxui::setImageCharCacheMaxSize(cfg.MAX_IMAGE_CHAR_CACHE_SIZE);
 
     // Caps concurrent background image-loader threads (default is 6).
     // With 40+ thumbnails potentially uncached at once (grid + carousels +
     // queue + playback bar), leave this in place rather than letting every
     // uncached image spawn its own thread simultaneously.
-    ftxui::setMaxConcurrentImageLoads(100);
+    ftxui::setMaxConcurrentImageLoads(cfg.MAX_CONCURRENT_IMAGE_LOADS);
 
 
     player.isLoggedIn();
@@ -443,8 +443,6 @@ int main(int argc, char *argv[]) {
 
                 }) | flex
             }) | flex,
-
-            // text(std::to_string(state_copy.queue_position) + " " + (state_copy.current ? state_copy.current->getStreamUrl() : "")),
 
             (playback_bar_data.is_playing  && state_copy.flags["paused"] == services::Player::Flags::False) ||
             (!playback_bar_data.is_playing && state_copy.flags["paused"] == services::Player::Flags::True)
