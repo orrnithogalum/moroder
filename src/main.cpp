@@ -69,6 +69,13 @@ int main(int argc, char *argv[]) {
     // uncached image spawn its own thread simultaneously.
     ftxui::setMaxConcurrentImageLoads(cfg.MAX_CONCURRENT_IMAGE_LOADS);
 
+    spdlog::info(
+        "CONFIG: Log configuration ({} , {}, {}, {})",
+        cfg.MAX_IMAGE_CACHE_SIZE,
+        cfg.MAX_RESIZED_IMAGE_CACHE_SIZE,
+        cfg.MAX_IMAGE_CHAR_CACHE_SIZE,
+        cfg.MAX_CONCURRENT_IMAGE_LOADS
+    );
 
     player.isLoggedIn();
     player.getHome();
@@ -370,7 +377,25 @@ int main(int argc, char *argv[]) {
             the search bar, the filter chips and the playback bar. */
             int library_rows = std::max(1, (screen.dimy() - 12) / ui::GRID_TILE_HEIGHT);
 
-            ui::buildLibrary(&state_copy, main_content_items, main_content, library_rows, on_chip_press, on_item_press);
+            /* The search bar doubles as the library filter. Nothing needs to be
+            invalidated on a keystroke: the value is read here on every render,
+            and buildLibrary folds it into the grid signature, so the keystroke's
+            own redraw rebuilds the grid. Enter still runs a real search through
+            onSearch, which switches the page to SEARCH. */
+            ui::buildLibrary(&state_copy, main_content_items, main_content, library_rows, search_bar_data.value, on_chip_press, on_item_press,
+                [&player, &main_content, &main_content_items, &screen] {
+                    player.getLibraryPlaylists();
+                    player.getLibraryAlbums();
+                    player.getLibraryArtists();
+                    player.getLibraryPodcasts();
+                    player.getLibrarySongs();
+
+                    main_content_items.clear();
+                    main_content->DetachAllChildren();
+                    main_content->Add(Renderer([] { return emptyElement(); }));
+
+                    screen.PostEvent(Event::Custom);
+                });
         }
 
         return vbox({
@@ -417,9 +442,10 @@ int main(int argc, char *argv[]) {
                         text(" "),
                         [&] {
                             const std::string error_key =
-                                  current_state == ui::State::HOME   ? "home"
-                                : current_state == ui::State::SEARCH ? "search"
-                                                                     : "";
+                                  current_state == ui::State::HOME    ? "home"
+                                : current_state == ui::State::SEARCH  ? "search"
+                                : current_state == ui::State::LIBRARY ? "library"
+                                                                      : "";
 
                             const bool has_error = !error_key.empty() && state_copy.errors.count(error_key) > 0;
 

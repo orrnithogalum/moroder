@@ -40,10 +40,12 @@ std::string activeLibraryFilter(ui::ChipsData* chips) {
 /* librarySignature
 - Identifies what the library grid is currently showing
 - Rebuilding the Grid component is only needed when this changes, which is
-  either the user picking a filter or an async library fetch landing
+  the user picking a filter, typing in the search bar, or an async library
+  fetch landing
 */
-std::string librarySignature(services::Player::PlayerState* state, const std::string& filter) {
+std::string librarySignature(services::Player::PlayerState* state, const std::string& filter, const std::string& query) {
     return "__library_grid__:" + filter
+        + ":" + query
         + ":" + std::to_string(state->library_playlists.size())
         + ":" + std::to_string(state->library_albums.size())
         + ":" + std::to_string(state->library_songs.size())
@@ -495,7 +497,15 @@ void ui::buildQueue(services::Player::PlayerState* state, std::deque<ContentEntr
     }
 }
 
-void ui::buildLibrary(services::Player::PlayerState* state, std::deque<ContentEntry>& main_content_items, ftxui::Component main_content, int rows, std::function<bool(const ftxui::Event&, const ui::ChipEntry&)> on_chip_press, std::function<bool(const ftxui::Event&, const music::ApiResult&)> on_item_press) {
+void ui::buildLibrary(services::Player::PlayerState* state, std::deque<ContentEntry>& main_content_items, ftxui::Component main_content, int rows, const std::string& query, std::function<bool(const ftxui::Event&, const ui::ChipEntry&)> on_chip_press, std::function<bool(const ftxui::Event&, const music::ApiResult&)> on_item_press, std::function<void()> on_retry) {
+
+    /* The five library requests share one aggregate error entry, so the page
+    behaves like home: one box, one retry that re-fires all of them. The chip
+    selection is dropped on the way out, since buildError clears the items.
+    */
+    if (buildError(state, "library", main_content_items, main_content, on_retry)) {
+        return;
+    }
 
     if (main_content_items.empty()) {
         main_content_items.push_back(ContentEntry{});
@@ -534,14 +544,34 @@ void ui::buildLibrary(services::Player::PlayerState* state, std::deque<ContentEn
     ContentEntry& grid = main_content_items[1];
 
     const std::string filter = activeLibraryFilter(&filters.chips_data);
-    const std::string signature = librarySignature(state, filter);
+    const std::string signature = librarySignature(state, filter, query);
 
     if (grid.category != signature) {
         grid.category = signature;
         grid.selected = 0;
 
-        ui::getLibraryGridData(state, filter, &grid.grid_data);
-        grid.component = Grid(&grid.grid_data, &grid.selected, &grid.focused, rows, on_item_press, ui::GridStyle::Tile);
+        ui::getLibraryGridData(state, filter, query, &grid.grid_data);
+
+        /* Grid() renders nothing at all when it has no entries, which reads as
+        a broken page rather than an empty filter, so say so instead.
+        */
+        if (grid.grid_data.entries.empty() && !query.empty()) {
+            const std::string message = "Nothing in your library matches \"" + query + "\"";
+
+            grid.component = Renderer([message] {
+                return vbox({
+                    text(""),
+                    text(""),
+                    hbox({
+                        text(" "),
+                        text(message) | color(ui::GetColor(ui::MColor::TEXT_TOP_SECONDARY)),
+                    }),
+                });
+            });
+
+        } else {
+            grid.component = Grid(&grid.grid_data, &grid.selected, &grid.focused, rows, on_item_press, ui::GridStyle::Tile);
+        }
 
         main_content->DetachAllChildren();
         main_content->Add(filters.component);

@@ -30,7 +30,11 @@ struct GridData {
 };
 
 void getGridData(services::Player::PlayerState* state, std::string category, GridData* data);
-void getLibraryGridData(services::Player::PlayerState* state, const std::string& filter, GridData* data);
+/* getLibraryGridData
+- filter is the active chip id, empty means everything except songs
+- query narrows the rows by title and by artist / author, empty means no narrowing
+*/
+void getLibraryGridData(services::Player::PlayerState* state, const std::string& filter, const std::string& query, GridData* data);
 
 ftxui::Component Grid(GridData* data, int* selected, bool* focused, int rows, std::function<bool(const ftxui::Event&, const music::ApiResult&)> on_press, GridStyle style = GridStyle::List);
 }

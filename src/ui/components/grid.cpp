@@ -1,5 +1,6 @@
 #include "../../../include/ui/components/grid.hpp"
 #include "../../../include/ui/constants/colors.hpp"
+#include "../../../include/utils/utils.hpp"
 
 #include "ftxui-grid-container/grid-container.hpp"
 #include "spdlog/spdlog.h"
@@ -78,7 +79,7 @@ void ui::getGridData(services::Player::PlayerState* state, std::string category,
     data->is_loading = state->flags["home"] == services::Player::Flags::Ongoing;
 }
 
-void ui::getLibraryGridData(services::Player::PlayerState* state, const std::string& filter, GridData* data) {
+void ui::getLibraryGridData(services::Player::PlayerState* state, const std::string& filter, const std::string& query, GridData* data) {
 
     data->entries.clear();
     data->entries_spoof.clear();
@@ -86,7 +87,22 @@ void ui::getLibraryGridData(services::Player::PlayerState* state, const std::str
 
     const bool all = filter.empty();
 
+    /* needle
+    - Every category funnels through push(), so matching here covers all five
+    - Matched against the title and the artist / author only, deliberately not
+      the type label, otherwise typing "album" would return the whole shelf
+    */
+    const std::string needle = utils::lower(query);
+
     auto push = [&](const std::string& url, const std::string& top, const std::string& type_label, const std::string& detail, const std::string& result_type, music::ResultData ref) {
+
+        if (!needle.empty()) {
+            const std::string haystack = utils::lower(top) + " " + utils::lower(detail);
+
+            if (haystack.find(needle) == std::string::npos) {
+                return;
+            }
+        }
 
         music::ApiResult result;
         result.category = "library";

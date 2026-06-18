@@ -12,6 +12,41 @@
 #include <vector>
 #include <mutex>
 
+namespace {
+
+/* LIBRARY_SOURCES
+- The library page is one view fed by five independent requests
+- Each request keeps its own error entry, and "library" is the aggregate the UI
+  reads, so a source that succeeds can't erase a sibling's failure
+*/
+const char* LIBRARY_SOURCES[] = {
+    "library_playlists",
+    "library_albums",
+    "library_songs",
+    "library_artists",
+    "library_podcasts",
+};
+
+/* refreshLibraryError
+- Recomputes the aggregate "library" entry from the per-source ones
+- First failure wins, since the page can only show one error box
+- The caller must already hold state_mutex
+*/
+void refreshLibraryError(services::Player::PlayerState& state) {
+    for (const char* source : LIBRARY_SOURCES) {
+        auto error = state.errors.find(source);
+
+        if (error != state.errors.end()) {
+            state.errors["library"] = error->second;
+            return;
+        }
+    }
+
+    state.errors.erase("library");
+}
+
+}
+
 services::Player::Player(const std::string_view& app_name, const std::string_view& app_name_human, const uint64_t app_id) {
     this->app_name = app_name;
 
@@ -634,6 +669,7 @@ void services::Player::worker_loop() {
                     std::lock_guard lock(state_mutex);
                     state.flags["library_playlists"] = Flags::Ongoing;
                     state.errors.erase("library_playlists");
+                    refreshLibraryError(state);
                     state.library_playlists.clear();
                 }
 
@@ -651,6 +687,8 @@ void services::Player::worker_loop() {
                         state.flags["library_playlists"] = Flags::Done;
                         state.library_playlists = user_playlists;
                     }
+
+                    refreshLibraryError(state);
                 }
 
             } else if constexpr (std::is_same_v<T, IsLoggedInCommand>) {
@@ -669,15 +707,27 @@ void services::Player::worker_loop() {
                 {
                     std::lock_guard lock(state_mutex);
                     state.flags["library_albums"] = Flags::Ongoing;
+                    state.errors.erase("library_albums");
+                    refreshLibraryError(state);
                     state.library_albums.clear();
                 }
 
                 std::vector<music::Album> user_albums = music_service->getLibraryAlbums();
+                const services::RequestError& err = music_service->lastError();
 
                 {
                     std::lock_guard lock(state_mutex);
-                    state.flags["library_albums"] = Flags::Done;
-                    state.library_albums = user_albums;
+
+                    if (err.failed && !err.cancelled) {
+                        state.flags["library_albums"] = Flags::Error;
+                        state.errors["library_albums"] = { err.message, err.retryable };
+
+                    } else if (!err.failed) {
+                        state.flags["library_albums"] = Flags::Done;
+                        state.library_albums = user_albums;
+                    }
+
+                    refreshLibraryError(state);
                 }
 
             } else if constexpr (std::is_same_v<T, LibrarySongsCommand>) {
@@ -686,15 +736,27 @@ void services::Player::worker_loop() {
                 {
                     std::lock_guard lock(state_mutex);
                     state.flags["library_songs"] = Flags::Ongoing;
+                    state.errors.erase("library_songs");
+                    refreshLibraryError(state);
                     state.library_songs.clear();
                 }
 
                 std::vector<std::shared_ptr<music::IStreamable>> user_songs = music_service->getLibrarySongs();
+                const services::RequestError& err = music_service->lastError();
 
                 {
                     std::lock_guard lock(state_mutex);
-                    state.flags["library_songs"] = Flags::Done;
-                    state.library_songs = user_songs;
+
+                    if (err.failed && !err.cancelled) {
+                        state.flags["library_songs"] = Flags::Error;
+                        state.errors["library_songs"] = { err.message, err.retryable };
+
+                    } else if (!err.failed) {
+                        state.flags["library_songs"] = Flags::Done;
+                        state.library_songs = user_songs;
+                    }
+
+                    refreshLibraryError(state);
                 }
 
             } else if constexpr (std::is_same_v<T, LibraryArtistsCommand>) {
@@ -703,15 +765,27 @@ void services::Player::worker_loop() {
                 {
                     std::lock_guard lock(state_mutex);
                     state.flags["library_artists"] = Flags::Ongoing;
+                    state.errors.erase("library_artists");
+                    refreshLibraryError(state);
                     state.library_artists.clear();
                 }
 
                 std::vector<music::ArtistRef> user_artists = music_service->getLibraryArtists();
+                const services::RequestError& err = music_service->lastError();
 
                 {
                     std::lock_guard lock(state_mutex);
-                    state.flags["library_artists"] = Flags::Done;
-                    state.library_artists = user_artists;
+
+                    if (err.failed && !err.cancelled) {
+                        state.flags["library_artists"] = Flags::Error;
+                        state.errors["library_artists"] = { err.message, err.retryable };
+
+                    } else if (!err.failed) {
+                        state.flags["library_artists"] = Flags::Done;
+                        state.library_artists = user_artists;
+                    }
+
+                    refreshLibraryError(state);
                 }
 
             } else if constexpr (std::is_same_v<T, LibraryPodcastsCommand>) {
@@ -720,15 +794,27 @@ void services::Player::worker_loop() {
                 {
                     std::lock_guard lock(state_mutex);
                     state.flags["library_podcasts"] = Flags::Ongoing;
+                    state.errors.erase("library_podcasts");
+                    refreshLibraryError(state);
                     state.library_podcasts.clear();
                 }
 
                 std::vector<music::PodcastRef> user_podcasts = music_service->getLibraryPodcasts();
+                const services::RequestError& err = music_service->lastError();
 
                 {
                     std::lock_guard lock(state_mutex);
-                    state.flags["library_podcasts"] = Flags::Done;
-                    state.library_podcasts = user_podcasts;
+
+                    if (err.failed && !err.cancelled) {
+                        state.flags["library_podcasts"] = Flags::Error;
+                        state.errors["library_podcasts"] = { err.message, err.retryable };
+
+                    } else if (!err.failed) {
+                        state.flags["library_podcasts"] = Flags::Done;
+                        state.library_podcasts = user_podcasts;
+                    }
+
+                    refreshLibraryError(state);
                 }
             }
 
