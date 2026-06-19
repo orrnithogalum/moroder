@@ -37,7 +37,14 @@ void refreshLibraryError(services::Player::PlayerState& state) {
         auto error = state.errors.find(source);
 
         if (error != state.errors.end()) {
-            state.errors["library"] = error->second;
+            /* Copy before writing: operator[] can rehash, which would leave
+            error->second dangling while it is still being read from
+            */
+            const services::Player::ErrorInfo info = error->second;
+
+            spdlog::warn("PLAYER: library error held by {}, {}", source, info.message);
+
+            state.errors["library"] = info;
             return;
         }
     }
@@ -1391,4 +1398,32 @@ void services::Player::getLibraryPodcasts() {
     }
 
     command_cv.notify_one();
+}
+
+void services::Player::retryLibrary() {
+    /* Every library error goes at once, before anything is queued.
+    - Clearing per-command instead meant the aggregate survived until the last
+      of the five landed, and survived forever if any single one kept failing
+    - Each command re-erases its own key on the way in, so a source that fails
+      again puts the box straight back
+    */
+    {
+        std::lock_guard lock(state_mutex);
+
+        for (const char* source : LIBRARY_SOURCES) {
+            state.errors.erase(source);
+            state.flags[source] = Flags::Ongoing;
+        }
+
+        state.errors.erase("library");
+    }
+
+    if(this->state.flags["library_playlists"] != services::Player::Flags::Done) {
+        this->getLibraryPlaylists();
+    }
+
+    this->getLibraryAlbums();
+    this->getLibraryArtists();
+    this->getLibraryPodcasts();
+    this->getLibrarySongs();
 }

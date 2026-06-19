@@ -135,6 +135,14 @@ public:
     void getLibrarySongs();
     void getLibraryArtists();
     void getLibraryPodcasts();
+
+    /* retryLibrary
+    - Clears every library error and re-fires all five library requests
+    - The clearing happens up front and under one lock, so the page drops back
+      to its loading state the moment the button is pressed, instead of holding
+      the error box until the slowest request lands
+    */
+    void retryLibrary();
     void search(const std::string& query);
 
     void queue(std::shared_ptr<music::IStreamable> streamable, const bool fresh = true, const bool radio = true);

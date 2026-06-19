@@ -69,13 +69,6 @@ int main(int argc, char *argv[]) {
     // uncached image spawn its own thread simultaneously.
     ftxui::setMaxConcurrentImageLoads(cfg.MAX_CONCURRENT_IMAGE_LOADS);
 
-    spdlog::info(
-        "CONFIG: Log configuration ({} , {}, {}, {})",
-        cfg.MAX_IMAGE_CACHE_SIZE,
-        cfg.MAX_RESIZED_IMAGE_CACHE_SIZE,
-        cfg.MAX_IMAGE_CHAR_CACHE_SIZE,
-        cfg.MAX_CONCURRENT_IMAGE_LOADS
-    );
 
     player.isLoggedIn();
     player.getHome();
@@ -347,7 +340,10 @@ int main(int argc, char *argv[]) {
         if(current_state == ui::State::HOME) {
             ui::buildHome(&state_copy, main_content_items, main_content, on_item_press, [&player, &main_content, &main_content_items, &screen]{
                 player.getHome();
-                player.getLibraryPlaylists();
+
+                if(player.state.flags["library_playlists"] != services::Player::Flags::Done) {
+                    player.getLibraryPlaylists();
+                }
 
                 main_content_items.clear();
                 main_content->DetachAllChildren();
@@ -371,29 +367,11 @@ int main(int argc, char *argv[]) {
             ui::buildQueue(&state_copy, main_content_items, main_content, on_queue_press);
 
         } else if(current_state == ui::State::LIBRARY) {
-            /* The library grid uses cover-first tiles and fills columns top to
-            bottom, so the row count decides how much of main_content gets used
-            before it starts scrolling sideways. The subtracted rows account for
-            the search bar, the filter chips and the playback bar. */
             int library_rows = std::max(1, (screen.dimy() - 12) / ui::GRID_TILE_HEIGHT);
 
-            /* The search bar doubles as the library filter. Nothing needs to be
-            invalidated on a keystroke: the value is read here on every render,
-            and buildLibrary folds it into the grid signature, so the keystroke's
-            own redraw rebuilds the grid. Enter still runs a real search through
-            onSearch, which switches the page to SEARCH. */
             ui::buildLibrary(&state_copy, main_content_items, main_content, library_rows, search_bar_data.value, on_chip_press, on_item_press,
-                [&player, &main_content, &main_content_items, &screen] {
-                    player.getLibraryPlaylists();
-                    player.getLibraryAlbums();
-                    player.getLibraryArtists();
-                    player.getLibraryPodcasts();
-                    player.getLibrarySongs();
-
-                    main_content_items.clear();
-                    main_content->DetachAllChildren();
-                    main_content->Add(Renderer([] { return emptyElement(); }));
-
+                [&player, &screen] {
+                    player.retryLibrary();
                     screen.PostEvent(Event::Custom);
                 });
         }

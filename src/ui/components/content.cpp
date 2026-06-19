@@ -498,11 +498,6 @@ void ui::buildQueue(services::Player::PlayerState* state, std::deque<ContentEntr
 }
 
 void ui::buildLibrary(services::Player::PlayerState* state, std::deque<ContentEntry>& main_content_items, ftxui::Component main_content, int rows, const std::string& query, std::function<bool(const ftxui::Event&, const ui::ChipEntry&)> on_chip_press, std::function<bool(const ftxui::Event&, const music::ApiResult&)> on_item_press, std::function<void()> on_retry) {
-
-    /* The five library requests share one aggregate error entry, so the page
-    behaves like home: one box, one retry that re-fires all of them. The chip
-    selection is dropped on the way out, since buildError clears the items.
-    */
     if (buildError(state, "library", main_content_items, main_content, on_retry)) {
         return;
     }
