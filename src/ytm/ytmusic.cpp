@@ -3,6 +3,8 @@
 #include "../../include/ytm/parsers.hpp"
 #include "../../include/ytm/sha1.hpp"
 
+#include <spdlog/spdlog.h>
+
 #include <algorithm>
 #include <fstream>
 #include <ctime>
@@ -132,6 +134,24 @@ const json* libraryContents(const json& response, const Path& renderer) {
     return nav(results, ITEM_SECTION + renderer);
 }
 
+/* kindName
+- Logging only, so an unknown kind degrades to a label rather than breaking
+  the build when the enum grows
+*/
+const char* kindName(Error::Kind kind) {
+    switch (kind) {
+        case Error::Kind::Network:   return "network";
+        case Error::Kind::Auth:      return "auth";
+        case Error::Kind::RateLimit: return "rate limit";
+        case Error::Kind::Server:    return "server";
+        case Error::Kind::Request:   return "request";
+        case Error::Kind::Parse:     return "parse";
+        case Error::Kind::NotFound:  return "not found";
+        case Error::Kind::Cancelled: return "cancelled";
+        default:                     return "unknown";
+    }
+}
+
 }
 
 
@@ -139,6 +159,16 @@ const json* libraryContents(const json& response, const Path& renderer) {
 void YTMusic::setError(Error::Kind kind, std::string detail) {
     last_error.kind = kind;
     last_error.detail = std::move(detail);
+
+    /* Every failure in this class goes through here, so this one line covers
+    auth, transport, HTTP status and parse errors alike. A cancel is an ordinary
+    outcome rather than a fault, so it stays at info.
+    */
+    if (kind == Error::Kind::Cancelled) {
+        spdlog::info("YTM: cancelled, {}", last_error.detail);
+    } else {
+        spdlog::warn("YTM: {} error, {}", kindName(kind), last_error.detail);
+    }
 }
 
 YTMusic::YTMusic(const std::filesystem::path& browserJson, std::string lang, std::string loc)
@@ -200,26 +230,39 @@ void YTMusic::loadAuth(const std::filesystem::path& path) {
     visitor_id = auth_headers.value("x-goog-visitor-id", std::string());
 
     authenticated = true;
+
+    spdlog::info("YTM: auth loaded from {}, visitor id {}", path.string(), visitor_id.empty() ? "not in headers" : "reused from headers");
 }
 
 void YTMusic::ensureVisitorId() {
     if (!visitor_id.empty()) return;
 
     Http::Response r = http.get(YTM_DOMAIN, {"user-agent: " + USER_AGENT, "accept: */*"});
-    if (!r.ok()) return;
+    if (!r.ok()) {
+        spdlog::warn("YTM: visitor id scrape failed, HTTP {} {}", r.status, r.error);
+        return;
+    }
 
     // The page embeds ytcfg as one long line; pulling the field out directly is
     // more robust than brace-matching a megabyte of JS.
     static const std::string needle = "\"VISITOR_DATA\":\"";
 
     size_t pos = r.body.find(needle);
-    if (pos == std::string::npos) return;
+    if (pos == std::string::npos) {
+        spdlog::warn("YTM: visitor id not found in homepage, the page layout may have changed");
+        return;
+    }
 
     size_t start = pos + needle.size();
     size_t end = r.body.find('"', start);
-    if (end == std::string::npos) return;
+    if (end == std::string::npos) {
+        spdlog::warn("YTM: visitor id field was truncated");
+        return;
+    }
 
     visitor_id = r.body.substr(start, end - start);
+
+    spdlog::info("YTM: visitor id acquired");
 }
 
 std::vector<std::string> YTMusic::buildHeaders() {
@@ -296,6 +339,9 @@ json YTMusic::sendRequest(const std::string& endpoint, const json& body, const s
     payload["context"] = {{"client", client}, {"user", json::object()}};
 
     std::string url = YTM_BASE_API + endpoint + params + additionalParams;
+
+    spdlog::debug("YTM: {} request ({})", endpoint, authenticated ? "authenticated" : "anonymous");
+
     Http::Response r = http.post(url, payload.dump(), buildHeaders());
 
     if (!r.error.empty()) {
@@ -332,6 +378,9 @@ json YTMusic::sendRequest(const std::string& endpoint, const json& body, const s
     }
 
     last_error = Error{};
+
+    spdlog::debug("YTM: {} ok, {} bytes", endpoint, r.body.size());
+
     return parsed;
 }
 

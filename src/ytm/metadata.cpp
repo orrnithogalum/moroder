@@ -1,5 +1,7 @@
 #include "../../include/ytm/metadata.hpp"
 
+#include <spdlog/spdlog.h>
+
 namespace ytm {
 
 nlohmann::json lookupAlbum(Http& http, const std::string& lastfmApiKey, const std::string& title, const std::string& artist) {
@@ -14,6 +16,12 @@ nlohmann::json lookupAlbum(Http& http, const std::string& lastfmApiKey, const st
 
         Http::Response r = http.get(url, {agent});
 
+        if (!r.ok()) {
+            // Not fatal, iTunes is tried next, but a persistently failing key
+            // is otherwise invisible.
+            spdlog::warn("METADATA: last.fm lookup failed, HTTP {} {}", r.status, r.error);
+        }
+
         if (r.ok()) {
             nlohmann::json data = nlohmann::json::parse(r.body, nullptr, false);
 
@@ -26,6 +34,7 @@ nlohmann::json lookupAlbum(Http& http, const std::string& lastfmApiKey, const st
                 }
 
                 if (!album.empty()) {
+                    spdlog::debug("METADATA: '{}' resolved to album '{}' via last.fm", title, album);
                     return {{"status", "ok"}, {"song", {{"album", album}}}, {"source", "lastfm"}};
                 }
             }
@@ -58,6 +67,8 @@ nlohmann::json lookupAlbum(Http& http, const std::string& lastfmApiKey, const st
     if (album.empty()) {
         return {{"status", "error"}, {"message", "No valid album found"}};
     }
+
+    spdlog::debug("METADATA: '{}' resolved to album '{}' via iTunes", title, album);
 
     return {{"status", "ok"}, {"song", {{"album", album}}}, {"source", "itunes"}};
 }

@@ -3,6 +3,8 @@
 #include "../../../include/ui/constants/colors.hpp"
 
 #include "../../../include/config/config.hpp"
+
+#include "spdlog/spdlog.h"
 #include "image_view.hpp"
 
 #include <ftxui/component/component.hpp>
@@ -64,6 +66,8 @@ bool buildError(services::Player::PlayerState* state, const std::string& key, st
 
     if (error == state->errors.end()) {
         if (!main_content_items.empty() && main_content_items.front().category.rfind("__error__", 0) == 0) {
+            spdlog::info("CONTENT: {} error cleared, rebuilding the page", key);
+
             main_content_items.clear();
             main_content->DetachAllChildren();
             main_content->Add(Renderer([] { return emptyElement(); }));
@@ -77,6 +81,11 @@ bool buildError(services::Player::PlayerState* state, const std::string& key, st
     if (main_content_items.size() == 1 && main_content_items.front().category == id) {
         return true;
     }
+
+    /* Guarded by the identity check above, so this fires when the box appears
+    or its message changes, not on every render
+    */
+    spdlog::warn("CONTENT: showing {} error, {} (retryable: {})", key, error->second.message, error->second.retryable);
 
     main_content_items.clear();
     main_content->DetachAllChildren();
@@ -546,6 +555,10 @@ void ui::buildLibrary(services::Player::PlayerState* state, std::deque<ContentEn
         grid.selected = 0;
 
         ui::getLibraryGridData(state, filter, query, &grid.grid_data);
+
+        // Signature-gated, so this is one line per filter change or keystroke
+        // rather than one per render.
+        spdlog::info("CONTENT: library grid rebuilt, filter '{}', query '{}', {} items", filter, query, grid.grid_data.entries.size());
 
         /* Grid() renders nothing at all when it has no entries, which reads as
         a broken page rather than an empty filter, so say so instead.

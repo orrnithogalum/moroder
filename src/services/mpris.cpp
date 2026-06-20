@@ -1,5 +1,25 @@
 #include "../../include/services/mpris.hpp"
 
+#include "spdlog/spdlog.h"
+
+namespace {
+
+/* dispatch
+- Remote control arrives from playerctl, desktop widgets and media keys, none
+  of which leave any other trace, so log both the call and any refusal
+*/
+template <typename Fn> void dispatch(const char* name, bool allowed, Fn&& fn) {
+    if (!allowed) {
+        spdlog::warn("MPRIS: {} refused, the control is not currently available", name);
+        return;
+    }
+
+    spdlog::info("MPRIS: {}", name);
+    fn();
+}
+
+}
+
 bool services::Mpris::canControl() const {
     return bool(loop_status_changed_fn) && bool(shuffle_changed_fn) && bool(stop_fn);
 }
@@ -51,10 +71,10 @@ void services::Mpris::onToggle(std::function<void(void)> fn) {
 
 void services::Mpris::onStop(std::function<void(void)> fn) {
     changePropertyControlled({
-        "CanGoNext", 
-        "CanGoPrevious", 
-        "CanPause", 
-        "CanPlay", 
+        "CanGoNext",
+        "CanGoPrevious",
+        "CanPause",
+        "CanPlay",
         "CanSeek"
     });
     stop_fn = fn;
@@ -77,10 +97,10 @@ void services::Mpris::onSetPosition(std::function<void(int64_t)> fn) {
 
 void services::Mpris::onLoopStatusChanged(std::function<void(LoopStatus)> fn) {
     changePropertyControlled({
-        "CanGoNext", 
-        "CanGoPrevious", 
-        "CanPause", 
-        "CanPlay", 
+        "CanGoNext",
+        "CanGoPrevious",
+        "CanPause",
+        "CanPlay",
         "CanSeek"
     });
     loop_status_changed_fn = fn;
@@ -88,10 +108,10 @@ void services::Mpris::onLoopStatusChanged(std::function<void(LoopStatus)> fn) {
 
 void services::Mpris::onShuffleChanged(std::function<void(bool)> fn) {
     changePropertyControlled({
-        "CanGoNext", 
-        "CanGoPrevious", 
-        "CanPause", 
-        "CanPlay", 
+        "CanGoNext",
+        "CanGoPrevious",
+        "CanPause",
+        "CanPlay",
         "CanSeek"
     });
     shuffle_changed_fn = fn;
@@ -180,11 +200,19 @@ void services::Mpris::setShuffleExternal(bool value)
 
 void services::Mpris::setPositionMethod(sdbus::ObjectPath id, int64_t pos)
 {
-    if (!canSeek())
+    if (!canSeek()) {
+        spdlog::warn("MPRIS: SetPosition refused, CanSeek is false");
         return;
+    }
+
     auto tid = metadata.find(detail::fieldToString(Field::TrackId));
-    if (tid == metadata.end() || tid->second.get<std::string>() != id)
+    if (tid == metadata.end() || tid->second.get<std::string>() != id) {
+        // A stale track id here means the caller raced a track change.
+        spdlog::warn("MPRIS: SetPosition ignored, track id does not match the current track");
         return;
+    }
+
+    spdlog::info("MPRIS: SetPosition {}", pos);
     setPosition_fn(pos);
 }
 
@@ -194,6 +222,10 @@ std::unique_ptr<services::Mpris> services::Mpris::make(std::string_view name)
         auto s = std::make_unique<Mpris>(name);
         return s;
     } catch (const sdbus::Error &error) {
+        // Swallowing this left PLAYER reporting "mpris service initialisation
+        // failed" with no way to tell whether the bus, the name or the object
+        // was the problem.
+        spdlog::error("MPRIS: could not claim {} on the session bus, {}", PREFIX + std::string(name), error.what());
         return nullptr;
     }
 }
@@ -204,41 +236,41 @@ services::Mpris::Mpris(std::string_view name) : service_name(PREFIX + std::strin
     object = sdbus::createObject(*connection, sdbus::ObjectPath{OBJECT_PATH});
 
     #define M(f) detail::member_fn(this, &Mpris::f)
-    
+
     object->addVTable(
-        sdbus::registerMethod("Quit")              .implementedAs([&] { if (quit_fn)  quit_fn(); }),
-        
+        sdbus::registerMethod("Quit")              .implementedAs([&] { dispatch("Quit", bool(quit_fn), [&]{ quit_fn(); }); }),
+
         sdbus::registerProperty("CanQuit")       .withGetter([&] { return bool(quit_fn); }),
         sdbus::registerProperty("HasTrackList")  .withGetter([&] { return false; }),
         sdbus::registerProperty("Identity")      .withGetter([&] { return human_name; })
     ).forInterface(MEDIAPLAYER2);
 
     object->addVTable(
-        sdbus::registerMethod("Next")              .implementedAs([&] { if (canGoNext())             next_fn();       }), 
-        sdbus::registerMethod("Previous")          .implementedAs([&] { if (canGoPrevious())         previous_fn();   }), 
-        sdbus::registerMethod("Pause")             .implementedAs([&] { if (canPause())              pause_fn();      }), 
-        sdbus::registerMethod("PlayPause")         .implementedAs([&] { if (canPlay() || canPause()) play_pause_fn(); }), 
-        sdbus::registerMethod("Stop")              .implementedAs([&] { if (canControl())            stop_fn();       }), 
-        sdbus::registerMethod("Play")              .implementedAs([&] { if (canPlay())               play_fn();       }), 
+        sdbus::registerMethod("Next")              .implementedAs([&] { dispatch("Next",      canGoNext(),                [&]{ next_fn();       }); }),
+        sdbus::registerMethod("Previous")          .implementedAs([&] { dispatch("Previous",  canGoPrevious(),            [&]{ previous_fn();   }); }),
+        sdbus::registerMethod("Pause")             .implementedAs([&] { dispatch("Pause",     canPause(),                 [&]{ pause_fn();      }); }),
+        sdbus::registerMethod("PlayPause")         .implementedAs([&] { dispatch("PlayPause", canPlay() || canPause(),    [&]{ play_pause_fn(); }); }),
+        sdbus::registerMethod("Stop")              .implementedAs([&] { dispatch("Stop",      canControl(),               [&]{ stop_fn();       }); }),
+        sdbus::registerMethod("Play")              .implementedAs([&] { dispatch("Play",      canPlay(),                  [&]{ play_fn();       }); }),
 
-        sdbus::registerMethod("Seek")              .implementedAs([&] (int64_t n) { if (canSeek()) seek_fn(n); }) .withInputParamNames("Offset"), 
+        sdbus::registerMethod("Seek")              .implementedAs([&] (int64_t n) { dispatch("Seek", canSeek(), [&]{ seek_fn(n); }); }) .withInputParamNames("Offset"),
         sdbus::registerMethod("SetPosition")       .implementedAs(M(setPositionMethod))                                  .withInputParamNames("TrackId", "Position"),
 
-        sdbus::registerProperty("PlaybackStatus").withGetter([&] { return detail::playbackStatusToString(playback_status); }), 
-        sdbus::registerProperty("LoopStatus")    .withGetter([&] { return detail::loopStatusToString(loop_status); }).withSetter(M(setLoopStatusExternal)), 
-        sdbus::registerProperty("Shuffle")       .withGetter([&] { return shuffle; }).withSetter(M(setShuffleExternal)), 
+        sdbus::registerProperty("PlaybackStatus").withGetter([&] { return detail::playbackStatusToString(playback_status); }),
+        sdbus::registerProperty("LoopStatus")    .withGetter([&] { return detail::loopStatusToString(loop_status); }).withSetter(M(setLoopStatusExternal)),
+        sdbus::registerProperty("Shuffle")       .withGetter([&] { return shuffle; }).withSetter(M(setShuffleExternal)),
         sdbus::registerProperty("Metadata")      .withGetter([&] { return metadata; }),
         sdbus::registerProperty("Position")      .withGetter([&] { return position; }),
-        sdbus::registerProperty("CanGoNext")     .withGetter(M(canGoNext)), 
-        sdbus::registerProperty("CanGoPrevious") .withGetter(M(canGoPrevious)), 
-        sdbus::registerProperty("CanPlay")       .withGetter(M(canPlay)), 
-        sdbus::registerProperty("CanPause")      .withGetter(M(canPause)), 
-        sdbus::registerProperty("CanSeek")       .withGetter(M(canSeek)), 
-        sdbus::registerProperty("CanControl")    .withGetter(M(canControl)), 
-        
+        sdbus::registerProperty("CanGoNext")     .withGetter(M(canGoNext)),
+        sdbus::registerProperty("CanGoPrevious") .withGetter(M(canGoPrevious)),
+        sdbus::registerProperty("CanPlay")       .withGetter(M(canPlay)),
+        sdbus::registerProperty("CanPause")      .withGetter(M(canPause)),
+        sdbus::registerProperty("CanSeek")       .withGetter(M(canSeek)),
+        sdbus::registerProperty("CanControl")    .withGetter(M(canControl)),
+
         sdbus::registerSignal("Seeked").withParameters<int64_t>("Position")
     ).forInterface(MEDIAPLAYER2PLAYER);
-    
+
     #undef M
 }
 
