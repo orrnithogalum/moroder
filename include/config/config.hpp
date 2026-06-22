@@ -30,10 +30,10 @@ class Config {
 public:
     inline static std::string_view app_name = "";
 
-    int MAX_IMAGE_CACHE_SIZE = 50;
-    int MAX_RESIZED_IMAGE_CACHE_SIZE = 500;
-    int MAX_IMAGE_CHAR_CACHE_SIZE = 50000;
-    int MAX_CONCURRENT_IMAGE_LOADS = 100;
+    int MAX_IMAGE_CACHE_SIZE = 800;
+    int MAX_RESIZED_IMAGE_CACHE_SIZE = 3200;
+    int MAX_IMAGE_CHAR_CACHE_SIZE = 800000;
+    int MAX_CONCURRENT_IMAGE_LOADS = 200;
 
     std::string LASTFM_API_KEY;
 
