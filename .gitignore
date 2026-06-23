@@ -2,7 +2,6 @@
 lib/*
 
 # Cache files
-__pycache__/
 .cache/
 
 # Build files
