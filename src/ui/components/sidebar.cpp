@@ -98,7 +98,6 @@ Component ui::Sidebar(ui::SidebarData* data, int* selected, bool* focused, std::
 
         } else if (*selected > 2) {
             spdlog::info("SIDEBAR: pressed enter on playlist, " + data->results[*selected].ref.title);
-            // on_search_result_press(data->results[*selected])
         }
     };
 
