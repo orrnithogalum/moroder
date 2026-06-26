@@ -27,6 +27,7 @@ void ui::getSidebarData(services::Player::PlayerState* state, ui::SidebarData* d
         "02",
     };
 
+    // These buttons aren't functional yet (TM)
     if(state->is_logged_in) {
         data->entries.push_back({"  New playlist", ""});
     } else {
