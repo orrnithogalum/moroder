@@ -37,15 +37,14 @@ public:
 
     std::string LASTFM_API_KEY;
 
-    fs::path PYTHON_PATH;
     fs::path YTM_COOKIES_PATH;
     fs::path MPV_COOKIES_PATH;
 
-    int SEARCH_RESULT_LIMIT = 20;
-    int RADIO_RESULT_LIMIT  = 20;
+    int SEARCH_RESULT_LIMIT = 40;
+    int RADIO_RESULT_LIMIT  = 50;
 
     bool FETCH_ALBUMS = true;
-    bool EXTRA_BOTTOM_PADDING = true;
+    bool EXTRA_BOTTOM_PADDING = false;
 
     bool ENABLE_DISCORD_RICH_PRESENCE = true;
     std::string RICH_PRESENCE_STATUS_LABEL = "song";
@@ -399,7 +398,6 @@ private:
             {"RICH_PRESENCE_STATUS_LABEL",   makeSetter(&Config::RICH_PRESENCE_STATUS_LABEL),   true},
 
             {"LASTFM_API_KEY",       makeSetter(&Config::LASTFM_API_KEY),        true},
-            {"PYTHON_PATH",          makeSetter(&Config::PYTHON_PATH),           true},
             {"YTM_COOKIES_PATH",     makeSetter(&Config::YTM_COOKIES_PATH),      true},
             {"MPV_COOKIES_PATH",     makeSetter(&Config::MPV_COOKIES_PATH),      true},
             {"SEARCH_RESULT_LIMIT",  makeSetter(&Config::SEARCH_RESULT_LIMIT),   true},
