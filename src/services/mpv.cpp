@@ -11,6 +11,10 @@
 services::MPV::MPV() {
     mpv = mpv_create();
 
+    if (!mpv) {
+        throw std::runtime_error("Failed to create mpv instance");
+    }
+
     mpv_set_option_string(mpv, "video", "no");
     mpv_set_option_string(mpv, "no-config", "yes");
     mpv_set_option_string(mpv, "idle", "yes");
@@ -25,22 +29,29 @@ services::MPV::MPV() {
 
     mpv_set_option_string(mpv, "log-file", std::string(utils::resolve_path(MORODER_LOG_PATH).string() + "/mpv.log").c_str());
 
-    const Config cfg = Config::get();
+    const Config& cfg = Config::get();
 
-    if(!cfg.MPV_COOKIES_PATH.string().empty() && std::filesystem::exists(cfg.MPV_COOKIES_PATH)) {
-        std::filesystem::path cookies_path = utils::resolve_path(cfg.MPV_COOKIES_PATH.c_str());
+    /* Stream cookies
+    - The spec comes from BROWSER and MPV_COOKIES_PATH together, so any browser
+      yt-dlp can read works here, not just Firefox
+    - Without it, age-restricted and premium tracks fail to load
+    */
+    const std::string cookie_spec = cfg.ytdlCookieSpec();
 
-        spdlog::info("MPV: found cookies at: {}", cookies_path.c_str());
-        mpv_set_option_string(mpv, "ytdl-raw-options", std::string("cookies-from-browser=firefox:" + cookies_path.string()).c_str());
+    if (!cookie_spec.empty()) {
+        spdlog::info("MPV: stream cookies from {}", cookie_spec);
+        mpv_set_option_string(mpv, "ytdl-raw-options", ("cookies-from-browser=" + cookie_spec).c_str());
+
+    } else if (cfg.BROWSER.empty()) {
+        spdlog::warn("MPV: no BROWSER set, stream cookies disabled");
+
+    } else if (Config::ytdlBrowser(cfg.BROWSER).empty()) {
+        spdlog::warn("MPV: yt-dlp cannot read '{}', stream cookies disabled", cfg.BROWSER);
 
     } else {
-        spdlog::warn("MPV: cookies weren't set");
+        spdlog::warn("MPV: no usable MPV_COOKIES_PATH for '{}', stream cookies disabled", cfg.BROWSER);
     }
 
-
-    if (!mpv) {
-        throw std::runtime_error("Failed to create mpv instance");
-    }
 
     if (mpv_initialize(mpv) < 0) {
         throw std::runtime_error("Failed to initialize mpv");

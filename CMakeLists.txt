@@ -64,7 +64,7 @@ set(SOURCES
     src/services/player.cpp
     src/services/social.cpp
 
-    src/ui/constants/colors.cpp
+    src/setup/setup.cpp
 
     src/ui/components/carousel.cpp
     src/ui/components/chips.cpp
@@ -74,6 +74,8 @@ set(SOURCES
     src/ui/components/playback_bar.cpp
     src/ui/components/search_bar.cpp
     src/ui/components/sidebar.cpp
+
+    src/ui/constants/colors.cpp
 
     src/ytm/http.cpp
     src/ytm/metadata.cpp

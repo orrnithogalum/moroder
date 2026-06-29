@@ -7,6 +7,7 @@
 
 #include "../include/services/player.hpp"
 #include "../include/config/config.hpp"
+#include "../include/setup/setup.hpp"
 #include "../include/utils/utils.hpp"
 
 #include "image_view.hpp"
@@ -19,7 +20,9 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/spdlog.h>
 #include <sys/stat.h>
+#include <filesystem>
 #include <algorithm>
+#include <iostream>
 #include <cstdint>
 #include <string>
 #include <memory>
@@ -27,6 +30,8 @@
 
 #define APP_NAME_HUMAN "Moroder"
 #define APP_NAME "moroder"
+
+namespace fs = std::filesystem;
 
 using namespace ftxui;
 
@@ -39,6 +44,40 @@ int main(int argc, char *argv[]) {
     logger->flush_on(spdlog::level::info);
 
     spdlog::set_default_logger(logger);
+
+    /* Subcommands run before anything else is built.
+    - setup has to work on a machine with no config and no session, so it must
+      not go through Player, which needs both
+    */
+    const std::string command = argc > 1 ? argv[1] : "";
+
+    if (command == "setup") {
+        return setup::run(argc, argv);
+    }
+
+    if (command == "--help" || command == "-h") {
+        std::cout << "usage: " << APP_NAME << " [command]\n\n"
+                  << "  setup     sign in to YouTube Music and fill in the config\n"
+                  << "  --help    this text\n\n"
+                  << "Run with no arguments to start the player.\n";
+        return 0;
+    }
+
+    if (!command.empty()) {
+        std::cerr << "unknown command: " << command << "\n"
+                  << "try `" << APP_NAME << " --help`\n";
+        return 2;
+    }
+
+    /* A missing browser.json means the user has not run setup, and every
+    library request would fail with an auth error they cannot act on. Say so
+    once, here, rather than letting the library page explain it later.
+    */
+    if (!fs::exists(Config::get().YTM_COOKIES_PATH / "browser.json")) {
+        std::cerr << "No YouTube Music session found.\n"
+                  << "Run `" << APP_NAME << " setup` to sign in.\n";
+        return 1;
+    }
 
     services::Player player(APP_NAME, APP_NAME_HUMAN, 1481401025964540125);
     if(!player.isInitialized()) {

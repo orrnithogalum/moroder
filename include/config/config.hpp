@@ -10,6 +10,8 @@
 
 #include "gen/defaults.hpp"
 
+#include "../utils/utils.hpp"
+
 #include <ftxui/component/event.hpp>
 #include <string_view>
 #include <filesystem>
@@ -20,7 +22,6 @@
 #include <fstream>
 #include <sstream>
 #include <cstdlib>
-#include <cctype>
 #include <string>
 #include <vector>
 
@@ -36,6 +37,13 @@ public:
     int MAX_CONCURRENT_IMAGE_LOADS = 200;
 
     std::string LASTFM_API_KEY;
+
+    /* BROWSER
+    - Which browser holds the YouTube Music session
+    - `moroder setup` reads it to know where to look and writes back whatever
+      was actually used, and MPV turns it into a yt-dlp cookie spec
+    */
+    std::string BROWSER = "firefox";
 
     fs::path YTM_COOKIES_PATH;
     fs::path MPV_COOKIES_PATH;
@@ -94,8 +102,7 @@ public:
     static ftxui::Event keyEvent(const std::string& bind) {
         if (bind.empty()) return ftxui::Event::Special("__moroder_unbound__");
 
-        std::string key = bind;
-        for (char& c : key) c = std::tolower(static_cast<unsigned char>(c));
+        const std::string key = utils::lower(bind);
 
         if (key == "space")     return ftxui::Event::Character(" ");
         if (key == "enter")     return ftxui::Event::Return;
@@ -175,13 +182,160 @@ public:
         return out.good();
     }
 
+    /* setValues
+    - Rewrites individual keys in the user's config file, in place
+    - Unlike writeToFile() the user's own file is the base rather than the
+      embedded default, so their comments, ordering, spacing and any key this
+      build does not know about all survive
+    - A key that is not in the file yet is appended rather than dropped, which
+      is what happens when an older config meets a newer build
+    - The write goes through a temp file and a rename, so an interrupted save
+      cannot leave a truncated config behind
+    */
+    static bool setValues(const std::vector<std::pair<std::string, std::string>>& updates) {
+        if (!ensureConfigFile()) return false;
+
+        const std::string path = getUserConfigPath();
+        if (path.empty()) return false;
+
+        std::ifstream in(path, std::ios::binary);
+        if (!in.is_open()) return false;
+
+        std::string config(
+            (std::istreambuf_iterator<char>(in)),
+            std::istreambuf_iterator<char>()
+        );
+        in.close();
+
+        for (const auto& [key, value] : updates) {
+            auto [start, len] = findValueSpan(config, key);
+
+            if (start == std::string::npos) {
+                if (!config.empty() && config.back() != '\n') config += "\n";
+                config += key + " = " + value + "\n";
+                continue;
+            }
+
+            // findValueSpan stops before any trailing comment, so an inline
+            // comment on the line survives the replacement.
+            config.replace(start, len, value);
+        }
+
+        const std::string temp = path + ".tmp";
+
+        {
+            std::ofstream out(temp, std::ios::binary | std::ios::trunc);
+            if (!out.is_open()) return false;
+
+            out.write(config.data(), static_cast<std::streamsize>(config.size()));
+            if (!out.good()) return false;
+        }
+
+        std::error_code ec;
+        fs::rename(temp, path, ec);
+
+        if (ec) {
+            fs::remove(temp, ec);
+            return false;
+        }
+
+        return true;
+    }
+
+    static bool setValue(const std::string& key, const std::string& value) {
+        return setValues({{key, value}});
+    }
+
+    /* quote
+    - Values written back are quoted the way the default config writes them,
+      so a path with a space in it survives the next parse
+    */
+    static std::string quote(const std::string& value) {
+        std::string out = "\"";
+
+        for (char c : value) {
+            if (c == '"' || c == '\\') out += '\\';
+            out += c;
+        }
+
+        return out + "\"";
+    }
+
+    // Public so `moroder setup` can tell the user which file it edited.
+    static std::string path() {
+        return getUserConfigPath();
+    }
+
+    /* ytdlBrowser
+    - The name yt-dlp knows a browser by, which is not always what the user
+      typed: yt-dlp only accepts a fixed list
+    - The Firefox forks all use an identical cookie store, so they go through
+      as firefox, and only the profile path tells them apart
+    - Empty means yt-dlp cannot read this browser
+    */
+    static std::string ytdlBrowser(const std::string& browser) {
+        const std::string name = utils::lower(browser);
+
+        // Anything already carrying a profile is passed through untouched.
+        if (name.find(':') != std::string::npos) return name;
+
+        if (name == "firefox"  || name == "librewolf" || name == "waterfox" ||
+            name == "floorp"   || name == "zen"       || name == "mercury"  ||
+            name == "icecat"   || name == "cachy"     || name == "tor") {
+            return "firefox";
+        }
+
+        if (name == "chrome" || name == "chromium" || name == "brave" ||
+            name == "edge"   || name == "opera"    || name == "vivaldi" ||
+            name == "whale") {
+            return name;
+        }
+
+        return "";
+    }
+
+    static bool isFirefoxFamily(const std::string& browser) {
+        return ytdlBrowser(browser) == "firefox";
+    }
+
+    /* ytdlCookieSpec
+    - What --cookies-from-browser, and so mpv's ytdl-raw-options, wants
+    - A fork is indistinguishable from Firefox by name alone, so it only works
+      with a profile path; plain Firefox and the Chromium browsers can find
+      their own default profile without one
+    - Empty means there is nothing usable to hand to yt-dlp
+    */
+    std::string ytdlCookieSpec() const {
+        if (BROWSER.empty()) return "";
+
+        const std::string name = ytdlBrowser(BROWSER);
+        if (name.empty()) return "";
+
+        // An explicit browser:profile from the config wins outright.
+        if (name.find(':') != std::string::npos) return name;
+
+        const std::string profile = MPV_COOKIES_PATH.string();
+
+        if (!profile.empty() && fs::exists(MPV_COOKIES_PATH)) {
+            return name + ":" + profile;
+        }
+
+        // A fork without a profile would be read as stock Firefox, whose
+        // profile directory holds a different session or none at all.
+        if (name == "firefox" && utils::lower(BROWSER) != "firefox") return "";
+
+        return name;
+    }
+
 private:
     // Returns path to ~/.config/moroder/moroder.conf or empty string if HOME not set
     static std::string getUserConfigPath() {
-        const char* home = getenv("HOME");
-        if (!home) { return ""; }
+        const fs::path home = utils::home();
+        if (home.empty()) return "";
 
-        return std::string(home) + "/.config/" + std::string(Config::app_name) + "/" + std::string(Config::app_name) + ".conf";
+        const std::string name(Config::app_name);
+
+        return (home / ".config" / name / (name + ".conf")).string();
     }
 
     // Writes the default configuration binary to the given path
@@ -200,19 +354,20 @@ private:
     */
     static bool ensureConfigFile() {
         std::string config_path = getUserConfigPath();
-        fs::path config_dir = fs::path(config_path).parent_path();
+        if (config_path.empty()) return false;
 
-        if (!fs::exists(config_dir)) fs::create_directories(config_dir);
+        try {
+            utils::ensure_dir(fs::path(config_path).parent_path());
+
+        } catch (const std::exception&) {
+            // Used to be ignored, and the failure then resurfaced as an
+            // unexplained "Cannot create config file".
+            return false;
+        }
+
         if (!fs::exists(config_path)) return writeDefaultConfig(config_path);
 
         return true;
-    }
-
-    static void trim(std::string& s) {
-        size_t start = s.find_first_not_of(" \t\r");
-        if (start == std::string::npos) { s.clear(); return; }
-        size_t end = s.find_last_not_of(" \t\r");
-        s = s.substr(start, end - start + 1);
     }
 
     static void stripComment(std::string& s) {
@@ -317,10 +472,13 @@ private:
     // handles ~ in paths
     static fs::path expand_user(const std::string& path) {
         if (path == "~" || path.rfind("~/", 0) == 0) {
-            if (const char* home = std::getenv("HOME")) {
-                return path.size() > 2 ? fs::path(home) / path.substr(2) : fs::path(home);
+            const fs::path home = utils::home();
+
+            if (!home.empty()) {
+                return path.size() > 2 ? home / path.substr(2) : home;
             }
         }
+
         return fs::path(path);
     }
 
@@ -331,10 +489,9 @@ private:
         std::string item;
 
         while (std::getline(ss, item, ',')) {
-            trim(item);
+            item = utils::lower(utils::trim(item));
             if (item.empty()) continue;
 
-            for (char& c : item) c = std::tolower(static_cast<unsigned char>(c));
             out.push_back(item);
         }
 
@@ -398,6 +555,7 @@ private:
             {"RICH_PRESENCE_STATUS_LABEL",   makeSetter(&Config::RICH_PRESENCE_STATUS_LABEL),   true},
 
             {"LASTFM_API_KEY",       makeSetter(&Config::LASTFM_API_KEY),        true},
+            {"BROWSER",              makeSetter(&Config::BROWSER),               true},
             {"YTM_COOKIES_PATH",     makeSetter(&Config::YTM_COOKIES_PATH),      true},
             {"MPV_COOKIES_PATH",     makeSetter(&Config::MPV_COOKIES_PATH),      true},
             {"SEARCH_RESULT_LIMIT",  makeSetter(&Config::SEARCH_RESULT_LIMIT),   true},
@@ -452,10 +610,10 @@ private:
             std::string key = line.substr(0, eq);
             std::string value = line.substr(eq + 1);
 
-            trim(key);
+            key = utils::trim(key);
 
             stripComment(value);
-            trim(value);
+            value = utils::trim(value);
 
             try {
                 if (const FieldSpec* field = findField(key)) {

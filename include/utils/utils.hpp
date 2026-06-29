@@ -35,6 +35,10 @@ I knew that could be the feel of the future,
 #include <filesystem>
 #include <algorithm>
 #include <stdexcept>
+#include <sstream>
+#include <cstdlib>
+#include <string>
+#include <cctype>
 
 namespace fs = std::filesystem;
 
@@ -55,14 +59,59 @@ inline fs::path resolve_path(const char* path_macro) {
     return fs::path(home) / p;
 }
 
+/* ensure_dir
+- Throws on failure. The exception used to be constructed and then dropped, so
+  a directory that could not be created carried on silently and only surfaced
+  later as an unrelated file error
+*/
 inline void ensure_dir(const fs::path& path) {
     std::error_code ec;
 
-    if (!fs::exists(path, ec)) {
-        if (!fs::create_directories(path, ec)) {
-            std::runtime_error("Failed to create: " + path.string() + " (" + ec.message() + ")\n");
-        }
+    if (fs::exists(path, ec)) return;
+
+    fs::create_directories(path, ec);
+
+    // create_directories returns false when the directory already exists, so
+    // the error code is what decides, not the return value.
+    if (ec) {
+        throw std::runtime_error("Failed to create: " + path.string() + " (" + ec.message() + ")");
     }
+}
+
+/* home
+- Empty rather than throwing, for the callers that want to fall back instead
+  of failing
+*/
+inline fs::path home() {
+    const char* h = std::getenv("HOME");
+    return h ? fs::path(h) : fs::path();
+}
+
+inline std::string trim(const std::string& s) {
+    size_t start = s.find_first_not_of(" \t\r\n");
+    if (start == std::string::npos) return "";
+
+    size_t end = s.find_last_not_of(" \t\r\n");
+    return s.substr(start, end - start + 1);
+}
+
+/* tildify
+- The inverse of resolve_path: puts ~ back in front of a path under HOME, so
+  what gets written to the config stays readable and portable between machines
+*/
+inline std::string tildify(const fs::path& path) {
+    const fs::path h = home();
+    if (h.empty()) return path.string();
+
+    const std::string full = path.string();
+    const std::string prefix = h.string();
+
+    if (full.rfind(prefix, 0) == 0) {
+        if (full.size() == prefix.size()) return "~";
+        if (full[prefix.size()] == '/') return "~" + full.substr(prefix.size());
+    }
+
+    return full;
 }
 
 inline std::string lower(std::string s) {
@@ -81,7 +130,7 @@ inline std::string trimSuffix(const std::string& str, size_t max_size, const std
     return str.substr(0, cut) + suffix;
 }
 
-static std::string trimWordsSuffix(const std::string& str, size_t max_size, const std::string& suffix) {
+inline std::string trimWordsSuffix(const std::string& str, size_t max_size, const std::string& suffix) {
     if (str.size() <= max_size)
         return str;
 
