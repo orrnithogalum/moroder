@@ -75,7 +75,8 @@ int main(int argc, char *argv[]) {
     */
     if (!fs::exists(Config::get().YTM_COOKIES_PATH / "browser.json")) {
         std::cerr << "No YouTube Music session found.\n"
-                  << "Run `" << APP_NAME << " setup` to sign in.\n";
+            << "Run `" << APP_NAME << " setup` to sign in.\n"
+            << "Run `" << APP_NAME << " no-auth` to use without authentication.\n";
         return 1;
     }
 
@@ -466,7 +467,15 @@ int main(int argc, char *argv[]) {
 
                             const bool has_error = !error_key.empty() && state_copy.errors.count(error_key) > 0;
 
-                            return has_error
+                            /* The signed-out notice on home is an ErrorBox too,
+                            and wants the same centred, flexed layout even though
+                            there is no entry in errors for it.
+                            */
+                            const bool notice = current_state == ui::State::HOME
+                                && state_copy.flags["is_logged_in"] == services::Player::Flags::Done
+                                && !state_copy.is_logged_in;
+
+                            return (has_error || notice)
                                 ? main_content->Render() | yframe | flex
                                 : current_state != ui::State::QUEUE
                                     ? main_content->Render() | yframe | yflex
