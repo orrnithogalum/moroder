@@ -55,15 +55,24 @@ int main(int argc, char *argv[]) {
         return setup::run(argc, argv);
     }
 
+    /* Anonymous mode
+    - Everything except the account works without a session: search, radio and
+      playback all go out unauthenticated
+    - The library and the home page have nothing to fill themselves with, and
+      every request is slower, so this is opt-in rather than a silent fallback
+    */
+    const bool anonymous = command == "--anonymous" || command == "-a";
+
     if (command == "--help" || command == "-h") {
         std::cout << "usage: " << APP_NAME << " [command]\n\n"
-                  << "  setup     sign in to YouTube Music and fill in the config\n"
-                  << "  --help    this text\n\n"
+                  << "  setup         sign in to YouTube Music and fill in the config\n"
+                  << "  --anonymous   run without an account, -a for short\n"
+                  << "  --help        this text\n\n"
                   << "Run with no arguments to start the player.\n";
         return 0;
     }
 
-    if (!command.empty()) {
+    if (!command.empty() && !anonymous) {
         std::cerr << "unknown command: " << command << "\n"
                   << "try `" << APP_NAME << " --help`\n";
         return 2;
@@ -73,11 +82,15 @@ int main(int argc, char *argv[]) {
     library request would fail with an auth error they cannot act on. Say so
     once, here, rather than letting the library page explain it later.
     */
-    if (!fs::exists(Config::get().YTM_COOKIES_PATH / "browser.json")) {
+    if (!anonymous && !fs::exists(Config::get().YTM_COOKIES_PATH / "browser.json")) {
         std::cerr << "No YouTube Music session found.\n"
-            << "Run `" << APP_NAME << " setup` to sign in.\n"
-            << "Run `" << APP_NAME << " no-auth` to use without authentication.\n";
+                  << "Run `" << APP_NAME << " setup` to sign in, or `" << APP_NAME
+                  << " --anonymous` to run without an account.\n";
         return 1;
+    }
+
+    if (anonymous) {
+        spdlog::info("MAIN: starting without an account");
     }
 
     services::Player player(APP_NAME, APP_NAME_HUMAN, 1481401025964540125);
