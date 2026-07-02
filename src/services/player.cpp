@@ -701,11 +701,21 @@ void services::Player::worker_loop() {
             } else if constexpr (std::is_same_v<T, IsLoggedInCommand>) {
                 spdlog::info("PLAYER: IsLoggedInCommand");
 
+                {
+                    /* is_logged_in starts false, so without a flag the UI cannot
+                    tell "no account" from "not checked yet" and flashes the
+                    signed-out notice on every start.
+                    */
+                    std::lock_guard lock(state_mutex);
+                    state.flags["is_logged_in"] = Flags::Ongoing;
+                }
+
                 bool logged_in = music_service->isLoggedIn();
 
                 {
                     std::lock_guard lock(state_mutex);
                     state.is_logged_in = logged_in;
+                    state.flags["is_logged_in"] = Flags::Done;
                 }
 
             } else if constexpr (std::is_same_v<T, LibraryAlbumsCommand>) {
@@ -1418,10 +1428,7 @@ void services::Player::retryLibrary() {
         state.errors.erase("library");
     }
 
-    if(this->state.flags["library_playlists"] != services::Player::Flags::Done) {
-        this->getLibraryPlaylists();
-    }
-
+    this->getLibraryPlaylists();
     this->getLibraryAlbums();
     this->getLibraryArtists();
     this->getLibraryPodcasts();

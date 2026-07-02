@@ -108,8 +108,69 @@ bool buildError(services::Player::PlayerState* state, const std::string& key, st
 
 }
 
+/* buildSignedOut
+- Home is the only page that mentions being signed out: it is the one built
+  entirely from the account, so without one there is nothing to show
+- Gated on the login check having finished. is_logged_in starts false, so
+  without that gate the notice flashes up on every start before the check lands
+- No retry button, because signing in happens in a terminal, not here
+*/
+bool buildSignedOut(services::Player::PlayerState* state, std::deque<ui::ContentEntry>& main_content_items, ftxui::Component main_content) {
+    static const std::string id = "__signed_out__";
+
+    const bool checked = state->flags["is_logged_in"] == services::Player::Flags::Done;
+
+    if (!checked || state->is_logged_in) {
+        if (!main_content_items.empty() && main_content_items.front().category == id) {
+            spdlog::info("CONTENT: signed in, rebuilding home");
+
+            main_content_items.clear();
+            main_content->DetachAllChildren();
+            main_content->Add(Renderer([] { return emptyElement(); }));
+        }
+
+        return false;
+    }
+
+    if (main_content_items.size() == 1 && main_content_items.front().category == id) {
+        return true;
+    }
+
+    spdlog::info("CONTENT: home is showing the signed out notice");
+
+    main_content_items.clear();
+    main_content_items.push_back(ui::ContentEntry{});
+
+    ui::ContentEntry& item = main_content_items.back();
+
+    item.category = id;
+    item.selected = -1;
+    item.focused = false;
+
+    /* Deliberately not focused: the box has no button, and taking focus would
+    pull it away from the sidebar and the search bar, which both still work.
+    */
+    item.component = ui::ErrorBox(
+        "Search and playback still work, but every request has to go out "
+        "anonymously, which makes them slower. "
+        "Run 'moroder setup' in a terminal to sign in.",
+        nullptr,
+        "Not signed in..."
+    );
+
+    main_content->DetachAllChildren();
+    main_content->Add(item.component);
+
+    return true;
+}
+
 void ui::buildHome(services::Player::PlayerState* state, std::deque<ContentEntry>& main_content_items, ftxui::Component main_content, std::function<bool(const ftxui::Event&, const music::ApiResult&)> on_press, std::function<void()> on_retry) {
     if (buildError(state, "home", main_content_items, main_content, on_retry)) {
+        return;
+    }
+
+    // After buildError, so a genuine home failure still gets its retry button.
+    if (buildSignedOut(state, main_content_items, main_content)) {
         return;
     }
 

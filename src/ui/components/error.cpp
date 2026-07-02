@@ -16,7 +16,7 @@ ftxui::Component ui::ErrorBox(const std::string& message, std::function<void()> 
                     vbox({
                         text(title) | bold | color(ui::GetColor(ui::MColor::TEXT_TOP_PRIMARY)) | center,
                         separator() | color(ui::GetColor(ui::MColor::SEPARATOR_PRIMARY)),
-                        paragraph(message) | color(ui::GetColor(ui::MColor::TEXT_TOP_SECONDARY)) | center,
+                        paragraph(message) | color(ui::GetColor(ui::MColor::TEXT_TOP_SECONDARY)) | center | size(ftxui::WIDTH, ftxui::LESS_THAN, 60),
                     }),
                     filler(),
                 }),
