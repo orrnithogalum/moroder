@@ -10,7 +10,7 @@ o88o  8  o88o  88ooo88  o888o  88o8   88ooo88  o888ooo88  o888ooo8888 o888o  88o
 
 **A YouTube Music client for the terminal.**
 
-Album art, radio, your library, MPRIS, and Discord rich presence — in a TUI.
+Album art, radio, your library, MPRIS, and Discord rich presence - in a TUI.
 
 </div>
 
@@ -42,7 +42,7 @@ library, runs radios, searches, and renders album art as character art directly
 in the terminal.
 
 It talks to YouTube Music's internal InnerTube API through its own C++
-implementation — Audio goes through libmpv, which shells out to `yt-dlp` to resolve
+implementation - Audio goes through libmpv, which shells out to `yt-dlp` to resolve
 streams.
 
 **Features**
@@ -169,7 +169,7 @@ Supported: `firefox`, `librewolf`, `floorp`, `waterfox`, `zen`, `mercury`,
 `whale`.
 
 yt-dlp only knows a fixed list of browser names, so the Firefox forks are
-handed to it as `firefox:<profile path>` — the cookie store format is identical
+handed to it as `firefox:<profile path>` - the cookie store format is identical
 and only the profile tells them apart. Setup finds that profile by reading
 `profiles.ini` the way Firefox itself does, checking the `[Install…]` section
 first (it names the profile actually in use, which often disagrees with the
@@ -184,7 +184,7 @@ moroder setup --profile ~/.config/librewolf/librewolf/xxxxxxxx.default
 
 ### Manual paste (recommended)
 
-More reliable, and slightly faster at runtime — see the note below.
+More reliable, and slightly faster at runtime - see the note below.
 
 ```bash
 moroder setup --manual
@@ -224,17 +224,17 @@ second run needs no flags.
 
 The interface is a sidebar, a search bar, a content area and a playback bar.
 
-**Home** — your account's shelves, ordered by `HOME_ORDER`. Quick Picks renders
+**Home** - your account's shelves, ordered by `HOME_ORDER`. Quick Picks renders
 as a grid, everything else as a horizontal carousel. Signed out, this page says
 so instead: search and playback still work, they are just slower.
 
-**Library** — everything you have saved, with filter chips across the top.
+**Library** - everything you have saved, with filter chips across the top.
 Songs are excluded from the unfiltered view (there are too many) and appear
 under their own chip.
 
-**Search** — type and press <kbd>Enter</kbd>.
+**Search** - type and press <kbd>Enter</kbd>.
 
-**Queue** — what is playing and what is next, with your queue and the radio
+**Queue** - what is playing and what is next, with your queue and the radio
 queue shown together.
 
 ### The search bar doubles as a library filter
@@ -248,7 +248,7 @@ keystroke's own redraw rebuilds it.
 ### When something fails
 
 Failed requests show a centred message with a **Retry** button, on home, search
-and library alike. Retry is only offered for errors worth retrying — an expired
+and library alike. Retry is only offered for errors worth retrying - an expired
 session is not one of them, so it says what to do instead.
 
 The library is fed by five independent requests (playlists, albums, songs,
@@ -468,19 +468,19 @@ ahead of time.
 `ytm::YTMusic` is a C++ implementation of the parts of `ytmusicapi` this client
 needs. It speaks to InnerTube directly.
 
-- **Auth** — `browser.json` is a flat object of request headers. The cookie
+- **Auth** - `browser.json` is a flat object of request headers. The cookie
   must carry `__Secure-3PAPISID` (or `SAPISID`), from which each request's
   `Authorization: SAPISIDHASH` is derived.
-- **Visitor id** — reused from the headers when present, otherwise scraped from
+- **Visitor id** - reused from the headers when present, otherwise scraped from
   the homepage on first use.
-- **Endpoints** — `search`, `getHome`, `getAlbum`, `getPlaylist`,
+- **Endpoints** - `search`, `getHome`, `getAlbum`, `getPlaylist`,
   `getLibraryPlaylists` / `Albums` / `Songs` / `Artists` / `Podcasts`,
   `getWatchPlaylist` and its continuation.
-- **Errors** — every failure funnels through one place and is classified as
+- **Errors** - every failure funnels through one place and is classified as
   `Network`, `Auth`, `RateLimit`, `Server`, `Request`, `Parse`, `NotFound` or
   `Cancelled`. Only some are retryable, which is what decides whether the UI
   offers a Retry button.
-- **Parsing** — renderer JSON is navigated through a path-based helper that
+- **Parsing** - renderer JSON is navigated through a path-based helper that
   returns null rather than throwing on a missing key. A malformed item is
   skipped and logged, never fatal to the rest of the page.
 
@@ -495,7 +495,7 @@ Logs go to `$MORODER_LOG_PATH/moroder.log`, truncated at each start. mpv writes
 its own log alongside it.
 
 Default level is `info`. `HTTP:` request lines and `YTM:` per-endpoint lines are
-at `debug` — raise the level in `main.cpp` to see them:
+at `debug` - raise the level in `main.cpp` to see them:
 
 ```cpp
 logger->set_level(spdlog::level::debug);
@@ -575,7 +575,7 @@ Check the service registered:
 busctl --user list | grep moroder
 ```
 
-If it is missing, the log will say why — `MPRIS: could not claim …` names the
+If it is missing, the log will say why - `MPRIS: could not claim …` names the
 D-Bus error. A second instance cannot claim the name while the first holds it.
 </details>
 
