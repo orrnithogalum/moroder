@@ -247,14 +247,12 @@ keystroke's own redraw rebuilds it.
 
 ### When something fails
 
-Failed requests show a centred message with a **Retry** button, on home, search
+Failed requests show an error message with a **Retry** button, on home, search
 and library alike. Retry is only offered for errors worth retrying - an expired
 session is not one of them, so it says what to do instead.
 
 The library is fed by five independent requests (playlists, albums, songs,
-artists, podcasts). Each keeps its own error, and the page shows the first one
-that failed. Retry clears all five up front and re-fires them, so the box
-disappears the moment you press it.
+artists, podcasts). 
 
 ---
 
@@ -283,7 +281,7 @@ file. It is combined with `BROWSER` into a `--cookies-from-browser` spec for
 yt-dlp. Required for the Firefox forks, which are indistinguishable from
 Firefox by name alone; stock Firefox and the Chromium browsers find their
 default profile without it. Without working stream cookies, age-restricted and
-premium tracks will not play.
+premium tracks will not play. [More on passing cookies to yt-dlp](https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp)
 
 Album names come from last.fm when a key is present and iTunes when it is not.
 A free key: <https://www.last.fm/api/account/create>
@@ -359,6 +357,8 @@ These act on whatever the cursor is over:
 | `KEY_PLAY_NOW` | `enter` | play now, replacing the queue and starting a radio |
 | `KEY_ADD_TO_QUEUE` | `d` | append to the queue, leaving playback alone |
 | `KEY_REMOVE_FROM_QUEUE` | `c` | remove from the queue, queue view only |
+
+A [list](https://arthursonzogni.github.io/FTXUI/event_8cpp_source.html) of possible keybinds is available in the ftxui docs.
 
 ---
 
