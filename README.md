@@ -455,11 +455,10 @@ error box with a retry button.
 
 ### Queue and radio
 
-Queueing uses mpv's own playlist so the next track is buffered before the
-current one ends, which means the queue position advances whether or not you
+Queueing uses mpv's own playlist with yt-dlp so the next track isn't buffered before the
+current one ends, but the queue position advances whether or not you
 skipped manually. When the user queue runs out, tracks come from the radio
-queue; when that runs low and `autoplay` is on, a continuation is fetched
-ahead of time.
+queue; when that runs low and `autoplay` is on, a continuation is fetched.
 
 ---
 
