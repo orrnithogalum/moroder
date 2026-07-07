@@ -464,7 +464,7 @@ queue; when that runs low and `autoplay` is on, a continuation is fetched.
 
 ## Talking to YouTube Music
 
-`ytm::YTMusic` is a C++ implementation of the parts of `ytmusicapi` this client
+`ytm::YTMusic` is a C++ implementation of the parts of `ytmusicapi` python library this client
 needs. It speaks to InnerTube directly.
 
 - **Auth** - `browser.json` is a flat object of request headers. The cookie
@@ -490,7 +490,7 @@ falling back to iTunes.
 
 ## Logging
 
-Logs go to `$MORODER_LOG_PATH/moroder.log`, truncated at each start. mpv writes
+Logs go to `~/.local/state/moroder/logs/moroder.log`, truncated at each start. mpv writes
 its own log alongside it.
 
 Default level is `info`. `HTTP:` request lines and `YTM:` per-endpoint lines are
