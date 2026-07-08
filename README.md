@@ -504,9 +504,6 @@ URLs are redacted before being written: the InnerTube key and your last.fm key
 both travel in the query string, so both are stripped. The session cookie is
 never logged, only a short prefix and its length.
 
-Prefixes: `MAIN`, `PLAYER`, `MUSIC`, `MPV`, `MPRIS`, `SOCIAL`, `YTM`, `HTTP`,
-`CONTENT`, `GRID`, `SIDEBAR`, `METADATA`.
-
 ---
 
 ## Troubleshooting
