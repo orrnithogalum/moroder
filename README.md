@@ -580,7 +580,7 @@ D-Bus error. A second instance cannot claim the name while the first holds it.
 ## Limitations
 
 - Linux only
-- Playlist editing, likes and subscriptions are read-only
+- Playlist editing, likes and subscriptions are not visible
 - The **New playlist** and **Sign in** sidebar buttons are not wired up yet
 - Anonymous mode has no library and no personalised home
 - One instance at a time owns the MPRIS name
