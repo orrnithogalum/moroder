@@ -93,6 +93,29 @@ streams.
 
 ## Building
 
+Building from source requires the [**Discord Social SDK**](https://docs.discord.com/developers/discord-social-sdk/getting-started/using-c++) to be placed at
+`./lib/discord_social_sdk/`. The SDK is not included in this repository.
+
+The expected directory structure is:
+
+```text
+./lib/
+└── discord_social_sdk/
+    ├── include/
+    │   ├── cdiscord.h
+    │   └── discordpp.h
+    └── lib/
+        ├── debug/
+        └── release/
+```
+
+Without the Discord Social SDK in `./lib/`, **building from source is not possible**.
+
+If you do not have the SDK, **prebuilt binaries are available from the GitHub
+Releases**.
+
+Once the SDK is in place, build Moroder with:
+
 ```bash
 git clone https://github.com/orrnithogalum/moroder.git
 cd moroder
@@ -101,8 +124,8 @@ cmake -B build -S . -DCMAKE_BUILD_TYPE=Release && cmake --build build --parallel
 
 The default config is embedded into the binary at build time: `moroder.conf` is
 compiled into `build/gen/defaults.hpp` as a byte array, which is what
-`config.hpp` writes out on first run. If you edit the default config 
-the header will be automatically regenerated.
+`config.hpp` writes out on first run. If you edit the default config, the header
+will be automatically regenerated.
 
 ---
 
