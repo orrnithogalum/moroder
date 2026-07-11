@@ -93,7 +93,7 @@ streams.
 
 ## Building
 
-Building from source requires the [**Discord Social SDK**](https://docs.discord.com/developers/discord-social-sdk/getting-started/using-c++) to be placed at
+Building from source requires the [Discord Social SDK](https://docs.discord.com/developers/discord-social-sdk/getting-started/using-c++) to be placed at
 `./lib/discord_social_sdk/`. The SDK is not included in this repository.
 
 The expected directory structure is:
