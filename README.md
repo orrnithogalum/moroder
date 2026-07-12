@@ -114,11 +114,9 @@ Without the Discord Social SDK in `./lib/`, **building from source is not possib
 If you do not have the SDK, **prebuilt binaries are available from the GitHub
 Releases**.
 
-Once the SDK is in place, build Moroder with:
+Once the SDK is in place, build Moroder after cloning the repo with:
 
 ```bash
-git clone https://github.com/orrnithogalum/moroder.git
-cd moroder
 cmake -B build -S . -DCMAKE_BUILD_TYPE=Release && cmake --build build --parallel
 ```
 
