@@ -379,7 +379,7 @@ These act on whatever the cursor is over:
 | `KEY_ADD_TO_QUEUE` | `d` | append to the queue, leaving playback alone |
 | `KEY_REMOVE_FROM_QUEUE` | `c` | remove from the queue, queue view only |
 
-A [list](https://arthursonzogni.github.io/FTXUI/event_8cpp_source.html) of possible keybinds is available in the ftxui docs.
+For keybind remapping, a [list](https://arthursonzogni.github.io/FTXUI/event_8cpp_source.html) of possible keybinds is available in the ftxui docs.
 
 ---
 
