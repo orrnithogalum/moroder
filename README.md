@@ -407,8 +407,7 @@ Rich presence shows the track as a *Listening* activity with the cover as the
 large image and the album as its tooltip. Timestamps track real playback
 position, so the progress bar in Discord follows seeks and pauses.
 
-`RICH_PRESENCE_STATUS_LABEL` picks which field is the headline; the other
-becomes the second line, and a duplicate is dropped rather than printed twice.
+`RICH_PRESENCE_STATUS_LABEL` picks which field is the headline, right under your username.
 
 ---
 
