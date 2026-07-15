@@ -20,6 +20,7 @@ Album art, radio, your library, MPRIS, and Discord rich presence - in a TUI.
 
 - [What it is](#what-it-is)
 - [Requirements](#requirements)
+- [Installation](#installation)
 - [Building](#building)
 - [Getting started](#getting-started)
 - [Signing in](#signing-in)
@@ -88,6 +89,20 @@ streams.
 > **Note**
 > Moroder is Linux-only. MPRIS over sdbus-c++, the XDG config paths and the
 > browser profile discovery all assume it.
+
+---
+
+## Installation
+
+### Arch Linux
+
+Moroder is available as a prebuilt package for Arch Linux via the AUR:
+
+```bash
+yay -S moroder-bin
+```
+
+If you want to build Moroder from source, see [Building](#building).
 
 ---
 
