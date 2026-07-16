@@ -19,7 +19,7 @@ enum class MColor {
     SEPARATOR_PRIMARY,
     SEPARATOR_SECONDARY,
 
-    SUCESS,
+    SUCCESS,
     ERROR,
 };
 

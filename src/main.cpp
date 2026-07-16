@@ -461,7 +461,7 @@ int main(int argc, char *argv[]) {
                         vbox({
                             text(" "),
                             state_copy.is_logged_in ?
-                                text("") | size(WIDTH, EQUAL, 3) | color(ui::GetColor(ui::MColor::SUCESS)) :
+                                text("") | size(WIDTH, EQUAL, 3) | color(ui::GetColor(ui::MColor::SUCCESS)) :
                                 text("") | size(WIDTH, EQUAL, 3) |  color(ui::GetColor(ui::MColor::ERROR)),
                             text(" ")
                         }) | align_right
