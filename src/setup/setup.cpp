@@ -26,6 +26,10 @@ using json = nlohmann::json;
 
 namespace {
 
+// ---------------------------------------------------------------------------
+// output
+// ---------------------------------------------------------------------------
+
 /* ANSI
 - Off when stdout is not a terminal, so a piped run or a pasted bug report does
   not come out full of escape codes
@@ -73,6 +77,10 @@ bool ask(const std::string& question) {
     return answer.empty() || answer == "y" || answer == "yes";
 }
 
+// ---------------------------------------------------------------------------
+// small helpers
+// ---------------------------------------------------------------------------
+
 bool contains(const std::string& haystack, const std::string& needle) {
     return haystack.find(needle) != std::string::npos;
 }
@@ -82,6 +90,10 @@ std::string preview(const std::string& value, size_t keep = 12) {
     if (value.size() <= keep) return value;
     return value.substr(0, keep) + "... (" + std::to_string(value.size()) + " chars)";
 }
+
+// ---------------------------------------------------------------------------
+// subprocess
+// ---------------------------------------------------------------------------
 
 struct Command {
     int exit_code = -1;
@@ -141,6 +153,10 @@ void openInBrowser(const std::string& url) {
     run("xdg-open " + shellQuote(url) + " >/dev/null 2>&1 &");
 }
 
+// ---------------------------------------------------------------------------
+// dependencies
+// ---------------------------------------------------------------------------
+
 /* checkDependencies
 - libmpv and libcurl are linked into this binary, so their absence would have
   stopped it from starting; what matters at runtime is the mpv and yt-dlp the
@@ -194,14 +210,17 @@ bool checkDependencies() {
     return complete;
 }
 
+// ---------------------------------------------------------------------------
+// browsers
+// ---------------------------------------------------------------------------
+
 /* BrowserSpec
-- yt_dlp is what --cookies-from-browser receives, which is not always the name
-  the user typed: yt-dlp only knows a fixed list of browsers
-- profile is kept separately because MPV_COOKIES_PATH needs the directory
+- The session itself comes from the pasted headers, so this exists only to
+  locate the browser profile directory that goes into MPV_COOKIES_PATH, which
+  is what yt-dlp reads when a stream is opened
 */
 struct BrowserSpec {
     std::string name;
-    std::string yt_dlp;
     std::string label;
     fs::path profile;
 
@@ -389,8 +408,9 @@ fs::path findForkProfile(const std::string& name) {
 }
 
 /* resolveBrowser
-- A Firefox fork is handed to yt-dlp as firefox:<profile path>, since the
-  cookie store format is identical and only the name is unknown to yt-dlp
+- Finds the profile directory for MPV_COOKIES_PATH
+- Not finding one is not fatal: the session still comes from the paste, only
+  stream cookies are lost, so failures here are reported and carried past
 */
 BrowserSpec resolveBrowser(const std::string& browser, const fs::path& profile_override) {
     BrowserSpec spec;
@@ -421,15 +441,13 @@ BrowserSpec resolveBrowser(const std::string& browser, const fs::path& profile_o
         }
 
         spec.profile = profile_override;
-        spec.yt_dlp = "firefox:" + profile_override.string();
         spec.label = browser + " (" + profile_override.filename().string() + ")";
         spec.firefox_fork = true;
         return spec;
     }
 
-    // An explicit yt-dlp spec, browser:profile, is passed through untouched.
+    // An explicit browser:profile spec is left for yt-dlp to interpret.
     if (contains(browser, ":")) {
-        spec.yt_dlp = browser;
         return spec;
     }
 
@@ -445,49 +463,10 @@ BrowserSpec resolveBrowser(const std::string& browser, const fs::path& profile_o
         spec.profile = profile;
         spec.label = browser + " (" + profile.filename().string() + ")";
 
-        // yt-dlp knows firefox by name, the forks it does not, and the profile
-        // path works for both.
-        spec.yt_dlp = token + ":" + profile.string();
         return spec;
     }
 
-    spec.yt_dlp = browser;
     return spec;
-}
-
-std::vector<std::string> splitTabs(const std::string& line) {
-    std::vector<std::string> fields;
-    std::string field;
-    std::istringstream in(line);
-
-    while (std::getline(in, field, '\t')) fields.push_back(field);
-
-    return fields;
-}
-
-/* cookieHeaderFromJar
-- Netscape jar: domain, includeSubdomains, path, secure, expiry, name, value
-- Only youtube entries are kept, the rest of the jar is unrelated to us
-*/
-std::string cookieHeaderFromJar(const std::string& jar) {
-    std::istringstream in(jar);
-    std::string line;
-    std::string out;
-
-    while (std::getline(in, line)) {
-        if (line.empty() || line[0] == '#') continue;
-
-        std::vector<std::string> fields = splitTabs(utils::trim(line));
-        if (fields.size() < 7) continue;
-
-        if (!contains(fields[0], "youtube.com")) continue;
-        if (fields[5].empty()) continue;
-
-        if (!out.empty()) out += "; ";
-        out += fields[5] + "=" + fields[6];
-    }
-
-    return out;
 }
 
 /* parseHeaderBlob
@@ -557,6 +536,10 @@ std::string readUntilEof() {
     return out.str();
 }
 
+// ---------------------------------------------------------------------------
+// credentials
+// ---------------------------------------------------------------------------
+
 struct Credentials {
     std::string cookie;
     std::string user_agent;
@@ -619,96 +602,16 @@ bool checkStructure(const Credentials& creds) {
     return true;
 }
 
-/* fromYtDlp
-- yt-dlp already knows how to read every browser's cookie store, including the
-  keyring-encrypted Chromium ones, and mpv's ytdl hook means it is usually
-  present already
-- It only writes the jar while processing a URL, so a URL is given as the
-  excuse; a failure here is not fatal, the paste path still works
-*/
-bool fromYtDlp(const BrowserSpec& browser, Credentials& out) {
-    if (!browser.resolved) {
-        fail(browser.problem);
-        note("Pass the profile directory with --profile if it lives somewhere unusual.");
-        return false;
-    }
-
-    if (!haveCommand("yt-dlp")) {
-        note("yt-dlp is not installed, skipping automatic extraction");
-        return false;
-    }
-
-    fs::path jar = fs::temp_directory_path() / ("moroder-cookies-" + std::to_string(getpid()) + ".txt");
-
-    info("asking yt-dlp to read the " + browser.label + " cookie store");
-
-    if (browser.chromium_family) {
-        note("a keyring prompt may appear, that is the browser protecting its cookies");
-    }
-
-    const std::string base =
-        "yt-dlp --quiet --no-warnings --ignore-errors --skip-download"
-        " --cookies-from-browser " + shellQuote(browser.yt_dlp) +
-        " --cookies " + shellQuote(jar.string());
-
-    // The plain domain is enough on recent yt-dlp; older builds only flush the
-    // jar after a real video, so fall back to one.
-    Command first = run(base + " " + shellQuote("https://music.youtube.com/"));
-
-    if (!fs::exists(jar) || fs::file_size(jar) == 0) {
-        run(base + " " + shellQuote("https://music.youtube.com/watch?v=dQw4w9WgXcQ"));
-    }
-
-    std::error_code ec;
-
-    if (!fs::exists(jar) || fs::file_size(jar) == 0) {
-        fail("yt-dlp did not produce a cookie file");
-
-        if (!first.output.empty()) note("yt-dlp said: " + utils::trim(first.output).substr(0, 200));
-
-        fs::remove(jar, ec);
-        return false;
-    }
-
-    std::ifstream in(jar);
-    std::string contents((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
-    in.close();
-
-    // A live credential sitting in a world readable directory, so it goes as
-    // soon as it has been read.
-    fs::remove(jar, ec);
-
-    out.cookie = cookieHeaderFromJar(contents);
-
-    if (out.cookie.empty()) {
-        fail("the cookie file had no youtube.com entries");
-        note("Sign in to YouTube Music in " + browser.label + " first, then run this again.");
-
-        if (browser.firefox_fork) {
-            note("LibreWolf also clears cookies on shutdown by default, which wipes the");
-            note("session every time it closes. Under Settings > Privacy & Security either");
-            note("turn that off or add an exception for youtube.com, then sign in again.");
-        }
-
-        return false;
-    }
-
-    out.user_agent = DEFAULT_USER_AGENT;
-    out.origin = "https://music.youtube.com";
-    out.accept_language = "en-US,en;q=0.5";
-    out.source = "yt-dlp, " + browser.label;
-
-    ok("extracted the cookie from " + browser.label);
-
-    note("This path only recovers the cookie, not the visitor id or user-agent");
-    note("your browser sends, so requests can be slower. If anything feels laggy,");
-    note("re-run with --manual and paste the headers instead. This is highly recommended.");
-    return true;
-}
+// ---------------------------------------------------------------------------
+// acquisition
+// ---------------------------------------------------------------------------
 
 /* fromPaste
-- The ytmusicapi flow, kept because extraction cannot work for every browser,
-  profile layout or sandbox
+- The only way the session is obtained
+- Reading the cookie out of the browser store with yt-dlp also worked, but it
+  recovered the cookie alone: no visitor id and no real user-agent, which left
+  every start scraping a visitor id from the homepage and made requests slower
+  and easier to rate limit
 */
 bool fromPaste(Credentials& out) {
     std::cout << "\n";
@@ -758,6 +661,10 @@ bool fromPaste(Credentials& out) {
 
     return true;
 }
+
+// ---------------------------------------------------------------------------
+// writing and verifying
+// ---------------------------------------------------------------------------
 
 json toHeaders(const Credentials& creds) {
     json out;
@@ -835,6 +742,10 @@ bool verify(const fs::path& headers_file) {
     return true;
 }
 
+// ---------------------------------------------------------------------------
+// config
+// ---------------------------------------------------------------------------
+
 /* recordPaths
 - YTM_COOKIES_PATH is the directory holding browser.json, matching how Music
   builds the path: cfg.YTM_COOKIES_PATH / "browser.json"
@@ -879,12 +790,11 @@ bool recordPaths(const fs::path& cookies_dir, const BrowserSpec& browser) {
 
 void usage() {
     std::cout << "usage: moroder setup [options]\n\n"
-              << "  --manual           skip yt-dlp, paste the headers from DevTools\n"
-              << "  --browser <name>   browser to read, saved as BROWSER in the config\n"
+              << "  --browser <name>   browser holding your session, saved as BROWSER\n"
               << "                     firefox, librewolf, floorp, waterfox, zen, mercury,\n"
               << "                     icecat, tor, chrome, chromium, brave, edge, opera,\n"
               << "                     vivaldi, whale, or a browser:profile spec\n"
-              << "  --profile <dir>    explicit Firefox-family profile directory\n"
+              << "  --profile <dir>    explicit browser profile directory, for stream cookies\n"
               << "  --no-colour        plain output\n"
               << "  --help             this text\n";
 }
@@ -896,7 +806,6 @@ int setup::run(int argc, char* argv[]) {
 
     std::vector<std::string> args(argv + 1, argv + argc);
 
-    bool manual = false;
     fs::path profile_override;
 
     /* The configured browser is the default, so a second run does not have to
@@ -921,7 +830,6 @@ int setup::run(int argc, char* argv[]) {
 
         if (arg == "setup") continue;
 
-        if (arg == "--manual")    { manual = true; continue; }
         if (arg == "--no-colour") { colour_enabled = false; continue; }
         if (arg == "--help")      { usage(); return 0; }
 
@@ -950,6 +858,8 @@ int setup::run(int argc, char* argv[]) {
     info("cookie the browser already holds. No password is involved and nothing");
     info("is sent anywhere except YouTube.");
     std::cout << "\n";
+    info("You will be asked to copy the request headers out of your browser.");
+    std::cout << "\n";
     info("This will write:");
     info("  " + headers_file.string() + "   " + std::string(dim()) + "the session" + reset());
     info("  " + Config::path() + "   " + std::string(dim()) + "the two cookie paths" + reset());
@@ -971,30 +881,33 @@ int setup::run(int argc, char* argv[]) {
         }
     }
 
+    /* The profile is only for stream cookies, so it is looked up before the
+    paste and its failure never stops the sign-in.
+    */
+    step("Looking for your " + browser + " profile");
+
+    if (!browser_given) note("from BROWSER in " + Config::path() + ", override with --browser");
+
     BrowserSpec spec = resolveBrowser(browser, profile_override);
+
+    if (spec.resolved && !spec.profile.empty()) {
+        ok("found " + spec.profile.string());
+        note("yt-dlp reads this when opening a stream, so age-restricted and");
+        note("premium tracks play. It is not where the session comes from.");
+
+    } else if (spec.resolved) {
+        note("no profile directory located, streams may still work");
+
+    } else {
+        warn(spec.problem);
+        note("Only stream cookies are affected. Pass --profile <dir> to set it,");
+        note("or fill in MPV_COOKIES_PATH by hand later.");
+    }
+
+    step("Pasting the headers");
+
     Credentials creds;
-    bool got = false;
-
-    if (!manual) {
-        step("Reading the cookie from " + spec.label);
-
-        if (!browser_given) note("from BROWSER in " + Config::path() + ", override with --browser");
-
-        if (spec.resolved && spec.yt_dlp != browser) {
-            // yt-dlp has no name for the Firefox forks, so say what it is
-            // actually being pointed at rather than failing mysteriously.
-            note("using " + spec.yt_dlp);
-        }
-
-        got = fromYtDlp(spec, creds);
-
-        if (!got) info("falling back to pasting the headers by hand");
-    }
-
-    if (!got) {
-        step("Pasting the headers");
-        got = fromPaste(creds);
-    }
+    bool got = fromPaste(creds);
 
     if (!got) {
         std::cout << "\n";

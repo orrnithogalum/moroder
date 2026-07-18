@@ -62,6 +62,7 @@ int main(int argc, char *argv[]) {
       every request is slower, so this is opt-in rather than a silent fallback
     */
     const bool anonymous = command == "--anonymous" || command == "-a";
+    Config::anonymous = anonymous;
 
     if (command == "--help" || command == "-h") {
         std::cout << "usage: " << APP_NAME << " [command]\n\n"

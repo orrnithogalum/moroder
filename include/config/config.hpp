@@ -31,6 +31,8 @@ class Config {
 public:
     inline static std::string_view app_name = "";
 
+    inline static bool anonymous = false;
+
     int MAX_IMAGE_CACHE_SIZE = 800;
     int MAX_RESIZED_IMAGE_CACHE_SIZE = 3200;
     int MAX_IMAGE_CHAR_CACHE_SIZE = 800000;

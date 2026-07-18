@@ -36,9 +36,12 @@ services::MPV::MPV() {
       yt-dlp can read works here, not just Firefox
     - Without it, age-restricted and premium tracks fail to load
     */
-    const std::string cookie_spec = cfg.ytdlCookieSpec();
+    const std::string cookie_spec = Config::anonymous ? "" : cfg.ytdlCookieSpec();
 
-    if (!cookie_spec.empty()) {
+    if (Config::anonymous) {
+        spdlog::info("MPV: anonymous mode, stream cookies disabled");
+
+    } else if (!cookie_spec.empty()) {
         spdlog::info("MPV: stream cookies from {}", cookie_spec);
         mpv_set_option_string(mpv, "ytdl-raw-options", ("cookies-from-browser=" + cookie_spec).c_str());
 
