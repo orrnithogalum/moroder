@@ -176,25 +176,51 @@ moroder --anonymous     # or -a
 ## Signing in
 
 Moroder talks to YouTube Music the way your browser does, by reusing the
-session cookie your browser already holds. No password is involved and nothing
-is sent anywhere except YouTube.
+session your browser already holds. No password is involved and nothing is sent
+anywhere except YouTube.
 
-`moroder setup` walks through it:
+```bash
+moroder setup
+```
+
+The command walks through five steps:
 
 1. Checks that `mpv` and `yt-dlp` are installed
 2. Opens `music.youtube.com` so you can confirm you are signed in
-3. Reads the cookie, automatically or by paste
-4. Checks the credentials against a live request
-5. Writes `browser.json` and records the paths in `moroder.conf`
+3. Looks for your browser profile, which is used for stream cookies
+4. Takes the request headers you paste in and checks them against a live request
+5. Writes `browser.json` and records `BROWSER` and the two paths in `moroder.conf`
 
 Nothing is saved until step 4 passes. The new session is staged as
 `browser.json.new` and only moved into place once YouTube Music has answered,
 so a failed sign-in can never replace a working one. The previous session is
 kept as `browser.json.bak`.
 
-### Automatic (default)
+### Copying the headers
 
-yt-dlp reads the cookie straight out of your browser's cookie store:
+1. Open `music.youtube.com`, signed in
+2. F12 → Network tab
+3. Reload, filter requests for `/youtubei/`
+4. Click any POST request
+5. Copy everything under **Request Headers**, paste into the terminal, `Ctrl-D`
+
+Both DevTools' "Copy All" (`name: value` lines) and "Copy as cURL"
+(`-H 'name: value'`) are accepted.
+
+> **Note**
+> Earlier versions could also pull the cookie out of the browser store with
+> yt-dlp. That path recovered the cookie alone - no `x-goog-visitor-id` and no
+> real `user-agent` - so every start had to scrape a visitor id from the
+> YouTube Music homepage, which made requests slower and easier to rate limit.
+> Pasting is now the only method, and it captures all three.
+
+### The browser profile
+
+Separately from the session, setup looks for your browser's profile directory
+and records it as `MPV_COOKIES_PATH`. That is what yt-dlp reads when opening a
+stream, and it is what lets age-restricted and premium tracks play. It has
+nothing to do with signing in, so if no profile is found, setup says so and
+carries on.
 
 ```bash
 moroder setup --browser librewolf
@@ -218,41 +244,26 @@ If your profile lives somewhere unusual:
 moroder setup --profile ~/.config/librewolf/librewolf/xxxxxxxx.default
 ```
 
-### Manual paste (recommended)
-
-More reliable, and slightly faster at runtime - see the note below.
-
-```bash
-moroder setup --manual
-```
-
-1. Open `music.youtube.com`, signed in
-2. F12 → Network tab
-3. Reload, filter requests for `/youtubei/`
-4. Click any POST request
-5. Copy everything under **Request Headers**, paste into the terminal, `Ctrl-D`
-
-Both DevTools' "Copy All" (`name: value` lines) and "Copy as cURL"
-(`-H 'name: value'`) are accepted.
-
-> **Tip**
-> The paste path captures your `x-goog-visitor-id` and real `user-agent`; the
-> automatic path recovers only the cookie. Without a stored visitor id, the
-> client scrapes one from the YouTube Music homepage each time it starts. If
-> requests feel slow, re-run with `--manual`.
-
 ### Setup options
 
 | Flag | Meaning |
 |---|---|
-| `--browser <name>` | browser to read, saved as `BROWSER` |
-| `--profile <dir>` | explicit Firefox-family profile directory |
-| `--manual` | skip yt-dlp, paste headers instead |
+| `--browser <name>` | browser holding your session, saved as `BROWSER` |
+| `--profile <dir>` | explicit browser profile directory, for stream cookies |
 | `--no-colour` | plain output |
 | `--help` | usage |
 
 With no `--browser`, setup uses whatever `BROWSER` says in your config, so a
 second run needs no flags.
+
+### Running without an account
+
+`moroder --anonymous` skips the session entirely. Search, radio and playback
+still work; the library and the personalised home page have nothing to show.
+
+Stream cookies are disabled in this mode too, because the browser's cookies
+belong to an account the run is not using. Age-restricted and premium tracks
+will not play anonymously.
 
 ---
 
@@ -318,6 +329,8 @@ yt-dlp. Required for the Firefox forks, which are indistinguishable from
 Firefox by name alone; stock Firefox and the Chromium browsers find their
 default profile without it. Without working stream cookies, age-restricted and
 premium tracks will not play. [More on passing cookies to yt-dlp](https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp)
+
+`BROWSER` and `MPV_COOKIES_PATH` are both ignored in `--anonymous` mode.
 
 Album names come from last.fm when a key is present and iTunes when it is not.
 A free key: <https://www.last.fm/api/account/create>
@@ -505,8 +518,8 @@ needs. It speaks to InnerTube directly.
 - **Auth** - `browser.json` is a flat object of request headers. The cookie
   must carry `__Secure-3PAPISID` (or `SAPISID`), from which each request's
   `Authorization: SAPISIDHASH` is derived.
-- **Visitor id** - reused from the headers when present, otherwise scraped from
-  the homepage on first use.
+- **Visitor id** - taken from the pasted headers. If they did not carry one, it
+  is scraped from the YouTube Music homepage on first use instead.
 - **Endpoints** - `search`, `getHome`, `getAlbum`, `getPlaylist`,
   `getLibraryPlaylists` / `Albums` / `Songs` / `Artists` / `Podcasts`,
   `getWatchPlaylist` and its continuation.
@@ -554,7 +567,16 @@ moroder setup
 </details>
 
 <details>
-<summary><b>LibreWolf: setup finds no cookies, or the session dies constantly</b></summary>
+<summary><b>Setup says "the cookie has no SAPISID"</b></summary>
+
+The headers came from a signed-out tab, or from somewhere other than YouTube
+Music. Reload `music.youtube.com`, confirm you are signed in, and copy the
+headers from a request under `/youtubei/` rather than from anywhere else on the
+page.
+</details>
+
+<details>
+<summary><b>LibreWolf: the session keeps dying</b></summary>
 
 LibreWolf clears cookies on shutdown by default, which wipes the session every
 time you close it. Under **Settings → Privacy & Security**, either turn that off
@@ -564,30 +586,26 @@ or add an exception for `youtube.com`, then sign in again and re-run setup.
 <details>
 <summary><b>Setup cannot find my browser profile</b></summary>
 
-Point it at the directory holding `cookies.sqlite`:
+This only affects stream cookies, never signing in. Point it at the directory
+holding `cookies.sqlite`:
 
 ```bash
 moroder setup --profile ~/.mozilla/firefox/xxxxxxxx.default-release
 ```
 
-If yt-dlp cannot read your browser at all, use `moroder setup --manual`.
+Or set `MPV_COOKIES_PATH` in the config by hand.
 </details>
 
 <details>
-<summary><b>Some tracks refuse to play</b></summary>
+<summary><b>Some / All tracks refuse to play</b></summary>
 
-Age-restricted and premium tracks need stream cookies. Check `MPV_COOKIES_PATH`
-points at your browser profile directory and `BROWSER` names the right browser.
-The log line to look for is `MPV: stream cookies from …`; if it says
-`stream cookies disabled`, it tells you which of the two is wrong.
-</details>
+If only some tracks refuse to play, this has to do with age-restricted and premium tracks that need premium youtube music to play.
+Check if `MPV_COOKIES_PATH` points at your browser profile directory and `BROWSER` names the right browser. Sometimes cookies for a
+non premium account can introduce playback issues on all tracks. Try `--anonymous` when launching the app to see if playback works.
+You can also check logs for `MPV: stream cookies from …`; if it says `stream cookies disabled`, it tells you which of the two is wrong.
 
-<details>
-<summary><b>Everything is slow</b></summary>
-
-If setup used the automatic path, your `browser.json` has no
-`x-goog-visitor-id`, so one is scraped from the homepage on each start. Re-run
-with `moroder setup --manual` and paste the headers.
+In `--anonymous` mode stream cookies are always disabled, and the log says
+`MPV: anonymous mode, stream cookies disabled`. Sign in to play those tracks.
 </details>
 
 <details>
@@ -617,7 +635,7 @@ D-Bus error. A second instance cannot claim the name while the first holds it.
 - Linux only
 - Playlist editing, likes and subscriptions are not visible
 - The **New playlist** and **Sign in** sidebar buttons are not wired up yet
-- Anonymous mode has no library and no personalised home
+- Anonymous mode has no library, no personalised home, and no stream cookies
 - One instance at a time owns the MPRIS name
 
 ---
@@ -629,5 +647,3 @@ The MPRIS implementation is adapted from
 
 The YouTube Music client is a C++ reimplementation of the endpoints and parsers
 in [ytmusicapi](https://github.com/sigma67/ytmusicapi).
-
-Named after Giorgio.
