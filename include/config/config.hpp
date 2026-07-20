@@ -24,6 +24,7 @@
 #include <cstdlib>
 #include <string>
 #include <vector>
+#include <array>
 
 namespace fs = std::filesystem;
 
@@ -58,6 +59,20 @@ public:
 
     bool ENABLE_DISCORD_RICH_PRESENCE = true;
     std::string RICH_PRESENCE_STATUS_LABEL = "song";
+
+    /* Colours
+    - {r, g, b}, each 0-255
+    - A malformed or out of range value parses to {-1, -1, -1}, which the UI
+      reads as "keep the built-in", so a typo dims one element rather than
+      leaving the interface unreadable
+    */
+    std::array<int, 3> COLOR_ACCENT_PRIMARY        = {255,   0,   0};
+    std::array<int, 3> COLOR_TEXT_TOP_PRIMARY      = {255, 255, 255};
+    std::array<int, 3> COLOR_TEXT_TOP_SECONDARY    = {170, 170, 170};
+    std::array<int, 3> COLOR_TEXT_BOTTOM_PRIMARY   = {170, 170, 170};
+    std::array<int, 3> COLOR_TEXT_BOTTOM_SECONDARY = { 70,  70,  70};
+    std::array<int, 3> COLOR_SEPARATOR_PRIMARY     = {100, 100, 100};
+    std::array<int, 3> COLOR_SEPARATOR_SECONDARY   = { 50,  50,  50};
 
     // Home categories in display order, lower-cased. Empty = keep API order.
     std::vector<std::string> HOME_ORDER;
@@ -464,6 +479,29 @@ private:
         return true;
     }
 
+    /* parseColor
+    - Reads {r, g, b}, tolerating whatever spacing the user left around it
+    - {-1, -1, -1} on anything malformed or out of range, which is the signal
+      to fall back rather than a colour anyone could have meant
+    */
+    static std::array<int, 3> parseColor(const std::string& value) {
+        static constexpr std::array<int, 3> invalid = {-1, -1, -1};
+
+        std::stringstream ss(value);
+        std::array<int, 3> color{};
+        char separator;
+
+        if (!(ss >> separator >> color[0] >> separator >> color[1] >> separator >> color[2])) {
+            return invalid;
+        }
+
+        for (int component : color) {
+            if (component < 0 || component > 255) return invalid;
+        }
+
+        return color;
+    }
+
     static std::string unquote(const std::string& value) {
         if (value.size() >= 2 && value.front() == '"' && value.back() == '"') {
             return value.substr(1, value.size() - 2);
@@ -529,6 +567,10 @@ private:
         return parse_list(unquote(v));
     }
 
+    static std::array<int, 3> parseValue(std::array<int, 3>*, const std::string& v) {
+        return parseColor(v);
+    }
+
     using Setter = std::function<void(Config&, const std::string&)>;
 
     struct FieldSpec {
@@ -565,6 +607,14 @@ private:
             {"FETCH_ALBUMS",         makeSetter(&Config::FETCH_ALBUMS),          true},
             {"EXTRA_BOTTOM_PADDING", makeSetter(&Config::EXTRA_BOTTOM_PADDING),  true},
             {"HOME_ORDER",           makeSetter(&Config::HOME_ORDER),            true},
+
+            {"COLOR_ACCENT_PRIMARY",        makeSetter(&Config::COLOR_ACCENT_PRIMARY),        true},
+            {"COLOR_TEXT_TOP_PRIMARY",      makeSetter(&Config::COLOR_TEXT_TOP_PRIMARY),      true},
+            {"COLOR_TEXT_TOP_SECONDARY",    makeSetter(&Config::COLOR_TEXT_TOP_SECONDARY),    true},
+            {"COLOR_TEXT_BOTTOM_PRIMARY",   makeSetter(&Config::COLOR_TEXT_BOTTOM_PRIMARY),   true},
+            {"COLOR_TEXT_BOTTOM_SECONDARY", makeSetter(&Config::COLOR_TEXT_BOTTOM_SECONDARY), true},
+            {"COLOR_SEPARATOR_PRIMARY",     makeSetter(&Config::COLOR_SEPARATOR_PRIMARY),     true},
+            {"COLOR_SEPARATOR_SECONDARY",   makeSetter(&Config::COLOR_SEPARATOR_SECONDARY),   true},
             {"KEY_QUIT",             makeSetter(&Config::KEY_QUIT),              true},
             {"KEY_QUEUE_VIEW",       makeSetter(&Config::KEY_QUEUE_VIEW),        true},
             {"KEY_TOGGLE_SIDEBAR",   makeSetter(&Config::KEY_TOGGLE_SIDEBAR),    true},
