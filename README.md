@@ -359,6 +359,26 @@ HOME_ORDER = "from your library, quick picks, forgotten favorites, listen again,
 
 Anything not listed follows in the order YouTube Music sent it.
 
+#### Colours
+
+Seven colours are configurable, as `{r, g, b}` with each channel `0-255`. A
+malformed or out of range value keeps the built-in colour, so a typo dims one
+element rather than leaving the interface unreadable - the log names the key
+that was rejected. Truecolour terminal required.
+
+| Key | Default | Where it shows |
+|---|---|---|
+| `COLOR_ACCENT_PRIMARY` | `{255, 0, 0}` | progress bar, selected filter chips |
+| `COLOR_TEXT_TOP_PRIMARY` | `{255, 255, 255}` | title of the item under the cursor |
+| `COLOR_TEXT_TOP_SECONDARY` | `{170, 170, 170}` | every other title |
+| `COLOR_TEXT_BOTTOM_PRIMARY` | `{170, 170, 170}` | second line, under the cursor |
+| `COLOR_TEXT_BOTTOM_SECONDARY` | `{70, 70, 70}` | second line, everything else |
+| `COLOR_SEPARATOR_PRIMARY` | `{100, 100, 100}` | separators, focused chip outlines |
+| `COLOR_SEPARATOR_SECONDARY` | `{50, 50, 50}` | unfocused chip outlines |
+
+The remaining colours - the success and error accents, and plain black and
+white - are fixed.
+
 ### Cache
 
 Counts, not bytes. Raise them if covers you have already seen get fetched
