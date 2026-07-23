@@ -102,14 +102,20 @@ Moroder is available as a prebuilt package for Arch Linux via the AUR:
 yay -S moroder-bin
 ```
 
+
 If you want to build Moroder from source, see [Building](#building).
 
 ---
 
 ## Building
 
-Building from source requires the [Discord Social SDK](https://docs.discord.com/developers/discord-social-sdk/getting-started/using-c++) to be placed at
-`./lib/discord_social_sdk/`. The SDK is not included in this repository.
+Building from source requires the [Discord Social SDK](https://docs.discord.com/developers/discord-social-sdk/getting-started/using-c++) to be placed at:
+
+```text
+./lib/discord_social_sdk/
+```
+
+The SDK is not included in this repository.
 
 The expected directory structure is:
 
@@ -126,19 +132,56 @@ The expected directory structure is:
 
 Without the Discord Social SDK in `./lib/`, **building from source is not possible**.
 
-If you do not have the SDK, **prebuilt binaries are available from the GitHub
-Releases**.
+If you do not have the SDK, **prebuilt binaries are available from the GitHub Releases**.
 
-Once the SDK is in place, build Moroder after cloning the repo with:
+Once the SDK is in place, build Moroder after cloning the repository with:
 
 ```bash
 cmake -B build -S . -DCMAKE_BUILD_TYPE=Release && cmake --build build --parallel
 ```
 
-The default config is embedded into the binary at build time: `moroder.conf` is
-compiled into `build/gen/defaults.hpp` as a byte array, which is what
-`config.hpp` writes out on first run. If you edit the default config, the header
-will be automatically regenerated.
+The default config is embedded into the binary at build time: `moroder.conf` is compiled into `build/gen/defaults.hpp` as a byte array, which is what `config.hpp` writes out on first run. If you edit the default config, the header will be automatically regenerated.
+
+### Arch Linux
+
+Install the required build dependencies with:
+
+```bash
+sudo pacman -S --needed base-devel cmake mpv curl yt-dlp
+```
+
+### Debian Linux
+
+Moroder depends on:
+
+* `libmpv-dev` or `mpv`
+* `libcurl-dev` (virtual package; see the Linux Mint instructions below)
+* `cmake`
+* `yt-dlp` **(latest version required)**
+* `sdbus-c++`
+* `libsystemd-dev`
+* `pkg-config`
+
+#### Linux Mint
+
+On Linux Mint, install the required development libraries and build dependencies with:
+
+```bash
+sudo apt update
+sudo apt install cmake mpv libmpv-dev libcurl4-openssl-dev libsystemd-dev pkg-config
+```
+
+Moroder also requires **the latest version of `yt-dlp`**. The version available in Linux Mint's repositories may be outdated, so install or upgrade `yt-dlp` using the official recommended installation method rather than relying on the Mint repository version.
+
+You can verify your installed version with:
+
+```bash
+yt-dlp --version
+```
+
+> **Note:** `libcurl-dev` is a virtual package on Debian/Ubuntu-based distributions. On Linux Mint, `libcurl4-openssl-dev` provides the required `libcurl` development files.
+
+After installing the dependencies, follow the standard CMake build instructions.
 
 ---
 
