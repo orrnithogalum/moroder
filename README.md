@@ -665,7 +665,7 @@ Or set `MPV_COOKIES_PATH` in the config by hand.
 If only some tracks refuse to play, this has to do with age-restricted and premium tracks that need premium youtube music to play.
 Check if `MPV_COOKIES_PATH` points at your browser profile directory and `BROWSER` names the right browser. Sometimes cookies for a
 non premium account can introduce playback issues on all tracks. Try `--anonymous` when launching the app to see if playback works.
-You can also check logs for `MPV: stream cookies from …`; if it says `stream cookies disabled`, it tells you which of the two is wrong.
+You can also check logs for `MPV: stream cookies from …`;
 
 In `--anonymous` mode stream cookies are always disabled, and the log says
 `MPV: anonymous mode, stream cookies disabled`.
