@@ -567,6 +567,13 @@ int main(int argc, char *argv[]) {
             return true;
         }
 
+        // The playback bar reads the mode out of the state copy it takes each
+        // render, so returning true is all the redraw this needs.
+        if(Config::isKey(event, cfg.KEY_TOGGLE_LOOP)) {
+            player.cycleLoop();
+            return true;
+        }
+
         return false;
     });
 

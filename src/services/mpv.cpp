@@ -178,6 +178,24 @@ void services::MPV::resume() {
     mpv_set_property(mpv, "pause", MPV_FORMAT_FLAG, &pause);
 }
 
+/* setLoopFile
+- Track looping is mpv's own loop-file rather than us reloading the url
+- A looped file is never unloaded, so there is no end-file event, no gap
+  between plays and no queue position to keep straight
+*/
+void services::MPV::setLoopFile(bool enabled) {
+    std::lock_guard<std::mutex> lock(mtx);
+
+    const char* value = enabled ? "inf" : "no";
+
+    if (mpv_set_property_string(mpv, "loop-file", value) < 0) {
+        spdlog::error("MPV: could not set loop-file to {}", value);
+        return;
+    }
+
+    spdlog::info("MPV: loop-file {}", value);
+}
+
 void services::MPV::seekForward(uint64_t microseconds) {
     double seconds = static_cast<double>(microseconds) / 1000000.0;
 

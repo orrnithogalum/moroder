@@ -18,6 +18,8 @@ struct PlaybackData {
     bool is_playing = false;
     bool can_skip_forwards  = true;
     bool can_skip_backwards = true;
+
+    services::Player::LoopMode loop_mode = services::Player::LoopMode::None;
 };
 
 void getPlaybackData(services::Player::PlayerState* state, PlaybackData* data, int dimx);

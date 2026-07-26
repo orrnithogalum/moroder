@@ -27,6 +27,42 @@ const char* LIBRARY_SOURCES[] = {
     "library_podcasts",
 };
 
+/* LOOP_REWIND_EPSILON
+- How far the stream position has to go backwards on its own before the tick
+  reads it as a restart rather than jitter, in microseconds
+*/
+constexpr uint64_t LOOP_REWIND_EPSILON = 2000000ULL;
+
+/* loopStatusFor / loopModeFor
+- MPRIS only knows None, Track and Playlist, so a queue loop goes out as
+  Playlist
+- The difference between the two is what happens to the radio queue, which
+  MPRIS has no concept of, so nothing is lost in the mapping
+*/
+services::LoopStatus loopStatusFor(services::Player::LoopMode mode) {
+    switch (mode) {
+        case services::Player::LoopMode::Track: return services::LoopStatus::Track;
+        case services::Player::LoopMode::Queue: return services::LoopStatus::Playlist;
+        default:                                return services::LoopStatus::None;
+    }
+}
+
+services::Player::LoopMode loopModeFor(services::LoopStatus status) {
+    switch (status) {
+        case services::LoopStatus::Track:    return services::Player::LoopMode::Track;
+        case services::LoopStatus::Playlist: return services::Player::LoopMode::Queue;
+        default:                             return services::Player::LoopMode::None;
+    }
+}
+
+const char* loopModeName(services::Player::LoopMode mode) {
+    switch (mode) {
+        case services::Player::LoopMode::Track: return "track";
+        case services::Player::LoopMode::Queue: return "queue";
+        default:                                return "off";
+    }
+}
+
 /* refreshLibraryError
 - Recomputes the aggregate "library" entry from the per-source ones
 - First failure wins, since the page can only show one error box
@@ -182,7 +218,15 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
         mpris_service->setPosition(p);
     });
 
-    mpris_service->onLoopStatusChanged([&] (services::LoopStatus status) { });
+    /* The property has already been written by the time this runs, so the
+    change is applied without notifying back: doing both emits two
+    PropertiesChanged for one change, and playerctl reports the second as a
+    spurious update.
+    */
+    mpris_service->onLoopStatusChanged([this] (services::LoopStatus status) {
+        this->applyLoop(loopModeFor(status), false);
+    });
+
     mpris_service->onShuffleChanged([&] (bool shuffle) { });
 
     mpris_service->onNext([this](){
@@ -195,6 +239,10 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
 
     mpris_service->setIsNextPossible(false);
     mpris_service->setIsPreviousPossible(false);
+
+    // Publishes LoopStatus and clears mpv's loop-file, so the three agree from
+    // the start rather than only after the first change.
+    this->applyLoop(this->loopMode(), true);
 
     mpris_service->startLoopAsync();
 
@@ -237,33 +285,75 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
         bool to_radio_skip = false;
         bool should_skip = false;
 
+        /* loop_to
+        - -1 unless a loop has to put mpv somewhere itself
+        - mpv autoplays the next playlist entry on its own, which covers every
+          case except a wrap: at the end of the playlist there is nothing left
+          to autoplay into, so that one needs an explicit playlist-play-index
+        */
+        int loop_to = -1;
+
         {
             std::lock_guard lock(state_mutex);
 
             state.flags["audio"] = Flags::Done;
 
-            /* Since we use mpv playlist feature for buffering, we need to increment queue position no matter what.
-            - This means that queue position can be equal or greater than the queue size
-            - So we check for that.
+            const LoopMode loop = state.loop_mode;
+
+            /* Track loop
+            - mpv repeats the file itself, so reaching here at all means
+              loop-file did not take; replay the same entry rather than
+              letting the queue advance under it
             */
-            this->state.queue_position++;
+            if (loop == LoopMode::Track && !state.user_queue.empty()) {
+                if (state.queue_position < 0) state.queue_position = 0;
+                if (state.queue_position >= state.user_queue.size()) {
+                    state.queue_position = state.user_queue.size() - 1;
+                }
 
-            if(!this->state.radio_queue.empty() && state.queue_position >= state.user_queue.size()) {
-                to_radio_skip = true;
-
-                radio_next = state.radio_queue.front();
-                state.radio_queue.pop_front();
-                state.current = radio_next;
-            }
-
-            if(this->state.autoplay && this->state.radio_queue.empty()) {
-                start_next_radio = true;
-                state_radio = state.radio;
-            }
-
-            if (state.queue_position < state.user_queue.size()) {
+                loop_to = static_cast<int>(state.queue_position);
                 state.current = state.user_queue[state.queue_position];
-                should_skip = true;
+
+            } else {
+                /* Since we use mpv playlist feature for buffering, we need to increment queue position no matter what.
+                - This means that queue position can be equal or greater than the queue size
+                - So we check for that.
+                */
+                this->state.queue_position++;
+
+                /* Queue loop
+                - The radio queue is deliberately left alone: it can go on
+                  filling in the background, it just stops being where the next
+                  song comes from, so turning the loop off later resumes it
+                */
+                if (loop == LoopMode::Queue && !state.user_queue.empty()) {
+                    if (state.queue_position >= state.user_queue.size()) {
+                        state.queue_position = 0;
+                        loop_to = 0;
+                    }
+
+                    state.current = state.user_queue[state.queue_position];
+                    should_skip = (loop_to < 0);
+
+                } else {
+                    if(!this->state.radio_queue.empty() && state.queue_position >= state.user_queue.size()) {
+                        to_radio_skip = true;
+
+                        radio_next = state.radio_queue.front();
+                        state.radio_queue.pop_front();
+                        state.current = radio_next;
+                    }
+
+                    if(this->state.autoplay && this->state.radio_queue.empty()) {
+                        start_next_radio = true;
+                        state_radio = state.radio;
+                    }
+
+                    if (state.queue_position < state.user_queue.size()) {
+                        state.current = state.user_queue[state.queue_position];
+                        should_skip = true;
+                    }
+                }
             }
         }
 
@@ -293,10 +383,15 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
             command_cv.notify_one();
         }
 
+        if(loop_to >= 0) {
+            spdlog::info("PLAYER: loop, restarting the queue at index {}", loop_to);
+            mpv_service->skipTo(loop_to);
+        }
+
         /* If should skip:
         - We don't actually call the skip method because mpv will autoplay by itself
         */
-        if(should_skip || to_radio_skip) {
+        if(should_skip || to_radio_skip || loop_to >= 0) {
             this->updateMprisControls();
             this->updateMprisData();
             this->updateSocialData();
@@ -938,11 +1033,27 @@ void services::Player::skipForward() {
     bool to_radio_skip = false;
     bool should_skip = true;
 
+    int loop_to = -1;
+
     std::shared_ptr<music::IStreamable> radio_next;
 
     {
         std::lock_guard lock(state_mutex);
-        if (state.queue_position + 1 >= state.user_queue.size() && state.radio_queue.empty()) {
+
+        /* Queue loop
+        - Skipping past the end wraps rather than stopping, and the radio queue
+          is passed over exactly as it is when the queue ends on its own
+        */
+        if (state.loop_mode == LoopMode::Queue && state.user_queue.size() > 1
+            && state.queue_position + 1 >= state.user_queue.size()) {
+
+            state.queue_position = 0;
+            state.current = state.user_queue[0];
+            loop_to = 0;
+
+            spdlog::info("PLAYER: queue loop, wrapping to the start");
+
+        } else if (state.queue_position + 1 >= state.user_queue.size() && state.radio_queue.empty()) {
             should_skip = false;
 
             spdlog::warn("PLAYER: tried to skip to next song, but queue is done");
@@ -990,17 +1101,36 @@ void services::Player::skipForward() {
         this->updateMprisData();
         this->updateSocialData();
 
-        mpv_service->skipForward();
+        // playlist-next has nowhere to go at the end of the playlist, so a
+        // wrap has to name the index it is going back to.
+        if (loop_to >= 0) {
+            mpv_service->skipTo(loop_to);
+        } else {
+            mpv_service->skipForward();
+        }
     }
 }
 
 void services::Player::skipBackward() {
     bool should_skip = true;
 
+    int loop_to = -1;
+
     {
         std::lock_guard lock(state_mutex);
 
-        if (state.queue_position == 0 || state.user_queue.empty()) {
+        // The other end of the same wrap: going back from the first track
+        // lands on the last one.
+        if (state.loop_mode == LoopMode::Queue && state.user_queue.size() > 1
+            && state.queue_position == 0) {
+
+            state.queue_position = state.user_queue.size() - 1;
+            state.current = state.user_queue.back();
+            loop_to = static_cast<int>(state.queue_position);
+
+            spdlog::info("PLAYER: queue loop, wrapping to the end");
+
+        } else if (state.queue_position == 0 || state.user_queue.empty()) {
             state.flags["audio"] = Flags::Done;
             should_skip = false;
 
@@ -1015,7 +1145,11 @@ void services::Player::skipBackward() {
     if(should_skip) {
         spdlog::info("PLAYER: skipping to previous song");
 
-        mpv_service->skipBackward();
+        if (loop_to >= 0) {
+            mpv_service->skipTo(loop_to);
+        } else {
+            mpv_service->skipBackward();
+        }
 
         mpris_service->setPlaybackStatus(services::PlaybackStatus::Stopped);
         this->updateMprisControls();
@@ -1027,12 +1161,21 @@ void services::Player::skipBackward() {
 void services::Player::updateMprisControls() {
     {
         std::lock_guard lock(state_mutex);
-        mpris_service->setIsNextPossible((state.queue_position + 1 < state.user_queue.size()) || (!state.radio_queue.empty()));
-        mpris_service->setIsPreviousPossible(state.queue_position > 0 && state.user_queue.size() > 1);
+
+        /* A queue loop with something to wrap round always has a next and a
+        previous, since running off either end comes back on the other
+        */
+        const bool wraps = state.loop_mode == LoopMode::Queue && state.user_queue.size() > 1;
+
+        const bool can_skip_forwards  = wraps || (state.queue_position + 1 < state.user_queue.size()) || (!state.radio_queue.empty());
+        const bool can_skip_backwards = wraps || (state.queue_position > 0 && state.user_queue.size() > 1);
+
+        mpris_service->setIsNextPossible(can_skip_forwards);
+        mpris_service->setIsPreviousPossible(can_skip_backwards);
         mpris_service->updatePlayerControls();
 
-        state.flags["can_skip_forwards"] = (state.queue_position + 1 < state.user_queue.size()) || (!state.radio_queue.empty()) ? Flags::True : Flags::False;
-        state.flags["can_skip_backwards"] = (state.queue_position > 0 && state.user_queue.size() > 1) ? Flags::True : Flags::False;
+        state.flags["can_skip_forwards"] = can_skip_forwards ? Flags::True : Flags::False;
+        state.flags["can_skip_backwards"] = can_skip_backwards ? Flags::True : Flags::False;
     }
 }
 
@@ -1188,6 +1331,8 @@ void services::Player::startPositionTick() {
     }
 
     position_tick_thread = std::thread([this] {
+        uint64_t last_position = 0;
+
         while (true) {
             std::unique_lock lock(position_tick_mutex);
             position_tick_cv.wait_for(lock, std::chrono::seconds(1), [this] {
@@ -1199,6 +1344,22 @@ void services::Player::startPositionTick() {
 
             uint64_t duration = mpv_service->getStreamDuration();
             uint64_t pos = mpv_service->getStreamPosition();
+
+            /* A position that has gone backwards on its own is mpv restarting
+            the file under loop-file. Nothing else in the player moves for
+            that, so without this Discord's timestamps and the MPRIS position
+            keep counting from the first play. A manual seek lands here too,
+            which is the same resync.
+            */
+            if (last_position > pos + LOOP_REWIND_EPSILON) {
+                spdlog::info("PLAYER: stream restarted, resyncing position");
+
+                social_service->setPosition(pos);
+                mpris_service->setPosition(pos);
+                mpris_service->sendSeekedSignal(pos);
+            }
+
+            last_position = pos;
 
             if (on_position_tick) {
                 on_position_tick(pos, duration);
@@ -1302,6 +1463,60 @@ void services::Player::removeAt(uint16_t index) {
             state.flags["audio"] = Flags::Done;
         }
     }
+}
+
+services::Player::LoopMode services::Player::loopMode() {
+    std::lock_guard lock(state_mutex);
+    return state.loop_mode;
+}
+
+void services::Player::setLoop(LoopMode mode) {
+    this->applyLoop(mode, true);
+}
+
+/* cycleLoop
+- off, then the queue, then the current track, in the order the icon in every
+  other player cycles through
+*/
+services::Player::LoopMode services::Player::cycleLoop() {
+    LoopMode next;
+
+    {
+        std::lock_guard lock(state_mutex);
+
+        next = state.loop_mode == LoopMode::None  ? LoopMode::Queue
+             : state.loop_mode == LoopMode::Queue ? LoopMode::Track
+             :                                      LoopMode::None;
+    }
+
+    this->applyLoop(next, true);
+    return next;
+}
+
+/* applyLoop
+- notify_mpris is false when the change arrived over MPRIS, since the property
+  was already written on the way in
+- Track looping is handed to mpv rather than handled here: loop-file repeats
+  the file without unloading it, so there is no end-of-file to catch, no gap
+  between plays, and the queue position never moves
+*/
+void services::Player::applyLoop(LoopMode mode, bool notify_mpris) {
+    {
+        std::lock_guard lock(state_mutex);
+        state.loop_mode = mode;
+    }
+
+    mpv_service->setLoopFile(mode == LoopMode::Track);
+
+    if (notify_mpris) {
+        mpris_service->setLoopStatus(loopStatusFor(mode));
+    }
+
+    // A queue loop changes what next and previous mean at the ends of the
+    // queue, so the Can* properties and the playback bar arrows follow it.
+    this->updateMprisControls();
+
+    spdlog::info("PLAYER: loop mode is {}", loopModeName(mode));
 }
 
 void services::Player::detachUI() {
@@ -1411,12 +1626,6 @@ void services::Player::getLibraryPodcasts() {
 }
 
 void services::Player::retryLibrary() {
-    /* Every library error goes at once, before anything is queued.
-    - Clearing per-command instead meant the aggregate survived until the last
-      of the five landed, and survived forever if any single one kept failing
-    - Each command re-erases its own key on the way in, so a source that fails
-      again puts the box straight back
-    */
     {
         std::lock_guard lock(state_mutex);
 

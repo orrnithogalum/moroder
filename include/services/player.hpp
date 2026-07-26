@@ -78,6 +78,12 @@ public:
         False
     };
 
+    enum class LoopMode {
+        None,
+        Queue,
+        Track
+    };
+
     struct ErrorInfo {
         std::string message;
         bool retryable = false;
@@ -113,6 +119,7 @@ public:
         bool autoplay = true;
 
         music::Radio radio;
+        LoopMode loop_mode = LoopMode::None;
     };
 
     PlayerState state;
@@ -127,6 +134,14 @@ public:
     void skipForward();
     void skipBackward();
     void skipTo(uint16_t index);
+
+    /* cycleLoop
+    - off, then the queue, then the current track
+    - Returns the mode it settled on, so a caller that wants to say so can
+    */
+    LoopMode cycleLoop();
+    LoopMode loopMode();
+    void setLoop(LoopMode mode);
 
     void getHome();
     void isLoggedIn();
@@ -241,6 +256,8 @@ private:
 
     void startPositionTick();
     void stopPositionTick();
+
+    void applyLoop(LoopMode mode, bool notify_mpris);
 };
 
 }

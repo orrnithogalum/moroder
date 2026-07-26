@@ -42,6 +42,7 @@ public:
     void skipBackward();
     void skipTo(uint16_t index);
     void clearQueue();
+    void setLoopFile(bool enabled);
 
     void removeAt(uint16_t index);
 

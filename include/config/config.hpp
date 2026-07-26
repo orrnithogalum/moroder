@@ -89,6 +89,7 @@ public:
     std::string KEY_SKIP_BACKWARD     = "z";
     std::string KEY_SKIP_FORWARD      = "x";
     std::string KEY_TOGGLE_PAUSE      = "space";
+    std::string KEY_TOGGLE_LOOP       = "r";
     std::string KEY_PLAY_NOW          = "enter";
     std::string KEY_ADD_TO_QUEUE      = "d";
     std::string KEY_REMOVE_FROM_QUEUE = "c";
@@ -622,6 +623,7 @@ private:
             {"KEY_SKIP_BACKWARD",    makeSetter(&Config::KEY_SKIP_BACKWARD),     true},
             {"KEY_SKIP_FORWARD",     makeSetter(&Config::KEY_SKIP_FORWARD),      true},
             {"KEY_TOGGLE_PAUSE",     makeSetter(&Config::KEY_TOGGLE_PAUSE),      true},
+            {"KEY_TOGGLE_LOOP",      makeSetter(&Config::KEY_TOGGLE_LOOP),       true},
             {"KEY_PLAY_NOW",         makeSetter(&Config::KEY_PLAY_NOW),          true},
             {"KEY_ADD_TO_QUEUE",     makeSetter(&Config::KEY_ADD_TO_QUEUE),      true},
             {"KEY_REMOVE_FROM_QUEUE",makeSetter(&Config::KEY_REMOVE_FROM_QUEUE), true},

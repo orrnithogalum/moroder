@@ -12,6 +12,7 @@ void ui::getPlaybackData(services::Player::PlayerState* state, PlaybackData* dat
     data->is_playing = state->flags["audio"] == services::Player::Flags::Ongoing;
     data->can_skip_forwards  = state->flags["can_skip_forwards"]  == services::Player::Flags::True;
     data->can_skip_backwards = state->flags["can_skip_backwards"] == services::Player::Flags::True;
+    data->loop_mode = state->loop_mode;
     data->dimx = dimx;
 
     if (auto song_ptr = std::dynamic_pointer_cast<music::Song>(state->current)) {
@@ -84,7 +85,24 @@ Component ui::PlaybackBar(PlaybackData* data) {
             });
         }
 
-        Element right_controls = text("      ") | color(ui::GetColor(ui::MColor::TEXT_TOP_PRIMARY));
+        /* Loop icon
+        - Off is dimmed the same way an unavailable skip arrow is
+        - This icon set has no repeat-one glyph, so a track loop is the same
+          icon in the accent colour rather than a different one
+        */
+        const ftxui::Color loop_color =
+              data->loop_mode == services::Player::LoopMode::Track ? ui::GetColor(ui::MColor::ACCENT_PRIMARY)
+            : data->loop_mode == services::Player::LoopMode::Queue ? ui::GetColor(ui::MColor::TEXT_TOP_PRIMARY)
+            :                                                        ui::GetColor(ui::MColor::TEXT_BOTTOM_SECONDARY);
+
+        Element right_controls = hbox({
+            text("") | color(ui::GetColor(ui::MColor::TEXT_TOP_PRIMARY)),
+            text("  "),
+            text("") | color(loop_color),
+            text("  "),
+            text("") | color(ui::GetColor(ui::MColor::TEXT_TOP_PRIMARY)),
+            text("  "),
+        });
 
         return vbox({
             hbox(std::move(progress_line)),
