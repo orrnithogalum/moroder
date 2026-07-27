@@ -53,6 +53,7 @@ streams.
 - Search across songs, albums, artists, playlists and podcasts
 - Radio and autoplay, with continuations fetched ahead of the queue
 - A queue you can add to, skip through and remove from
+- Looping, over the queue or the current track
 - Album covers rendered as character art
 - Full MPRIS support, so `playerctl` and desktop widgets control it
 - Discord rich presence, with a configurable headline field
@@ -327,6 +328,26 @@ under their own chip.
 **Queue** - what is playing and what is next, with your queue and the radio
 queue shown together.
 
+### Looping
+
+<kbd>r</kbd> cycles the loop icon in the playback bar through three states:
+
+| State | Icon | What happens |
+|---|---|---|
+| Off | dimmed | the queue plays to the end, then radio and autoplay take over |
+| Queue | white | the queue restarts at the top instead of moving on to the radio |
+| Track | accent colour | the current track repeats until you skip or change the mode |
+
+Looping the queue does not throw the radio queue away. It goes on filling in
+the background and is still listed under the queue - it just stops being where
+the next track comes from, so turning the loop off picks it back up.
+
+There is no repeat-one glyph in the icon set, so a track loop is the same icon
+in `COLOR_ACCENT_PRIMARY` rather than a different one.
+
+With a queue loop on, skipping wraps in both directions: forward from the last
+track lands on the first, back from the first lands on the last.
+
 ### The search bar doubles as a library filter
 
 On the library page, typing without pressing <kbd>Enter</kbd> narrows the grid
@@ -461,6 +482,7 @@ unbind it.
 | `KEY_SKIP_BACKWARD` | `z` | previous track |
 | `KEY_SKIP_FORWARD` | `x` | next track |
 | `KEY_TOGGLE_PAUSE` | `space` | play / pause |
+| `KEY_TOGGLE_LOOP` | `r` | cycle looping: off, queue, current track |
 
 These act on whatever the cursor is over:
 
@@ -491,6 +513,17 @@ playerctl -p moroder metadata
 
 Media keys and desktop widgets work without configuration. Every incoming call
 is logged, including refusals, so "the button did nothing" is diagnosable.
+
+`LoopStatus` is readable and writable, and is the same setting the <kbd>r</kbd>
+key cycles - a change made either way shows up in the other:
+
+```bash
+playerctl -p moroder loop Track
+```
+
+MPRIS has no concept of a radio queue, so its `Playlist` is Moroder's queue
+loop and its `Track` is the track loop. `Shuffle` is still accepted and
+reported, but does nothing yet.
 
 ### Discord
 
@@ -570,6 +603,13 @@ Queueing uses mpv's own playlist with yt-dlp so the next track isn't buffered be
 current one ends, but the queue position advances whether or not you
 skipped manually. When the user queue runs out, tracks come from the radio
 queue; when that runs low and `autoplay` is on, a continuation is fetched.
+
+Looping sits in front of that. A queue loop wraps the position back to zero
+instead of reaching for the radio queue, and because mpv has nothing left to
+autoplay into at the end of its playlist, the wrap is an explicit
+`playlist-play-index`. A track loop is mpv's own `loop-file`, so a repeat never
+unloads the file: no end-of-file event, no gap between plays, and the queue
+position stays put.
 
 ---
 
