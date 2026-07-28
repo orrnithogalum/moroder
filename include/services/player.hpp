@@ -125,6 +125,8 @@ public:
     PlayerState state;
     std::mutex state_mutex;
 
+    static constexpr uint64_t LOOP_REWIND_EPSILON = 2000000ULL;
+
     Player(const std::string_view& app_name, const std::string_view& app_name_human, const uint64_t app_id);
     ~Player();
 

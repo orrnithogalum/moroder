@@ -150,7 +150,7 @@ int main(int argc, char *argv[]) {
     player.setOnPositionTick([&screen, &playback_bar_data](uint64_t position, uint64_t duration) {
         // Remove two seconds to account for UI refresh period
         // This is just a fix so that the UI progress bar actually reaches song end
-        duration -= 2000000ULL;
+        duration -= services::Player::LOOP_REWIND_EPSILON;
 
         if (duration <= 0) return;
 

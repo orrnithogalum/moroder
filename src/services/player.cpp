@@ -27,12 +27,6 @@ const char* LIBRARY_SOURCES[] = {
     "library_podcasts",
 };
 
-/* LOOP_REWIND_EPSILON
-- How far the stream position has to go backwards on its own before the tick
-  reads it as a restart rather than jitter, in microseconds
-*/
-constexpr uint64_t LOOP_REWIND_EPSILON = 2000000ULL;
-
 /* loopStatusFor / loopModeFor
 - MPRIS only knows None, Track and Playlist, so a queue loop goes out as
   Playlist
@@ -285,12 +279,6 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
         bool to_radio_skip = false;
         bool should_skip = false;
 
-        /* loop_to
-        - -1 unless a loop has to put mpv somewhere itself
-        - mpv autoplays the next playlist entry on its own, which covers every
-          case except a wrap: at the end of the playlist there is nothing left
-          to autoplay into, so that one needs an explicit playlist-play-index
-        */
         int loop_to = -1;
 
         {
@@ -315,17 +303,8 @@ services::Player::Player(const std::string_view& app_name, const std::string_vie
                 state.current = state.user_queue[state.queue_position];
 
             } else {
-                /* Since we use mpv playlist feature for buffering, we need to increment queue position no matter what.
-                - This means that queue position can be equal or greater than the queue size
-                - So we check for that.
-                */
                 this->state.queue_position++;
 
-                /* Queue loop
-                - The radio queue is deliberately left alone: it can go on
-                  filling in the background, it just stops being where the next
-                  song comes from, so turning the loop off later resumes it
-                */
                 if (loop == LoopMode::Queue && !state.user_queue.empty()) {
                     if (state.queue_position >= state.user_queue.size()) {
                         state.queue_position = 0;
