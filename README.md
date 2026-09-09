@@ -1,6 +1,7 @@
 # Moroder
 
-Album art, radio, your library, MPRIS, and Discord rich presence - in a TUI.
+Moroder is a terminal user interface (TUI) client for YouTube Music that talks to the InnerTube API directly, with no browser and no Electron.
+It provides a lightweight, keyboard-driven way to play your library, run radios, and search, with album art in the terminal, MPRIS control, and Discord rich presence.
 
 <p align="center">
   <img src="img/app.gif" alt="App preview" width="640">
