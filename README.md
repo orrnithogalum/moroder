@@ -1,14 +1,4 @@
-<div align="center">
-
-```
-ooooo    oooo  ooooooo  oooooooooo    ooooooo  ooooooooo  ooooooooooo oooooooooo
-  8888o   888 o888   888o 888    888 o888   888o 888    88o 888    88   888    888
- 88 888o8 88 888     888 888oooo88  888     888 888    888 888ooo8     888oooo88
-88  888  88 888o   o888 888  88o   888o   o888 888    888 888    oo   888  88o
- o88o  8  o88o  88ooo88  o888o  88o8   88ooo88  o888ooo88  o888ooo8888 o888o  88o8
-```
-
-**A YouTube Music client for the terminal.**
+# Moroder
 
 Album art, radio, your library, MPRIS, and Discord rich presence - in a TUI.
 
