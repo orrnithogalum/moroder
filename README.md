@@ -8,8 +8,6 @@ Album art, radio, your library, MPRIS, and Discord rich presence - in a TUI.
 
 </div>
 
----
-
 ## Contents
 
 - [What it is](#what-it-is)
