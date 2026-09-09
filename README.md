@@ -12,6 +12,10 @@ ooooo    oooo  ooooooo  oooooooooo    ooooooo  ooooooooo  ooooooooooo oooooooooo
 
 Album art, radio, your library, MPRIS, and Discord rich presence - in a TUI.
 
+<p align="center">
+  <img src="img/app.gif" alt="App preview" width="640">
+</p>
+
 </div>
 
 ---
