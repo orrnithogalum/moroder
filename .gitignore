@@ -1,5 +1,5 @@
 # Third-party libraries that aren't safe to distribute (e.g. Discord SDK)
-lib/*
+lib/discord_social_sdk
 
 # Cache files
 .cache/
