@@ -18,6 +18,8 @@ set(DISCORD_SDK_INCLUDE_DIR "${DISCORD_SDK_ROOT}/include")
 set(DISCORD_LIB_PATH "${DISCORD_SDK_LIB_DIR}/libdiscord_partner_sdk.so")
 set(DISCORD_SHARED_LIB "${DISCORD_SDK_LIB_DIR}/libdiscord_partner_sdk.so")
 
+set(MORODER_VERSION "1.0.0" CACHE STRING "Moroder version")
+
 include(FetchContent)
 
 FetchContent_Declare(
@@ -114,6 +116,13 @@ add_custom_target(generate_${PROJECT_NAME}_conf_header ALL DEPENDS ${GENERATED_H
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 add_executable(${PROJECT_NAME} ${SOURCES})
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    BUILD_WITH_INSTALL_RPATH TRUE
+    INSTALL_RPATH "$ORIGIN"
+)
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+    MORODER_VERSION="${MORODER_VERSION}"
+)
 add_dependencies(${PROJECT_NAME} generate_${PROJECT_NAME}_conf_header)
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${DISCORD_SDK_INCLUDE_DIR})
@@ -136,9 +145,6 @@ target_link_libraries(${PROJECT_NAME}
 
     ${DISCORD_LIB_PATH}
 )
-
-set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
-set(CMAKE_INSTALL_RPATH "$ORIGIN")
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(${PROJECT_NAME}
