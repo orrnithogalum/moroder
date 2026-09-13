@@ -18,7 +18,7 @@ set(DISCORD_SDK_INCLUDE_DIR "${DISCORD_SDK_ROOT}/include")
 set(DISCORD_LIB_PATH "${DISCORD_SDK_LIB_DIR}/libdiscord_partner_sdk.so")
 set(DISCORD_SHARED_LIB "${DISCORD_SDK_LIB_DIR}/libdiscord_partner_sdk.so")
 
-set(MORODER_VERSION "1.0.0" CACHE STRING "Moroder version")
+set(MORODER_VERSION "0.0.0-dev" CACHE STRING "Moroder version")
 
 include(FetchContent)
 
@@ -46,7 +46,7 @@ FetchContent_MakeAvailable(ftxui)
 FetchContent_Declare(
     ftxui-image-view
     GIT_REPOSITORY https://github.com/orrnithogalum/ftxui-image-view-async.git
-    GIT_TAG main
+    GIT_TAG 1501b3263789b9b0a4aaa61143d78e02d48ad550
 )
 FetchContent_MakeAvailable(ftxui-image-view)
 
@@ -60,7 +60,7 @@ FetchContent_MakeAvailable(sdbus-cpp)
 FetchContent_Declare(
     ftxui-grid-container
     GIT_REPOSITORY https://github.com/mingsheng13/grid-container-ftxui
-    GIT_TAG master
+    GIT_TAG 5deab11f7b60ff9d75c5718b63637e7a1dbed86a
 )
 FetchContent_MakeAvailable(ftxui-grid-container)
 

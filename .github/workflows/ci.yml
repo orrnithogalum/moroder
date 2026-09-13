@@ -1,0 +1,128 @@
+name: CI
+
+# Goal: every push to master gets compiled. If it breaks, you hear about it.
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master, main]
+  workflow_dispatch:
+
+# A new push to the same branch cancels the previous, still-running build.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build (${{ matrix.build_type }})
+    runs-on: ubuntu-latest
+
+    # Ubuntu 22.04 (glibc 2.35) rather than the runner's own 24.04.
+    # A binary linked against glibc 2.39 will not start on Debian 12 or Mint 21.
+    container:
+      image: ubuntu:22.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Debug, Release]
+
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      DEBIAN_FRONTEND: noninteractive
+      DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+
+    steps:
+      # git has to exist before actions/checkout runs, hence this comes first.
+      - name: Install system packages
+        run: |
+          set -eux
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            ca-certificates wget gpg git \
+            build-essential gcc-12 g++-12 ninja-build ccache pkg-config \
+            libmpv-dev libcurl4-openssl-dev libsystemd-dev xxd
+
+          # Jammy ships CMake 3.22; Kitware's repo keeps it current in case a
+          # FetchContent dependency raises its minimum.
+          wget -qO- https://apt.kitware.com/keys/kitware-archive-latest.asc \
+            | gpg --dearmor -o /usr/share/keyrings/kitware-archive-keyring.gpg
+          echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ jammy main' \
+            > /etc/apt/sources.list.d/kitware.list
+          apt-get update
+          apt-get install -y --no-install-recommends cmake
+
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # Private mirror of the SDK. Its repo root IS the SDK root, so it lands as
+      # lib/discord_social_sdk/{include,lib}/… exactly where CMakeLists expects.
+      - name: Checkout Discord Social SDK
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ vars.DISCORD_SDK_REPO }}
+          ssh-key: ${{ secrets.DISCORD_SDK_DEPLOY_KEY }}
+          path: lib/discord_social_sdk
+
+      - name: Mark workspace as safe for git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Restore dependency sources
+        uses: actions/cache@v6
+        with:
+          path: .deps
+          key: deps-jammy-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: deps-jammy-
+
+      - name: Restore compiler cache
+        uses: actions/cache@v6
+        with:
+          path: .ccache
+          key: ccache-jammy-${{ matrix.build_type }}-${{ github.sha }}
+          restore-keys: ccache-jammy-${{ matrix.build_type }}-
+
+      - name: Configure
+        run: |
+          cmake -B build -S . -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DCMAKE_C_COMPILER=gcc-12 \
+            -DCMAKE_CXX_COMPILER=g++-12 \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DFETCHCONTENT_BASE_DIR="$GITHUB_WORKSPACE/.deps"
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Check the binary links and finds its libraries
+        run: |
+          set -eux
+          readelf -d build/moroder | grep -E 'RPATH|RUNPATH' || \
+            echo "WARNING: no RPATH — moroder will not find libdiscord_partner_sdk.so next to it"
+          ldd build/moroder
+
+      - name: Compiler cache statistics
+        if: always()
+        run: ccache --show-stats
+
+      - name: Upload binary
+        if: matrix.build_type == 'Release'
+        uses: actions/upload-artifact@v7
+        with:
+          name: moroder-${{ github.sha }}
+          path: |
+            build/moroder
+            build/libdiscord_partner_sdk.so
+          retention-days: 14
+
+      # Optional. Only fires if you set the DISCORD_WEBHOOK secret.
+      - name: Notify Discord on failure
+        if: failure() && env.DISCORD_WEBHOOK != ''
+        run: |
+          curl -sf -H 'Content-Type: application/json' -d @- "$DISCORD_WEBHOOK" <<EOF
+          {"content": "❌ CI failed on \`${{ github.ref_name }}\` (${{ matrix.build_type }})\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}
+          EOF

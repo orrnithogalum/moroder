@@ -1,0 +1,209 @@
+name: Release
+
+# Goal: merging master into main builds a release-grade binary, works out the
+# next semantic version from the commit messages, and publishes a GitHub Release.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      force_version:
+        description: 'Version to release, e.g. 1.4.0 (leave empty for automatic)'
+        required: false
+        default: ''
+
+# Never let two releases run at once, and never cancel one halfway through.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write # needed to create the tag and the release
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Cheap, containerless job: read the commit log, decide the version.
+  # ---------------------------------------------------------------------------
+  version:
+    name: Work out the version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.semver.outputs.version }}
+      tag: ${{ steps.semver.outputs.tag }}
+      previous_tag: ${{ steps.semver.outputs.previous_tag }}
+      bump: ${{ steps.semver.outputs.bump }}
+    steps:
+      - name: Checkout with full history
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # the script needs every commit and every tag
+
+      - name: Compute next version
+        id: semver
+        env:
+          FORCE_VERSION: ${{ inputs.force_version }}
+          FIRST_VERSION: '0.1.0'
+        run: |
+          chmod +x .github/scripts/next-version.sh
+          .github/scripts/next-version.sh
+
+      - name: Upload release notes
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-notes
+          path: release-notes.md
+
+      - name: Summary
+        run: |
+          {
+            echo "### Release plan"
+            echo ""
+            echo "- previous tag: \`${{ steps.semver.outputs.previous_tag }}\`"
+            echo "- bump: \`${{ steps.semver.outputs.bump }}\`"
+            echo "- next tag: \`${{ steps.semver.outputs.tag }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------------------
+  # Build always runs, so a broken main still notifies you. Publishing is
+  # conditional on there being something worth releasing.
+  # ---------------------------------------------------------------------------
+  release:
+    name: Build and publish
+    needs: version
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:22.04
+
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      DEBIAN_FRONTEND: noninteractive
+      DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+      VERSION: ${{ needs.version.outputs.version }}
+
+    steps:
+      - name: Install system packages
+        run: |
+          set -eux
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            ca-certificates wget gpg git \
+            build-essential gcc-12 g++-12 ninja-build ccache pkg-config \
+            libmpv-dev libcurl4-openssl-dev libsystemd-dev xxd binutils
+          wget -qO- https://apt.kitware.com/keys/kitware-archive-latest.asc \
+            | gpg --dearmor -o /usr/share/keyrings/kitware-archive-keyring.gpg
+          echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ jammy main' \
+            > /etc/apt/sources.list.d/kitware.list
+          apt-get update
+          apt-get install -y --no-install-recommends cmake
+
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Checkout Discord Social SDK
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ vars.DISCORD_SDK_REPO }}
+          ssh-key: ${{ secrets.DISCORD_SDK_DEPLOY_KEY }}
+          path: lib/discord_social_sdk
+
+      - name: Mark workspace as safe for git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Restore dependency sources
+        uses: actions/cache@v6
+        with:
+          path: .deps
+          key: deps-jammy-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: deps-jammy-
+
+      - name: Restore compiler cache
+        uses: actions/cache@v6
+        with:
+          path: .ccache
+          key: ccache-release-${{ github.sha }}
+          restore-keys: ccache-release-
+
+      - name: Configure
+        run: |
+          cmake -B build -S . -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=gcc-12 \
+            -DCMAKE_CXX_COMPILER=g++-12 \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            -DMORODER_VERSION="$VERSION" \
+            -DFETCHCONTENT_BASE_DIR="$GITHUB_WORKSPACE/.deps"
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Verify the binary
+        run: |
+          set -eux
+          test -f build/moroder
+          test -f build/libdiscord_partner_sdk.so
+          readelf -d build/moroder | grep -E 'RPATH|RUNPATH'
+          ldd build/moroder
+          # Highest glibc symbol version the binary demands. Should be <= 2.35.
+          objdump -T build/moroder | grep -o 'GLIBC_[0-9.]*' | sort -Vu | tail -n1
+
+      - name: Package
+        run: |
+          set -eux
+          pkg="moroder-${VERSION}-linux-x86_64"
+          mkdir -p "dist/${pkg}"
+
+          cp build/moroder "dist/${pkg}/"
+          cp build/libdiscord_partner_sdk.so "dist/${pkg}/"
+          cp README.md "dist/${pkg}/"
+          [ -f LICENSE ] && cp LICENSE "dist/${pkg}/" || true
+          [ -f res/moroder.default.conf ] && cp res/moroder.default.conf "dist/${pkg}/" || true
+          # Third-party attribution notices must travel with the Discord .so
+          [ -f lib/discord_social_sdk/License-Notices.txt ] && \
+            cp lib/discord_social_sdk/License-Notices.txt "dist/${pkg}/" || true
+
+          strip --strip-unneeded "dist/${pkg}/moroder"
+
+          tar -C dist -czf "dist/${pkg}.tar.gz" "${pkg}"
+          ( cd dist && sha256sum "${pkg}.tar.gz" > "${pkg}.tar.gz.sha256" )
+          ls -lh dist
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: moroder-${{ env.VERSION }}
+          path: dist/*.tar.gz*
+
+      # ---- everything below only runs when there is something to release ----
+
+      - name: Download release notes
+        if: needs.version.outputs.bump != 'none'
+        uses: actions/download-artifact@v8
+        with:
+          name: release-notes
+
+      - name: Publish GitHub Release
+        if: needs.version.outputs.bump != 'none'
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.version.outputs.tag }}
+          name: Moroder ${{ needs.version.outputs.version }}
+          body_path: release-notes.md
+          target_commitish: ${{ github.sha }}
+          files: |
+            dist/*.tar.gz
+            dist/*.tar.gz.sha256
+
+      - name: Nothing to release
+        if: needs.version.outputs.bump == 'none'
+        run: |
+          echo "No feat/fix/breaking commits since ${{ needs.version.outputs.previous_tag }}." \
+            >> "$GITHUB_STEP_SUMMARY"
+          echo "Build is green; no release published." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Notify Discord on failure
+        if: failure() && env.DISCORD_WEBHOOK != ''
+        run: |
+          curl -sf -H 'Content-Type: application/json' -d @- "$DISCORD_WEBHOOK" <<EOF
+          {"content": "🔥 Release build failed on \`main\`\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}
+          EOF
