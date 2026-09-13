@@ -56,6 +56,15 @@ jobs:
           apt-get update
           apt-get install -y --no-install-recommends cmake
 
+      - name: Install Tinyxxd
+        run: |
+          set -eux
+          git clone --depth 1 --branch v1.3.16 \
+            https://github.com/xyproto/tinyxxd /tmp/tinyxxd
+          cc -std=c11 -O2 -o /usr/local/bin/xxd /tmp/tinyxxd/main.c
+          printf 'probe' > /tmp/probe
+          xxd -i -n probe_test /tmp/probe | head -1   # must not print a usage dump
+
       - name: Checkout
         uses: actions/checkout@v7
 
