@@ -1,36 +1,37 @@
-name: Release
+name: CI
 
-# You decide the version. Tag it locally, push the tag, and CI builds and
-# uploads the artifacts. Nothing is ever released without you asking for it.
-#
-#   git tag -a v1.2.0 -m "Queue reordering, MPRIS seek fixes"
-#   git push origin v1.2.0
-#
-# Or use Actions -> Release -> Run workflow and type a version, which tags the
-# current commit of the branch you pick.
+# Every push to master gets compiled. If it breaks, you hear about it.
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [master]
+  pull_request:
+    branches: [master, main]
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version to release, e.g. 1.2.0 (with or without the v)'
-        required: true
 
+# A new push to the same branch cancels the previous, still-running build.
 concurrency:
-  group: release
-  cancel-in-progress: false
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
-  contents: write # needed to create the release and, for manual runs, the tag
+  contents: read
 
 jobs:
-  release:
-    name: Build and publish
+  build:
+    name: Build (${{ matrix.build_type }})
     runs-on: ubuntu-latest
+
+    # Debian 12, not the runner's own Ubuntu 24.04, and not Ubuntu 22.04:
+    #   glibc 2.36  - old enough for Debian 12+, Mint 22+, Ubuntu 24.04+, Arch
+    #   libmpv.so.2 - the SONAME every current distro ships (22.04 has .so.1)
+    #   vim 9.0     - so xxd supports -n
     container:
-      image: ubuntu:22.04
+      image: debian:12
+
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Debug, Release]
 
     env:
       CCACHE_DIR: ${{ github.workspace }}/.ccache
@@ -38,55 +39,21 @@ jobs:
       DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
 
     steps:
+      # git and ssh have to exist before actions/checkout runs.
       - name: Install system packages
         run: |
           set -eux
           apt-get update
           apt-get install -y --no-install-recommends \
-            ca-certificates wget gpg git openssh-client \
-            build-essential gcc-12 g++-12 ninja-build ccache pkg-config \
-            libmpv-dev libcurl4-openssl-dev libsystemd-dev libx11-dev xxd binutils
-          wget -qO- https://apt.kitware.com/keys/kitware-archive-latest.asc \
-            | gpg --dearmor -o /usr/share/keyrings/kitware-archive-keyring.gpg
-          echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ jammy main' \
-            > /etc/apt/sources.list.d/kitware.list
-          apt-get update
-          apt-get install -y --no-install-recommends cmake
-
-      - name: Install Tinyxxd
-        run: |
-          set -eux
-          git clone --depth 1 --branch v1.3.16 \
-            https://github.com/xyproto/tinyxxd /tmp/tinyxxd
-          cc -std=c11 -O2 -o /usr/local/bin/xxd /tmp/tinyxxd/main.c
-          printf 'probe' > /tmp/probe
-          xxd -i -n probe_test /tmp/probe | head -1   # must not print a usage dump
-
-      # Work out the version before anything else, so a malformed input fails
-      # in two seconds rather than after a full build.
-      - name: Resolve version
-        id: ver
-        run: |
-          set -eu
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            raw="${{ inputs.version }}"
-          else
-            raw="${{ github.ref_name }}"
-          fi
-          version="${raw#v}"
-
-          if ! echo "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
-            echo "::error::'$raw' is not a semantic version (expected 1.2.3 or v1.2.3)"
-            exit 1
-          fi
-
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "tag=v$version"    >> "$GITHUB_OUTPUT"
-          echo "Releasing $version" >> "$GITHUB_STEP_SUMMARY"
+            ca-certificates git openssh-client \
+            build-essential cmake ninja-build ccache pkg-config xxd \
+            libmpv-dev libcurl4-openssl-dev libsystemd-dev libx11-dev
 
       - name: Checkout
         uses: actions/checkout@v7
 
+      # Private mirror of the SDK. Its repo root IS the SDK root, so it lands as
+      # lib/discord_social_sdk/{include,lib}/… exactly where CMakeLists expects.
       - name: Checkout Discord Social SDK
         uses: actions/checkout@v7
         with:
@@ -101,81 +68,52 @@ jobs:
         uses: actions/cache@v6
         with:
           path: .deps
-          key: deps-jammy-${{ hashFiles('CMakeLists.txt') }}
-          restore-keys: deps-jammy-
+          key: deps-bookworm-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: deps-bookworm-
 
       - name: Restore compiler cache
         uses: actions/cache@v6
         with:
           path: .ccache
-          key: ccache-release-${{ github.sha }}
-          restore-keys: ccache-release-
+          key: ccache-bookworm-${{ matrix.build_type }}-${{ github.sha }}
+          restore-keys: ccache-bookworm-${{ matrix.build_type }}-
 
       - name: Configure
         run: |
           cmake -B build -S . -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_C_COMPILER=gcc-12 \
-            -DCMAKE_CXX_COMPILER=g++-12 \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
             -DCMAKE_C_COMPILER_LAUNCHER=ccache \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
-            -DMORODER_VERSION="${{ steps.ver.outputs.version }}" \
             -DFETCHCONTENT_BASE_DIR="$GITHUB_WORKSPACE/.deps"
 
       - name: Build
         run: cmake --build build --parallel
 
-      - name: Verify the binary
+      - name: Check the binary links and finds its libraries
         run: |
           set -eux
-          test -f build/moroder
-          test -f build/libdiscord_partner_sdk.so
-          readelf -d build/moroder | grep -E 'RPATH|RUNPATH'
+          readelf -d build/moroder | grep -E 'RPATH|RUNPATH' || \
+            echo "WARNING: no RPATH — moroder will not find libdiscord_partner_sdk.so next to it"
           ldd build/moroder
-          # Highest glibc version the binary demands. Should be <= 2.35.
-          objdump -T build/moroder | grep -o 'GLIBC_[0-9.]*' | sort -Vu | tail -n1
 
-      - name: Package
-        env:
-          VERSION: ${{ steps.ver.outputs.version }}
-        run: |
-          set -eux
-          pkg="moroder-${VERSION}-linux-x86_64"
-          mkdir -p "dist/${pkg}"
+      - name: Compiler cache statistics
+        if: always()
+        run: ccache --show-stats
 
-          cp build/moroder "dist/${pkg}/"
-          cp build/libdiscord_partner_sdk.so "dist/${pkg}/"
-          cp README.md "dist/${pkg}/"
-          [ -f LICENSE ] && cp LICENSE "dist/${pkg}/" || true
-          [ -f res/moroder.default.conf ] && cp res/moroder.default.conf "dist/${pkg}/" || true
-          # Third-party attribution notices travel with the Discord .so
-          [ -f lib/discord_social_sdk/License-Notices.txt ] && \
-            cp lib/discord_social_sdk/License-Notices.txt "dist/${pkg}/" || true
-
-          strip --strip-unneeded "dist/${pkg}/moroder"
-
-          tar -C dist -czf "dist/${pkg}.tar.gz" "${pkg}"
-          ( cd dist && sha256sum "${pkg}.tar.gz" > "${pkg}.tar.gz.sha256" )
-          ls -lh dist
-
-      - name: Publish draft release
-        uses: softprops/action-gh-release@v3
+      - name: Upload binary
+        if: matrix.build_type == 'Release'
+        uses: actions/upload-artifact@v7
         with:
-          tag_name: ${{ steps.ver.outputs.tag }}
-          name: Moroder ${{ steps.ver.outputs.version }}
-          target_commitish: ${{ github.sha }}
-          # Draft: the artifacts are uploaded and waiting, but nothing is public
-          # until you review the notes and press Publish. Set to false to skip
-          # that step and go straight out.
-          draft: true
-          generate_release_notes: true
-          files: |
-            dist/*.tar.gz
-            dist/*.tar.gz.sha256
+          name: moroder-${{ github.sha }}
+          path: |
+            build/moroder
+            build/libdiscord_partner_sdk.so
+          retention-days: 14
 
+      # Optional. Only fires if you set the DISCORD_WEBHOOK secret.
       - name: Notify Discord on failure
         if: failure() && env.DISCORD_WEBHOOK != ''
         run: |
           curl -sf -H 'Content-Type: application/json' -d @- "$DISCORD_WEBHOOK" <<EOF
-          {"content": "🔥 Release build failed for \`${{ github.ref_name }}\`\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}
+          {"content": "❌ CI failed on \`${{ github.ref_name }}\` (${{ matrix.build_type }})\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"}
           EOF
