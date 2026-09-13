@@ -68,13 +68,14 @@ jobs:
           ssh-key: ${{ secrets.DISCORD_SDK_DEPLOY_KEY }}
           path: lib/discord_social_sdk
 
-      - name: Install tinyxxd (jammy's xxd predates -n)
+      - name: Install Tinyxxd
         run: |
-            set -eux
-            git clone --depth 1 --branch v1.3.16 \
+          set -eux
+          git clone --depth 1 --branch v1.3.16 \
             https://github.com/xyproto/tinyxxd /tmp/tinyxxd
-            make -C /tmp/tinyxxd
-            install -m 755 /tmp/tinyxxd/tinyxxd /usr/local/bin/xxd
+          cc -std=c11 -O2 -o /usr/local/bin/xxd /tmp/tinyxxd/main.c
+          printf 'probe' > /tmp/probe
+          xxd -i -n probe_test /tmp/probe | head -1   # must not print a usage dump
 
       - name: Mark workspace as safe for git
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
