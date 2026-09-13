@@ -43,7 +43,7 @@ jobs:
           set -eux
           apt-get update
           apt-get install -y --no-install-recommends \
-            ca-certificates wget gpg git \
+            ca-certificates wget gpg git openssh-client \
             build-essential gcc-12 g++-12 ninja-build ccache pkg-config \
             libmpv-dev libcurl4-openssl-dev libsystemd-dev xxd
 
