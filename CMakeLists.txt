@@ -39,7 +39,7 @@ FetchContent_MakeAvailable(nlohmann_json)
 FetchContent_Declare(
     ftxui
     GIT_REPOSITORY https://github.com/orrnithogalum/ftxui-sixels.git
-    GIT_TAG sixel
+    GIT_TAG experimental-sixels
 )
 FetchContent_MakeAvailable(ftxui)
 
