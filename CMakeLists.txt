@@ -38,17 +38,10 @@ FetchContent_MakeAvailable(nlohmann_json)
 
 FetchContent_Declare(
     ftxui
-    GIT_REPOSITORY https://github.com/ArthurSonzogni/ftxui.git
-    GIT_TAG v7.0.3
+    GIT_REPOSITORY https://github.com/orrnithogalum/ftxui-sixels.git
+    GIT_TAG sixel
 )
 FetchContent_MakeAvailable(ftxui)
-
-FetchContent_Declare(
-    ftxui-image-view
-    GIT_REPOSITORY https://github.com/orrnithogalum/ftxui-image-view-async.git
-    GIT_TAG 1501b3263789b9b0a4aaa61143d78e02d48ad550
-)
-FetchContent_MakeAvailable(ftxui-image-view)
 
 FetchContent_Declare(
     sdbus-cpp
